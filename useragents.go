@@ -1,5 +1,6 @@
 package pxndscvm
 
+// DefaultUserAgents is a small list of user agents to use during validation.
 var DefaultUserAgents = []string{
 	"Mozilla/5.0 (Macintosh; Intel Mac OS X 10.12; rv:60.0) Gecko/20100101 Firefox/60.0",
 	"Mozilla/5.0 (Windows NT 6.2; WOW64; rv:34.0) Gecko/20100101 Firefox/34.0",
