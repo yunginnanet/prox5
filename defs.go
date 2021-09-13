@@ -34,16 +34,16 @@ type Swamp struct {
 var (
 	defaultStaleTime = 1 * time.Hour
 	defWorkers       = 100
-	defaultChecks =  []string{"https://wtfismyip.com/text", "https://myexternalip.com/raw", "https://ipinfo.io/ip"}
+	defaultChecks    = []string{"https://wtfismyip.com/text", "https://myexternalip.com/raw", "https://ipinfo.io/ip"}
 )
 
 func defOpt() *SwampOptions {
 	return &SwampOptions{
-		UserAgents: DefaultUserAgents,
+		UserAgents:     DefaultUserAgents,
 		CheckEndpoints: defaultChecks,
-		Stale:      defaultStaleTime,
-		MaxWorkers: defWorkers,
-		Debug:      false,
+		Stale:          defaultStaleTime,
+		MaxWorkers:     defWorkers,
+		Debug:          false,
 	}
 }
 
@@ -63,8 +63,8 @@ type SwampOptions struct {
 }
 
 var (
-	useProx   *rl.Limiter
-	badProx   *rl.Limiter
+	useProx *rl.Limiter
+	badProx *rl.Limiter
 )
 
 // Proxy represents an individual proxy

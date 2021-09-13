@@ -1,6 +1,9 @@
 package pxndscvm
 
-import "errors"
+import (
+	"errors"
+	"time"
+)
 
 // AddUserAgents appends to the list of useragents we randomly choose from during proxied requests
 func (s *Swamp) AddUserAgents(uagents []string) {
@@ -29,6 +32,13 @@ func (s *Swamp) AddCheckEndpoints(newendpoints []string) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	s.swampopt.CheckEndpoints = append(s.swampopt.CheckEndpoints, newendpoints...)
+}
+
+// SetStaleTime replaces the duration of time after which a proxy will be considered "stale". stale proxies will be skipped upon retrieval.
+func (s *Swamp) SetStaleTime(newtime time.Duration) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	s.swampopt.Stale = newtime
 }
 
 // EnableDebug enables printing of verbose messages during operation

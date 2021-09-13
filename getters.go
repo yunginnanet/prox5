@@ -1,8 +1,11 @@
 package pxndscvm
 
 import (
-	"fmt"
+	"context"
+	"net"
 	"time"
+
+	"h12.io/socks"
 )
 
 // Socks5Str gets a SOCKS5 proxy that we have fully verified (dialed and then retrieved our IP address from a what-is-my-ip endpoint.
@@ -41,6 +44,7 @@ func (s *Swamp) Socks4aStr() string {
 			if !s.stillGood(sock) {
 				continue
 			}
+
 			s.Stats.dispense()
 			return sock.Endpoint
 		}
@@ -73,7 +77,6 @@ func (s *Swamp) GetAnySOCKS() Proxy {
 func (s *Swamp) stillGood(candidate Proxy) bool {
 	if time.Since(candidate.Verified) > s.swampopt.Stale {
 		s.dbgPrint("proxy stale: " + candidate.Endpoint)
-		fmt.Println("time since: ", time.Since(candidate.Verified))
 		return false
 	}
 	return true
@@ -86,12 +89,62 @@ func (s *Swamp) RandomUserAgent() string {
 	return randStrChoice(s.swampopt.UserAgents)
 }
 
+// GetMysteryDialer will return a dialer that will use a different proxy for every request.
+func (s *Swamp) GetMysteryDialer(ctx context.Context, network, addr string) (net.Conn, error) {
+	var sock Proxy
+	sock = Proxy{Endpoint: ""}
+	// pull down proxies from channel until we get a proxy good enough for our spoiled asses
+	for {
+		if err := ctx.Err(); err != nil {
+			return nil, err
+		}
+		time.Sleep(10 * time.Millisecond)
+		candidate := s.GetAnySOCKS()
+		if !s.stillGood(candidate) {
+			continue
+		}
+
+		sock = candidate
+
+		if sock.Endpoint != "" {
+			break
+		}
+	}
+	if err := ctx.Err(); err != nil {
+		return nil, err
+	}
+
+	var dialSocks = socks.Dial("socks" + sock.Proto + "://" + sock.Endpoint + "?timeout=3s")
+
+	return dialSocks(network, addr)
+}
+
 // GetRandomEndpoint returns a random whatismyip style endpoint from our Swamp's options
 func (s *Swamp) GetRandomEndpoint() string {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
 	return randStrChoice(s.swampopt.CheckEndpoints)
 }
 
-// DebugEnabled will return the current state of our Debug switch
+// GetStaleTime returns the duration of time after which a proxy will be considered "stale".
+func (s *Swamp) GetStaleTime() time.Duration {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+	return s.swampopt.Stale
+}
+
+// DebugEnabled returns the current state of our Debug switch
 func (s *Swamp) DebugEnabled() bool {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
 	return s.swampopt.Debug
 }
+
+// GetMaxWorkers returns maximum amount of workers that validate proxies concurrently. Note this is read-only during runtime.
+func (s *Swamp) GetMaxWorkers() int {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+	return s.swampopt.MaxWorkers
+}
+
+// TODO: Implement ways to access worker pool (pond) statistics
