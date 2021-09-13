@@ -1,11 +1,7 @@
 package pxndscvm
 
 import (
-	"context"
-	"net"
 	"time"
-
-	"h12.io/socks"
 )
 
 // Socks5Str gets a SOCKS5 proxy that we have fully verified (dialed and then retrieved our IP address from a what-is-my-ip endpoint.
@@ -91,38 +87,6 @@ func (s *Swamp) RandomUserAgent() string {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
 	return randStrChoice(s.swampopt.UserAgents)
-}
-
-// GetMysteryDialer will return a dialer that will use a different proxy for every request.
-func (s *Swamp) GetMysteryDialer(ctx context.Context, network, addr string) (net.Conn, error) {
-	var sock Proxy
-	sock = Proxy{Endpoint: ""}
-	// pull down proxies from channel until we get a proxy good enough for our spoiled asses
-	for {
-		if err := ctx.Err(); err != nil {
-			return nil, err
-		}
-
-		time.Sleep(10 * time.Millisecond)
-		candidate := s.GetAnySOCKS()
-		if !s.stillGood(candidate) {
-			continue
-		}
-
-		sock = candidate
-
-		if sock.Endpoint != "" {
-			break
-		}
-	}
-
-	if err := ctx.Err(); err != nil {
-		return nil, err
-	}
-
-	var dialSocks = socks.Dial("socks" + sock.Proto + "://" + sock.Endpoint + "?timeout=8s")
-
-	return dialSocks(network, addr)
 }
 
 // GetRandomEndpoint returns a random whatismyip style endpoint from our Swamp's options
