@@ -233,11 +233,13 @@ func (s *Swamp) tossUp() {
 	}
 }
 
-// Pause will cease the creation of any new proxy validation operations.
-// * You will be able to start the proxy pool again with Swamp.Resume(), it will have the same Statistics, options, and ratelimits.
-// * During pause you are still able to dispense proxies.
-// * Options may be changed and proxy lists may be loaded when paused.
-// * Pausing an already paused Swamp is a nonop.
+/*
+Pause will cease the creation of any new proxy validation operations.
+   * You will be able to start the proxy pool again with Swamp.Resume(), it will have the same Statistics, options, and ratelimits.
+   * During pause you are still able to dispense proxies.
+   * Options may be changed and proxy lists may be loaded when paused.
+   * Pausing an already paused Swamp is a nonop.
+*/
 func (s *Swamp) Pause() {
 	if s.Status == Paused {
 		return
