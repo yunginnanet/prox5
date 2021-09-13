@@ -26,7 +26,7 @@ func init() {
 		os.Exit(1)
 	}
 
-	println("[USAGE] q: quit | d: debug | a: socks4 | b: socks4a | c: socks5")
+	println("[USAGE] q: quit | d: debug | a: socks4 | b: socks4a | c: socks5 | p: pause/unpause")
 }
 
 func get(ver string) {
@@ -72,6 +72,12 @@ func main() {
 				go get("4a")
 			case "c":
 				go get("5")
+			case "p":
+				if swamp.Status == 0 {
+					swamp.Pause()
+				} else {
+					swamp.Resume()
+				}
 			case "q":
 				quit <- true
 			default:

@@ -9,6 +9,7 @@ import (
 )
 
 // Socks5Str gets a SOCKS5 proxy that we have fully verified (dialed and then retrieved our IP address from a what-is-my-ip endpoint.
+// Will block if one is not available!
 func (s *Swamp) Socks5Str() string {
 	for {
 		select {
@@ -23,6 +24,7 @@ func (s *Swamp) Socks5Str() string {
 }
 
 // Socks4Str gets a SOCKS4 proxy that we have fully verified.
+// Will block if one is not available!
 func (s *Swamp) Socks4Str() string {
 	for {
 		select {
@@ -37,6 +39,7 @@ func (s *Swamp) Socks4Str() string {
 }
 
 // Socks4aStr gets a SOCKS4 proxy that we have fully verified.
+// Will block if one is not available!
 func (s *Swamp) Socks4aStr() string {
 	for {
 		select {
@@ -52,6 +55,7 @@ func (s *Swamp) Socks4aStr() string {
 }
 
 // GetAnySOCKS retrieves any version SOCKS proxy as a Proxy type
+// Will block if one is not available!
 func (s *Swamp) GetAnySOCKS() Proxy {
 	for {
 		select {
@@ -98,6 +102,7 @@ func (s *Swamp) GetMysteryDialer(ctx context.Context, network, addr string) (net
 		if err := ctx.Err(); err != nil {
 			return nil, err
 		}
+
 		time.Sleep(10 * time.Millisecond)
 		candidate := s.GetAnySOCKS()
 		if !s.stillGood(candidate) {
@@ -110,11 +115,12 @@ func (s *Swamp) GetMysteryDialer(ctx context.Context, network, addr string) (net
 			break
 		}
 	}
+
 	if err := ctx.Err(); err != nil {
 		return nil, err
 	}
 
-	var dialSocks = socks.Dial("socks" + sock.Proto + "://" + sock.Endpoint + "?timeout=3s")
+	var dialSocks = socks.Dial("socks" + sock.Proto + "://" + sock.Endpoint + "?timeout=8s")
 
 	return dialSocks(network, addr)
 }

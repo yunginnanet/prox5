@@ -13,8 +13,6 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/alitto/pond"
-	"github.com/rs/zerolog/log"
 	"golang.org/x/net/proxy"
 	"h12.io/socks"
 )
@@ -62,9 +60,15 @@ func (s *Swamp) LoadProxyTXT(seedFile string) error {
 func (s *Swamp) feed() {
 	s.dbgPrint("swamp feed start")
 	for {
+		if s.Status == Paused {
+			return
+		}
 		select {
 		case s.Pending <- randStrChoice(s.scvm):
 			//
+		case <-s.quit:
+			s.dbgPrint("feed() paused")
+			return
 		default:
 			time.Sleep(1 * time.Second)
 		}
@@ -136,6 +140,7 @@ func (s *Swamp) singleProxyCheck(sock Proxy) error {
 		badProx.Check(sock)
 		return err
 	}
+
 	resp, err := s.checkHTTP(sock)
 	if err != nil {
 		badProx.Check(sock)
@@ -152,62 +157,100 @@ func (s *Swamp) singleProxyCheck(sock Proxy) error {
 	return nil
 }
 
+func (s *Swamp) validate() {
+	var sversions = []string{"5", "4", "4a"}
+	for {
+
+		if s.Status == Paused {
+			return
+		}
+
+		sock := <-s.Pending
+		p := Proxy{
+			Endpoint: sock,
+		}
+		// ratelimited
+		if useProx.Check(p) {
+			// s.dbgPrint(blu+"useProx ratelimited: " + p.Endpoint+rst)
+			continue
+		}
+		// determined as bad, won't try again until it expires from that cache
+		if badProx.Peek(p) {
+			s.dbgPrint(ylw + "badProx ratelimited: " + p.Endpoint + rst)
+			continue
+		}
+
+		// try to use the proxy with all 3 SOCKS versions
+		var good = false
+		for _, sver := range sversions {
+			if s.Status == Paused {
+				return
+			}
+			p.Proto = sver
+			if err := s.singleProxyCheck(p); err == nil {
+				s.dbgPrint(grn + "verified " + p.Endpoint + " as SOCKS" + sver + rst)
+				good = true
+				break
+			}
+		}
+		if !good {
+			s.dbgPrint(ylw + "failed to verify " + p.Endpoint + rst)
+			badProx.Check(p)
+			continue
+		}
+
+		p.Verified = time.Now()
+
+		switch p.Proto {
+		case "4":
+			s.Stats.v4()
+			s.Socks4 <- p
+		case "4a":
+			s.Stats.v4a()
+			s.Socks4a <- p
+		case "5":
+			s.Stats.v5()
+			s.Socks5 <- p
+		}
+	}
+}
+
 func (s *Swamp) tossUp() {
 	s.dbgPrint("tossUp() proxy checking loop start")
-	var sversions = []string{"5", "4", "4a"}
-	panicHandler := func(p interface{}) {
-		log.Error().Interface("panic", p).Msg("Task panicked")
-	}
-	pool := pond.New(s.swampopt.MaxWorkers, 10000, pond.MinWorkers(100), pond.PanicHandler(panicHandler))
+
 	for {
-		pool.Submit(func() {
-			for {
-				sock := <-s.Pending
-				p := Proxy{
-					Endpoint: sock,
-				}
-				// ratelimited
-				if useProx.Check(p) {
-					// s.dbgPrint(blu+"useProx ratelimited: " + p.Endpoint+rst)
-					continue
-				}
-				// determined as bad, won't try again until it expires from that cache
-				if badProx.Peek(p) {
-					s.dbgPrint(ylw + "badProx ratelimited: " + p.Endpoint + rst)
-					continue
-				}
-
-				// try to use the proxy with all 3 SOCKS versions
-				var good = false
-				for _, sver := range sversions {
-					p.Proto = sver
-					if err := s.singleProxyCheck(p); err == nil {
-						s.dbgPrint(grn + "verified " + p.Endpoint + " as SOCKS" + sver + rst)
-						good = true
-						break
-					}
-				}
-				if !good {
-					// s.dbgPrint(red+"failed to verify " + p.Endpoint+rst)
-					badProx.Check(p)
-					continue
-				}
-
-				p.Verified = time.Now()
-
-				switch p.Proto {
-				case "4":
-					s.Stats.v4()
-					s.Socks4 <- p
-				case "4a":
-					s.Stats.v4a()
-					s.Socks4a <- p
-				case "5":
-					s.Stats.v5()
-					s.Socks5 <- p
-				}
-			}
-		})
-		time.Sleep(time.Duration(10) * time.Millisecond)
+		if s.Status == Paused {
+			return
+		}
+		select {
+		case <-s.quit:
+			s.dbgPrint("tossUp() paused")
+			return
+		default:
+			go s.pool.Submit(s.validate)
+			time.Sleep(time.Duration(10) * time.Millisecond)
+		}
 	}
+}
+
+// Pause will cease all proxy pool operation. You will be able to start the proxy pool again, it will have the same Statistics, options, and ratelimits.
+// Options may be changed and proxy lists may be loaded when paused.
+// NOTE: There will be a few leftover validation attemps after pause, but no new jobs will be added.
+func (s *Swamp) Pause() {
+	s.mu.Lock()
+
+	for n := 2; n > 0; n-- {
+		s.quit <- true
+	}
+
+	s.Status = Paused
+}
+
+// Resume will resume pause proxy pool operations, must be called after Pause or it will block.
+func (s *Swamp) Resume() {
+	s.mu.Unlock()
+	s.Status = Running
+	go s.feed()
+	go s.tossUp()
+
 }

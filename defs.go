@@ -1,10 +1,22 @@
 package pxndscvm
 
 import (
+	"fmt"
 	"sync"
 	"time"
 
+	"github.com/alitto/pond"
 	rl "github.com/yunginnanet/Rate5"
+)
+
+// SwampStatus represents the current state of our Swamp.
+type SwampStatus int
+
+const (
+	// Running means the proxy pool is currently taking in proxys and validating them, and is available to dispense proxies.
+	Running SwampStatus = iota
+	// Paused means the proxy pool has been with Swamp.Pause() and may be resumed with Swamp.Resume()
+	Paused
 )
 
 // Swamp represents a proxy pool
@@ -19,10 +31,14 @@ type Swamp struct {
 	// Stats holds the Statistics for our swamp
 	Stats *Statistics
 
+	Status SwampStatus
+
 	// Pending is a constant stream of proxy strings to be verified
 	Pending chan string
 
+	quit     chan bool
 	scvm     []string
+	pool     *pond.WorkerPool
 	swampopt *SwampOptions
 	started  bool
 	mu       *sync.RWMutex
@@ -108,9 +124,14 @@ func NewDefaultSwamp() *Swamp {
 			mu:        &sync.Mutex{},
 		},
 
+		quit:     make(chan bool),
 		swampopt: defOpt(),
 		mu:       &sync.RWMutex{},
 	}
+
+	s.pool = pond.New(s.swampopt.MaxWorkers, 10000, pond.PanicHandler(func(p interface{}) {
+		fmt.Println("WORKER PANIC! ", p)
+	}))
 
 	return s
 }
