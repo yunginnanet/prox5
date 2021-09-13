@@ -25,6 +25,23 @@ func init() {
 		println(err.Error())
 		os.Exit(1)
 	}
+
+	println("[USAGE] q: quit | d: debug | a: socks4 | b: socks4a | c: socks5")
+}
+
+func get(ver string) {
+	switch ver {
+	case "4":
+		println("retrieving SOCKS4...")
+		println(swamp.Socks4Str())
+	case "4a":
+		println("retrieving SOCKS4a...")
+		println(swamp.Socks4aStr())
+	case "5":
+		println("retrieving SOCKS5...")
+		println(swamp.Socks5Str())
+
+	}
 }
 
 func main() {
@@ -49,6 +66,12 @@ func main() {
 					println("enabling debug")
 					swamp.EnableDebug()
 				}
+			case "a":
+				go get("4")
+			case "b":
+				go get("4a")
+			case "c":
+				go get("5")
 			case "q":
 				quit <- true
 			default:

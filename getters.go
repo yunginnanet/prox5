@@ -1,6 +1,9 @@
 package pxndscvm
 
-import "time"
+import (
+	"fmt"
+	"time"
+)
 
 // Socks5Str gets a SOCKS5 proxy that we have fully verified (dialed and then retrieved our IP address from a what-is-my-ip endpoint.
 func (s *Swamp) Socks5Str() string {
@@ -68,18 +71,12 @@ func (s *Swamp) GetAnySOCKS() Proxy {
 }
 
 func (s *Swamp) stillGood(candidate Proxy) bool {
-	switch {
-	// if since its been validated it's ended up failing so much that its on our bad list then skip it
-	case badProx.Peek(candidate):
-		fallthrough
-	// if we've been checking or using this too often recently then skip it
-	case useProx.Check(candidate):
-		fallthrough
-	case time.Since(candidate.Verified) > s.swampopt.Stale:
+	if time.Since(candidate.Verified) > s.swampopt.Stale {
+		s.dbgPrint("proxy stale: " + candidate.Endpoint)
+		fmt.Println("time since: ", time.Since(candidate.Verified))
 		return false
-	default:
-		return true
 	}
+	return true
 }
 
 // RandomUserAgent retrieves a random user agent from our list in string form

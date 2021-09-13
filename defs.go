@@ -32,7 +32,7 @@ type Swamp struct {
 }
 
 var (
-	defaultStaleTime = time.Duration(1) * time.Hour
+	defaultStaleTime = 1 * time.Hour
 	defWorkers       = 100
 	defaultChecks =  []string{"https://wtfismyip.com/text", "https://myexternalip.com/raw", "https://ipinfo.io/ip"}
 )

@@ -222,6 +222,8 @@ func (s *Swamp) tossUp() {
 					continue
 				}
 
+				p.Verified = time.Now()
+
 				switch p.Proto {
 				case "4":
 					s.Stats.v4()
