@@ -37,11 +37,11 @@ func (s *Swamp) LoadProxyTXT(seedFile string) error {
 	}
 
 	scan := bufio.NewScanner(f)
-	
+
 	if !s.started {
 		go s.tossUp()
 	}
-	
+
 	for scan.Scan() {
 		s.scvm = append(s.scvm, scan.Text())
 	}
@@ -51,7 +51,7 @@ func (s *Swamp) LoadProxyTXT(seedFile string) error {
 	}
 
 	s.started = true
-	
+
 	if err := f.Close(); err != nil {
 		s.dbgPrint(err.Error())
 		return err
@@ -169,7 +169,7 @@ func (s *Swamp) singleProxyCheck(sock Proxy) error {
 		badProx.Check(sock)
 		return err
 	}
-	
+
 	if newip := net.ParseIP(resp); newip == nil {
 		badProx.Check(sock)
 		return errors.New("bad response from http request: " + resp)
@@ -202,7 +202,7 @@ func (s *Swamp) tossUp() {
 				}
 				// determined as bad, won't try again until it expires from that cache
 				if badProx.Peek(p) {
-					s.dbgPrint(ylw+"badProx ratelimited: " + p.Endpoint+rst)
+					s.dbgPrint(ylw + "badProx ratelimited: " + p.Endpoint + rst)
 					continue
 				}
 
@@ -211,7 +211,7 @@ func (s *Swamp) tossUp() {
 				for _, sver := range sversions {
 					p.Proto = sver
 					if err := s.singleProxyCheck(p); err == nil {
-						s.dbgPrint(grn+"verified " + p.Endpoint + " as SOCKS" + sver+rst)
+						s.dbgPrint(grn + "verified " + p.Endpoint + " as SOCKS" + sver + rst)
 						good = true
 						break
 					}

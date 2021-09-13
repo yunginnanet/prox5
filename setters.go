@@ -31,7 +31,7 @@ func (s *Swamp) DisableDebug() {
 	s.swampopt.Debug = false
 }
 
-// SetMaxWorkers set the maximum workers for proxy checking, this must be set before calling LoadProxyTXT fpr tje forst time
+// SetMaxWorkers set the maximum workers for proxy checking, this must be set before calling LoadProxyTXT for the first time.
 func (s *Swamp) SetMaxWorkers(num int) error {
 	if s.started {
 		return errors.New("can't change max workers during proxypool operation, only before")

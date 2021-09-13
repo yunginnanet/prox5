@@ -95,14 +95,14 @@ func NewDefaultSwamp() *Swamp {
 		Pending: make(chan string, 500),
 
 		Stats: &Statistics{
-			Valid4:  0,
-			Valid4a: 0,
-			Valid5:  0,
+			Valid4:    0,
+			Valid4a:   0,
+			Valid5:    0,
 			Dispensed: 0,
-			mu:      &sync.Mutex{},
+			mu:        &sync.Mutex{},
 		},
 
-		Birthday:  time.Now(),
+		Birthday: time.Now(),
 
 		swampopt: defOpt(),
 		mu:       &sync.RWMutex{},

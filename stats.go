@@ -5,11 +5,11 @@ import "sync"
 // Statistics is used to encapsulate various swampy stats
 type Statistics struct {
 	// Valid4 is the amount of SOCKS4 proxies validated
-	Valid4  int
+	Valid4 int
 	// Valid4a is the amount of SOCKS4a proxies validated
 	Valid4a int
 	// Valid5 is the amount of SOCKS5 proxies validated
-	Valid5  int
+	Valid5 int
 
 	// Dispensed is a simple ticker to keep track of proxies dispensed via our getters
 	Dispensed int
