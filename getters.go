@@ -44,7 +44,8 @@ func (s *Swamp) Socks4aStr() string {
 	}
 }
 
-func (s *Swamp) getProxy() Proxy {
+// GetAnySOCKS retrieves any version SOCKS proxy as a Proxy type
+func (s *Swamp) GetAnySOCKS() Proxy {
 	for {
 		select {
 		case sock := <-s.Socks4:

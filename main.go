@@ -83,7 +83,7 @@ func (s *Swamp) MysteryDial(ctx context.Context, network, addr string) (net.Conn
 			return nil, err
 		}
 		time.Sleep(10 * time.Millisecond)
-		candidate := s.getProxy()
+		candidate := s.GetAnySOCKS()
 		if !s.stillGood(candidate) {
 			continue
 		}
