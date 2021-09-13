@@ -102,7 +102,7 @@ func (s *Swamp) MysteryDial(ctx context.Context, network, addr string) (net.Conn
 }
 
 func (s *Swamp) checkHTTP(sock Proxy) (string, error) {
-	req, err := http.NewRequest("GET", randStrChoice(myipsites), bytes.NewBuffer([]byte("")))
+	req, err := http.NewRequest("GET", s.GetRandomEndpoint(), bytes.NewBuffer([]byte("")))
 	if err != nil {
 		return "", err
 	}

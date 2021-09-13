@@ -34,11 +34,13 @@ type Swamp struct {
 var (
 	defaultStaleTime = time.Duration(1) * time.Hour
 	defWorkers       = 100
+	defaultChecks =  []string{"https://wtfismyip.com/text", "https://myexternalip.com/raw", "https://ipinfo.io/ip"}
 )
 
 func defOpt() *SwampOptions {
 	return &SwampOptions{
 		UserAgents: DefaultUserAgents,
+		CheckEndpoints: defaultChecks,
 		Stale:      defaultStaleTime,
 		MaxWorkers: defWorkers,
 		Debug:      false,
@@ -54,6 +56,8 @@ type SwampOptions struct {
 	Stale time.Duration
 	// Debug when enabled will print results as they come in
 	Debug bool
+	// CheckEndpoints includes web services that respond with (just) the WAN IP of the connection for validation purposes
+	CheckEndpoints []string
 	// MaxWorkers determines the maximum amount of workers used for checking proxies
 	MaxWorkers int
 }
@@ -61,7 +65,6 @@ type SwampOptions struct {
 var (
 	useProx   *rl.Limiter
 	badProx   *rl.Limiter
-	myipsites = []string{"https://tcp.ac/ip", "https://vx-underground.org/ip", "https://wtfismyip.com/text"}
 )
 
 // Proxy represents an individual proxy

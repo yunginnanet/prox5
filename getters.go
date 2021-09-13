@@ -89,6 +89,11 @@ func (s *Swamp) RandomUserAgent() string {
 	return randStrChoice(s.swampopt.UserAgents)
 }
 
+// GetRandomEndpoint returns a random whatismyip style endpoint from our Swamp's options
+func (s *Swamp) GetRandomEndpoint() string {
+	return randStrChoice(s.swampopt.CheckEndpoints)
+}
+
 // DebugEnabled will return the current state of our Debug switch
 func (s *Swamp) DebugEnabled() bool {
 	return s.swampopt.Debug

@@ -17,6 +17,20 @@ func (s *Swamp) SetUserAgents(uagents []string) {
 	s.swampopt.UserAgents = append(s.swampopt.UserAgents, uagents...)
 }
 
+// SetCheckEndpoints replaces the running list of whatismyip style endpoitns for validation. (must return only the WAN IP)
+func (s *Swamp) SetCheckEndpoints(newendpoints []string) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	s.swampopt.CheckEndpoints = newendpoints
+}
+
+// AddCheckEndpoints appends entries to the running list of whatismyip style endpoitns for validation. (must return only the WAN IP)
+func (s *Swamp) AddCheckEndpoints(newendpoints []string) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	s.swampopt.CheckEndpoints = append(s.swampopt.CheckEndpoints, newendpoints...)
+}
+
 // EnableDebug enables printing of verbose messages during operation
 func (s *Swamp) EnableDebug() {
 	s.mu.Lock()
