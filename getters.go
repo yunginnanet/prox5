@@ -86,7 +86,7 @@ func (s *Swamp) stillGood(candidate Proxy) bool {
 func (s *Swamp) RandomUserAgent() string {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
-	return RandStrChoice(s.swampopt.UserAgents)
+	return randStrChoice(s.swampopt.UserAgents)
 }
 
 // DebugEnabled will return the current state of our Debug switch
