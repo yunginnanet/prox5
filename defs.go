@@ -10,17 +10,14 @@ import (
 // Swamp represents a proxy pool
 type Swamp struct {
 	// Socks5 is a constant stream of verified Socks5 proxies
-	Socks5 chan *Proxy
+	Socks5 chan Proxy
 	// Socks4 is a constant stream of verified Socks4 proxies
-	Socks4 chan *Proxy
+	Socks4 chan Proxy
 	// Socks4a is a constant stream of verified Socks5 proxies
-	Socks4a chan *Proxy
+	Socks4a chan Proxy
 
 	// Stats holds the Statistics for our swamp
 	Stats *Statistics
-
-	// Dispensed is a simple ticker to keep track of proxies dispensed via our getters
-	Dispensed int
 
 	// Pending is a constant stream of proxy strings to be verified
 	Pending chan string
@@ -80,7 +77,7 @@ type Proxy struct {
 }
 
 // UniqueKey is an implementation of the Identity interface from Rate5
-func (p *Proxy) UniqueKey() string {
+func (p Proxy) UniqueKey() string {
 	return p.Endpoint
 }
 
@@ -92,24 +89,24 @@ func init() {
 // NewDefaultSwamp returns a Swamp with basic options.
 func NewDefaultSwamp() *Swamp {
 	s := &Swamp{
-		Socks5:  make(chan *Proxy, 500),
-		Socks4:  make(chan *Proxy, 500),
-		Socks4a: make(chan *Proxy, 500),
+		Socks5:  make(chan Proxy, 500),
+		Socks4:  make(chan Proxy, 500),
+		Socks4a: make(chan Proxy, 500),
 		Pending: make(chan string, 1000),
 
 		Stats: &Statistics{
 			Valid4:  0,
 			Valid4a: 0,
 			Valid5:  0,
+			Dispensed: 0,
 			mu:      &sync.Mutex{},
 		},
 
-		Dispensed: 0,
 		Birthday:  time.Now(),
 
 		swampopt: defOpt(),
 		mu:       &sync.RWMutex{},
 	}
-	go s.feed()
 
+	return s
 }

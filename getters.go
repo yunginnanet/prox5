@@ -10,6 +10,7 @@ func (s *Swamp) Socks5Str() string {
 			if !s.stillGood(sock) {
 				continue
 			}
+			s.Stats.dispense()
 			return sock.Endpoint
 		}
 	}
@@ -23,6 +24,7 @@ func (s *Swamp) Socks4Str() string {
 			if !s.stillGood(sock) {
 				continue
 			}
+			s.Stats.dispense()
 			return sock.Endpoint
 		}
 	}
@@ -36,12 +38,13 @@ func (s *Swamp) Socks4aStr() string {
 			if !s.stillGood(sock) {
 				continue
 			}
+			s.Stats.dispense()
 			return sock.Endpoint
 		}
 	}
 }
 
-func (s *Swamp) getProxy() *Proxy {
+func (s *Swamp) getProxy() Proxy {
 	for {
 		select {
 		case sock := <-s.Socks4:
@@ -63,7 +66,7 @@ func (s *Swamp) getProxy() *Proxy {
 	}
 }
 
-func (s *Swamp) stillGood(candidate *Proxy) bool {
+func (s *Swamp) stillGood(candidate Proxy) bool {
 	switch {
 	// if since its been validated it's ended up failing so much that its on our bad list then skip it
 	case badProx.Peek(candidate):
@@ -83,4 +86,9 @@ func (s *Swamp) RandomUserAgent() string {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
 	return RandStrChoice(s.swampopt.UserAgents)
+}
+
+// DebugEnabled will return the current state of our Debug switch
+func (s *Swamp) DebugEnabled() bool {
+	return s.swampopt.Debug
 }

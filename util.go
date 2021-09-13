@@ -5,6 +5,9 @@ import (
 	"encoding/binary"
 )
 
+var debugCounter = 0
+var debugCountLast = 0
+
 // RandStrChoice returns a random element from the given string slice
 func RandStrChoice(choices []string) string {
 	strlen := len(choices)

@@ -22,6 +22,8 @@ import (
 const (
 	grn = "\033[32m"
 	red = "\033[31m"
+	ylw = "\033[33m"
+	blu = "\033[34m"
 	rst = "\033[0m"
 )
 
@@ -73,8 +75,8 @@ func (s *Swamp) feed() {
 
 // MysteryDial will return a dialer that will use a different proxy for every request.
 func (s *Swamp) MysteryDial(ctx context.Context, network, addr string) (net.Conn, error) {
-	var sock *Proxy
-	sock = &Proxy{Endpoint: ""}
+	var sock Proxy
+	sock = Proxy{Endpoint: ""}
 	// pull down proxies from channel until we get a proxy good enough for our spoiled asses
 	for {
 		if err := ctx.Err(); err != nil {
@@ -101,17 +103,14 @@ func (s *Swamp) MysteryDial(ctx context.Context, network, addr string) (net.Conn
 	return dialSocks(network, addr)
 }
 
-func (s *Swamp) proxyGETRequest(sock *Proxy) (string, error) {
-	s.mu.RLock()
-	defer s.mu.RUnlock()
+func (s *Swamp) checkHTTP(sock Proxy) (string, error) {
 	req, err := http.NewRequest("GET", RandStrChoice(myipsites), bytes.NewBuffer([]byte("")))
 	if err != nil {
 		return "", err
 	}
 
 	headers := make(map[string]string)
-	// headers["Host"] = "wtfismyip.com"
-	headers["User-Agent"] = RandStrChoice(s.swampopt.UserAgents)
+	headers["User-Agent"] = s.RandomUserAgent()
 	headers["Accept"] = "text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,image/apng,*/*;q=0.8"
 	headers["Accept-Language"] = "en-US,en;q=0.5"
 	headers["'Accept-Encoding'"] = "gzip, deflate, br"
@@ -162,22 +161,23 @@ func (s *Swamp) proxyGETRequest(sock *Proxy) (string, error) {
 	return string(rbody), err
 }
 
-func (s *Swamp) singleProxyCheck(sock *Proxy) error {
-	s.mu.RLock()
-	defer s.mu.RUnlock()
+func (s *Swamp) singleProxyCheck(sock Proxy) error {
 	if _, err := net.DialTimeout("tcp", sock.Endpoint, 8*time.Second); err != nil {
 		badProx.Check(sock)
 		return err
 	}
-	resp, err := s.proxyGETRequest(sock)
+	resp, err := s.checkHTTP(sock)
 	if err != nil {
 		badProx.Check(sock)
 		return err
 	}
+	
 	if newip := net.ParseIP(resp); newip == nil {
 		badProx.Check(sock)
-		return errors.New("nil response from http request")
+		return errors.New("bad response from http request: " + resp)
 	}
+
+	sock.ProxiedIP = resp
 
 	return nil
 }
@@ -189,22 +189,22 @@ func (s *Swamp) tossUp() {
 	panicHandler := func(p interface{}) {
 		log.Error().Interface("panic", p).Msg("Task panicked")
 	}
-	pool := pond.New(100, 10000, pond.MinWorkers(100), pond.PanicHandler(panicHandler))
+	pool := pond.New(s.swampopt.MaxWorkers, 10000, pond.MinWorkers(100), pond.PanicHandler(panicHandler))
 	for {
 		pool.Submit(func() {
 			for {
 				sock := <-s.Pending
-				p := &Proxy{
+				p := Proxy{
 					Endpoint: sock,
 				}
 				// ratelimited
 				if useProx.Check(p) {
-					s.dbgPrint("useProx ratelimited: " + p.Endpoint)
+					// s.dbgPrint(blu+"useProx ratelimited: " + p.Endpoint+rst)
 					continue
 				}
 				// determined as bad, won't try again until it expires from that cache
 				if badProx.Peek(p) {
-					s.dbgPrint("badProx ratelimited: " + p.Endpoint)
+					s.dbgPrint(ylw+"badProx ratelimited: " + p.Endpoint+rst)
 					continue
 				}
 
@@ -219,7 +219,7 @@ func (s *Swamp) tossUp() {
 					}
 				}
 				if !good {
-					s.dbgPrint(red+"failed to verify " + p.Endpoint+rst)
+					// s.dbgPrint(red+"failed to verify " + p.Endpoint+rst)
 					badProx.Check(p)
 					continue
 				}
