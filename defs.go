@@ -34,16 +34,18 @@ type Swamp struct {
 var (
 	defaultStaleTime = 1 * time.Hour
 	defWorkers       = 100
-	defaultChecks    = []string{"https://wtfismyip.com/text", "https://myexternalip.com/raw", "https://ipinfo.io/ip", "https://api.ipify.org", "https://icanhazip.com/", "http://ifconfig.me/ip", "https://www.trackip.net/ip", "https://checkip.amazonaws.com/"}
+	// Note: I've chosen to use https here exclusively to make sure that the proxies gathered are able to succesffully access ssl targets.
+	defaultChecks = []string{"https://wtfismyip.com/text", "https://myexternalip.com/raw", "https://ipinfo.io/ip", "https://api.ipify.org", "https://icanhazip.com/", "https://ifconfig.me/ip", "https://www.trackip.net/ip", "https://checkip.amazonaws.com/"}
 )
 
 func defOpt() *SwampOptions {
 	return &SwampOptions{
-		UserAgents:     DefaultUserAgents,
-		CheckEndpoints: defaultChecks,
-		Stale:          defaultStaleTime,
-		MaxWorkers:     defWorkers,
-		Debug:          false,
+		UserAgents:        DefaultUserAgents,
+		CheckEndpoints:    defaultChecks,
+		Stale:             defaultStaleTime,
+		MaxWorkers:        defWorkers,
+		ValidationTimeout: 5,
+		Debug:             false,
 	}
 }
 
@@ -60,6 +62,9 @@ type SwampOptions struct {
 	CheckEndpoints []string
 	// MaxWorkers determines the maximum amount of workers used for checking proxies
 	MaxWorkers int
+	// ValidationTimeout defines the timeout (in seconds) for proxy validation operations.
+	// This will apply for both the initial quick check (dial), and the second check (HTTP GET).
+	ValidationTimeout int
 }
 
 var (

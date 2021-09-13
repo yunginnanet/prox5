@@ -10,6 +10,7 @@ import (
 	"net"
 	"net/http"
 	"os"
+	"strconv"
 	"time"
 
 	"github.com/alitto/pond"
@@ -87,7 +88,9 @@ func (s *Swamp) checkHTTP(sock Proxy) (string, error) {
 		req.Header.Set(header, value)
 	}
 
-	var dialSocks = socks.Dial("socks" + sock.Proto + "://" + sock.Endpoint + "?timeout=4s")
+	var dialSocks = socks.Dial("socks" + sock.Proto + "://" +
+		sock.Endpoint + "?timeout=" + strconv.Itoa(s.GetValidationTimeout()) + "s")
+
 	var client *http.Client
 
 	if sock.Proto == "none" {
@@ -97,7 +100,7 @@ func (s *Swamp) checkHTTP(sock Proxy) (string, error) {
 				Dial:                proxy.Direct.Dial,
 				DisableKeepAlives:   true,
 				TLSClientConfig:     &tls.Config{InsecureSkipVerify: true},
-				TLSHandshakeTimeout: time.Duration(4) * time.Second,
+				TLSHandshakeTimeout: time.Duration(s.GetValidationTimeout()) * time.Second,
 			},
 		}
 	} else {
@@ -107,7 +110,7 @@ func (s *Swamp) checkHTTP(sock Proxy) (string, error) {
 				Dial:                dialSocks,
 				DisableKeepAlives:   true,
 				TLSClientConfig:     &tls.Config{InsecureSkipVerify: true},
-				TLSHandshakeTimeout: time.Duration(4) * time.Second,
+				TLSHandshakeTimeout: time.Duration(s.GetValidationTimeout()) * time.Second,
 			},
 		}
 	}
@@ -129,7 +132,7 @@ func (s *Swamp) checkHTTP(sock Proxy) (string, error) {
 }
 
 func (s *Swamp) singleProxyCheck(sock Proxy) error {
-	if _, err := net.DialTimeout("tcp", sock.Endpoint, 8*time.Second); err != nil {
+	if _, err := net.DialTimeout("tcp", sock.Endpoint, time.Duration(s.GetValidationTimeout())*time.Second); err != nil {
 		badProx.Check(sock)
 		return err
 	}

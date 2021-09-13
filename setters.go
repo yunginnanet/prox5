@@ -41,6 +41,13 @@ func (s *Swamp) SetStaleTime(newtime time.Duration) {
 	s.swampopt.Stale = newtime
 }
 
+// SetValidationTimeout sets the ValidationTimeout option (in seconds).
+func (s *Swamp) SetValidationTimeout(newtimeout int) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	s.swampopt.ValidationTimeout = newtimeout
+}
+
 // EnableDebug enables printing of verbose messages during operation
 func (s *Swamp) EnableDebug() {
 	s.mu.Lock()

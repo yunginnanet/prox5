@@ -133,6 +133,13 @@ func (s *Swamp) GetStaleTime() time.Duration {
 	return s.swampopt.Stale
 }
 
+// GetValidationTimeout returns the current value of ValidationTimeout (in seconds).
+func (s *Swamp) GetValidationTimeout() int {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+	return s.swampopt.ValidationTimeout
+}
+
 // DebugEnabled returns the current state of our Debug switch
 func (s *Swamp) DebugEnabled() bool {
 	s.mu.RLock()
