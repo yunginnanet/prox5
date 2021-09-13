@@ -30,18 +30,22 @@ type Swamp struct {
 
 	scvm     []string
 	swampopt *SwampOptions
+	started  bool
 	mu       *sync.RWMutex
 }
 
 var (
-	// DefaultUserAgents representts our default list of useragents
-
-	// DefaultStaleTime represents our default setting for stale proxies
-	DefaultStaleTime = time.Duration(1) * time.Hour
+	defaultStaleTime = time.Duration(1) * time.Hour
+	defWorkers       = 100
 )
 
 func defOpt() *SwampOptions {
-	return &SwampOptions{UserAgents: DefaultUserAgents, Stale: DefaultStaleTime}
+	return &SwampOptions{
+		UserAgents: DefaultUserAgents,
+		Stale:      defaultStaleTime,
+		MaxWorkers: defWorkers,
+		Debug:      false,
+	}
 }
 
 // SwampOptions holds our configuration for Swamp instances
@@ -53,6 +57,8 @@ type SwampOptions struct {
 	Stale time.Duration
 	// Debug when enabled will print results as they come in
 	Debug bool
+	// MaxWorkers determines the maximum amount of workers used for checking proxies
+	MaxWorkers int
 }
 
 var (
@@ -85,17 +91,17 @@ func init() {
 
 // NewDefaultSwamp returns a Swamp with basic options.
 func NewDefaultSwamp() *Swamp {
-	return &Swamp{
+	s := &Swamp{
 		Socks5:  make(chan *Proxy, 500),
 		Socks4:  make(chan *Proxy, 500),
 		Socks4a: make(chan *Proxy, 500),
 		Pending: make(chan string, 1000),
 
 		Stats: &Statistics{
-			validated4: 0,
-			validated4a: 0,
-			validated5: 0,
-			mu: &sync.Mutex{},
+			Valid4:  0,
+			Valid4a: 0,
+			Valid5:  0,
+			mu:      &sync.Mutex{},
 		},
 
 		Dispensed: 0,
@@ -104,4 +110,6 @@ func NewDefaultSwamp() *Swamp {
 		swampopt: defOpt(),
 		mu:       &sync.RWMutex{},
 	}
+	go s.feed()
+
 }

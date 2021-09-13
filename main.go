@@ -37,11 +37,21 @@ func (s *Swamp) LoadProxyTXT(seedFile string) error {
 	}
 
 	scan := bufio.NewScanner(f)
-	go s.tossUp()
+	
+	if !s.started {
+		go s.tossUp()
+	}
+	
 	for scan.Scan() {
 		s.scvm = append(s.scvm, scan.Text())
 	}
-	go s.feed()
+
+	if !s.started {
+		go s.feed()
+	}
+
+	s.started = true
+	
 	if err := f.Close(); err != nil {
 		s.dbgPrint(err.Error())
 		return err
@@ -216,10 +226,13 @@ func (s *Swamp) tossUp() {
 
 				switch p.Proto {
 				case "4":
+					s.Stats.v4()
 					s.Socks4 <- p
 				case "4a":
+					s.Stats.v4a()
 					s.Socks4a <- p
 				case "5":
+					s.Stats.v5()
 					s.Socks5 <- p
 				}
 			}

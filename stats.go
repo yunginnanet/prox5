@@ -4,9 +4,9 @@ import "sync"
 
 // Statistics is used to encapsulate various swampy stats
 type Statistics struct {
-	validated4 int
-	validated4a int
-	validated5 int
+	Valid4  int
+	Valid4a int
+	Valid5  int
 
 	mu *sync.Mutex
 }
@@ -14,17 +14,17 @@ type Statistics struct {
 func (stats *Statistics) v4() {
 	stats.mu.Lock()
 	defer stats.mu.Unlock()
-	stats.validated4++
+	stats.Valid4++
 }
 
 func (stats *Statistics) v4a() {
 	stats.mu.Lock()
 	defer stats.mu.Unlock()
-	stats.validated4a++
+	stats.Valid4a++
 }
 
 func (stats *Statistics) v5() {
 	stats.mu.Lock()
 	defer stats.mu.Unlock()
-	stats.validated5++
+	stats.Valid5++
 }
