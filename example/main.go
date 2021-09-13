@@ -21,8 +21,6 @@ func init() {
 		panic(err)
 	}
 
-
-
 	err := swamp.LoadProxyTXT("socks.list")
 	if err != nil {
 		println(err.Error())

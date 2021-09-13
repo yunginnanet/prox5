@@ -89,10 +89,10 @@ func init() {
 // NewDefaultSwamp returns a Swamp with basic options.
 func NewDefaultSwamp() *Swamp {
 	s := &Swamp{
-		Socks5:  make(chan Proxy, 500),
-		Socks4:  make(chan Proxy, 500),
-		Socks4a: make(chan Proxy, 500),
-		Pending: make(chan string, 1000),
+		Socks5:  make(chan Proxy, 1000),
+		Socks4:  make(chan Proxy, 1000),
+		Socks4a: make(chan Proxy, 1000),
+		Pending: make(chan string, 500),
 
 		Stats: &Statistics{
 			Valid4:  0,

@@ -21,15 +21,13 @@ import (
 
 const (
 	grn = "\033[32m"
-	red = "\033[31m"
 	ylw = "\033[33m"
-	blu = "\033[34m"
 	rst = "\033[0m"
 )
 
 // LoadProxyTXT loads proxies from a given seed file and randomly feeds them to the workers.
-// This fucntion has no real error handling, if the file can't be opened it's gonna straight up panic.
-// TODO: make it more gooder.
+// The first call to this function will start all background pool operations, essentially initializing the proxy pool.
+// Additional calls will add more proxies to the pool to be validated.
 func (s *Swamp) LoadProxyTXT(seedFile string) error {
 	s.dbgPrint("LoadProxyTXT start")
 
