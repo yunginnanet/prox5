@@ -44,47 +44,49 @@ func get(ver string) {
 	}
 }
 
-func main() {
+func watchKeyPresses() {
 	t, err := tty.Open()
 	if err != nil {
 		panic(err)
 	}
 	defer t.Close()
 
-	go func() {
-		for {
-			r, err := t.ReadRune()
-			if err != nil {
-				panic(err)
-			}
-			switch string(r) {
-			case "d":
-				if swamp.DebugEnabled() {
-					println("disabling debug")
-					swamp.DisableDebug()
-				} else {
-					println("enabling debug")
-					swamp.EnableDebug()
-				}
-			case "a":
-				go get("4")
-			case "b":
-				go get("4a")
-			case "c":
-				go get("5")
-			case "p":
-				if swamp.Status == 0 {
-					swamp.Pause()
-				} else {
-					swamp.Resume()
-				}
-			case "q":
-				quit <- true
-			default:
-				time.Sleep(25 * time.Millisecond)
-			}
+	for {
+		r, err := t.ReadRune()
+		if err != nil {
+			panic(err)
 		}
-	}()
+		switch string(r) {
+		case "d":
+			if swamp.DebugEnabled() {
+				println("disabling debug")
+				swamp.DisableDebug()
+			} else {
+				println("enabling debug")
+				swamp.EnableDebug()
+			}
+		case "a":
+			go get("4")
+		case "b":
+			go get("4a")
+		case "c":
+			go get("5")
+		case "p":
+			if swamp.Status == 0 {
+				swamp.Pause()
+			} else {
+				swamp.Resume()
+			}
+		case "q":
+			quit <- true
+		default:
+			time.Sleep(25 * time.Millisecond)
+		}
+	}
+}
+
+func main() {
+	go watchKeyPresses()
 
 	for {
 		select {
