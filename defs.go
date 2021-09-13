@@ -22,9 +22,6 @@ type Swamp struct {
 	// Pending is a constant stream of proxy strings to be verified
 	Pending chan string
 
-	// Birthday represents the time we started checking proxies with this pool
-	Birthday time.Time
-
 	scvm     []string
 	swampopt *SwampOptions
 	started  bool
@@ -34,7 +31,7 @@ type Swamp struct {
 var (
 	defaultStaleTime = 1 * time.Hour
 	defWorkers       = 100
-	// Note: I've chosen to use https here exclusively to make sure that the proxies gathered are able to succesffully access ssl targets.
+	// Note: I've chosen to use https here exclusively assuring all validated proxies are SSL capable.
 	defaultChecks = []string{"https://wtfismyip.com/text", "https://myexternalip.com/raw", "https://ipinfo.io/ip", "https://api.ipify.org", "https://icanhazip.com/", "https://ifconfig.me/ip", "https://www.trackip.net/ip", "https://checkip.amazonaws.com/"}
 )
 
@@ -107,10 +104,9 @@ func NewDefaultSwamp() *Swamp {
 			Valid4a:   0,
 			Valid5:    0,
 			Dispensed: 0,
+			Birthday:  time.Now(),
 			mu:        &sync.Mutex{},
 		},
-
-		Birthday: time.Now(),
 
 		swampopt: defOpt(),
 		mu:       &sync.RWMutex{},

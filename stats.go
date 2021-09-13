@@ -1,6 +1,9 @@
 package pxndscvm
 
-import "sync"
+import (
+	"sync"
+	"time"
+)
 
 // Statistics is used to encapsulate various swampy stats
 type Statistics struct {
@@ -13,6 +16,9 @@ type Statistics struct {
 
 	// Dispensed is a simple ticker to keep track of proxies dispensed via our getters
 	Dispensed int
+
+	// Birthday represents the time we started checking proxies with this pool
+	Birthday time.Time
 
 	mu *sync.Mutex
 }
@@ -39,4 +45,9 @@ func (stats *Statistics) v5() {
 	stats.mu.Lock()
 	defer stats.mu.Unlock()
 	stats.Valid5++
+}
+
+// GetUptime returns the total lifetime duration of our pool.
+func (stats *Statistics) GetUptime() time.Duration {
+	return time.Since(stats.Birthday)
 }

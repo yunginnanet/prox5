@@ -155,7 +155,6 @@ func (s *Swamp) singleProxyCheck(sock Proxy) error {
 func (s *Swamp) tossUp() {
 	s.dbgPrint("tossUp() proxy checking loop start")
 	var sversions = []string{"5", "4", "4a"}
-	s.Birthday = time.Now()
 	panicHandler := func(p interface{}) {
 		log.Error().Interface("panic", p).Msg("Task panicked")
 	}
