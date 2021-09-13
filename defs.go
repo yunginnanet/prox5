@@ -16,8 +16,9 @@ type Swamp struct {
 	// Socks4a is a constant stream of verified Socks5 proxies
 	Socks4a chan *Proxy
 
-	// Validated is a simple ticker to keep track of proxies we have verified since we started
-	Validated int
+	// Stats holds the Statistics for our swamp
+	Stats *Statistics
+
 	// Dispensed is a simple ticker to keep track of proxies dispensed via our getters
 	Dispensed int
 
@@ -48,8 +49,10 @@ type SwampOptions struct {
 	// UserAgents contains a list of UserAgents to be randomly drawn from for proxied requests, this should be supplied via SetUserAgents
 	UserAgents []string
 	// Stale is the amount of time since verification that qualifies a proxy going stale.
-	//		if a stale proxy is drawn during the use of our getter functions, it will be skipped.
+	// if a stale proxy is drawn during the use of our getter functions, it will be skipped.
 	Stale time.Duration
+	// Debug when enabled will print results as they come in
+	Debug bool
 }
 
 var (
@@ -60,7 +63,7 @@ var (
 
 // Proxy represents an individual proxy
 type Proxy struct {
-	// Endpoint is the address of the proxy that we connect to
+	// Endpoint is the address:port of the proxy that we connect to
 	Endpoint string
 	// ProxiedIP is the address that we end up having when making proxied requests through this proxy
 	ProxiedIP string
@@ -88,7 +91,13 @@ func NewDefaultSwamp() *Swamp {
 		Socks4a: make(chan *Proxy, 500),
 		Pending: make(chan string, 1000),
 
-		Validated: 0,
+		Stats: &Statistics{
+			validated4: 0,
+			validated4a: 0,
+			validated5: 0,
+			mu: &sync.Mutex{},
+		},
+
 		Dispensed: 0,
 		Birthday:  time.Now(),
 

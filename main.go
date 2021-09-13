@@ -6,6 +6,7 @@ import (
 	"context"
 	"crypto/tls"
 	"errors"
+	"io"
 	"io/ioutil"
 	"net"
 	"net/http"
@@ -18,14 +19,21 @@ import (
 	"h12.io/socks"
 )
 
+const (
+	grn = "\033[32m"
+	red = "\033[31m"
+	rst = "\033[0m"
+)
 
 // LoadProxyTXT loads proxies from a given seed file and randomly feeds them to the workers.
 // This fucntion has no real error handling, if the file can't be opened it's gonna straight up panic.
 // TODO: make it more gooder.
-func (s *Swamp) LoadProxyTXT(seedFile string) {
+func (s *Swamp) LoadProxyTXT(seedFile string) error {
+	s.dbgPrint("LoadProxyTXT start")
+
 	f, err := os.Open(seedFile)
 	if err != nil {
-		panic(err)
+		return err
 	}
 
 	scan := bufio.NewScanner(f)
@@ -33,7 +41,16 @@ func (s *Swamp) LoadProxyTXT(seedFile string) {
 	for scan.Scan() {
 		s.scvm = append(s.scvm, scan.Text())
 	}
-	f.Close()
+	go s.feed()
+	if err := f.Close(); err != nil {
+		s.dbgPrint(err.Error())
+		return err
+	}
+	return nil
+}
+
+func (s *Swamp) feed() {
+	s.dbgPrint("swamp feed start")
 	for {
 		select {
 		case s.Pending <- RandStrChoice(s.scvm):
@@ -55,19 +72,12 @@ func (s *Swamp) MysteryDial(ctx context.Context, network, addr string) (net.Conn
 		}
 		time.Sleep(10 * time.Millisecond)
 		candidate := s.getProxy()
-		switch {
-		// if since its been validated it's ended up failing so much that its on our bad list then skip it
-		case badProx.Peek(candidate):
-			fallthrough
-		// if we've been checking or using this too often recently then skip it
-		case useProx.Check(candidate):
-			fallthrough
-		case time.Since(candidate.Verified) > s.swampopt.Stale:
+		if !s.stillGood(candidate) {
 			continue
-		default:
-			sock = candidate
-			break
 		}
+
+		sock = candidate
+
 		if sock.Endpoint != "" {
 			break
 		}
@@ -131,20 +141,24 @@ func (s *Swamp) proxyGETRequest(sock *Proxy) (string, error) {
 		return "", err
 	}
 
-	defer resp.Body.Close()
-	rbody, _ := ioutil.ReadAll(resp.Body)
-	return string(rbody), nil
+	defer func(Body io.ReadCloser) {
+		err := Body.Close()
+		if err != nil {
+			panic(err)
+		}
+	}(resp.Body)
+
+	rbody, err := ioutil.ReadAll(resp.Body)
+	return string(rbody), err
 }
 
 func (s *Swamp) singleProxyCheck(sock *Proxy) error {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
-
 	if _, err := net.DialTimeout("tcp", sock.Endpoint, 8*time.Second); err != nil {
 		badProx.Check(sock)
-		return nil
+		return err
 	}
-
 	resp, err := s.proxyGETRequest(sock)
 	if err != nil {
 		badProx.Check(sock)
@@ -154,12 +168,13 @@ func (s *Swamp) singleProxyCheck(sock *Proxy) error {
 		badProx.Check(sock)
 		return errors.New("nil response from http request")
 	}
-	s.Validated++
-	log.Debug().Str("socks5", resp).Int("count", s.Validated).Msg("proxy validated")
+
 	return nil
 }
 
 func (s *Swamp) tossUp() {
+	s.dbgPrint("tossUp() proxy checking loop start")
+	var sversions = []string{"5", "4", "4a"}
 	s.Birthday = time.Now()
 	panicHandler := func(p interface{}) {
 		log.Error().Interface("panic", p).Msg("Task panicked")
@@ -172,22 +187,40 @@ func (s *Swamp) tossUp() {
 				p := &Proxy{
 					Endpoint: sock,
 				}
-
+				// ratelimited
 				if useProx.Check(p) {
+					s.dbgPrint("useProx ratelimited: " + p.Endpoint)
 					continue
 				}
+				// determined as bad, won't try again until it expires from that cache
 				if badProx.Peek(p) {
+					s.dbgPrint("badProx ratelimited: " + p.Endpoint)
 					continue
 				}
-				if err := s.singleProxyCheck(p); err == nil {
-					switch p.Proto {
-					case "4":
-						s.Socks4 <- p
-					case "4a":
-						s.Socks4a <- p
-					case "5":
-						s.Socks5 <- p
+
+				// try to use the proxy with all 3 SOCKS versions
+				var good = false
+				for _, sver := range sversions {
+					p.Proto = sver
+					if err := s.singleProxyCheck(p); err == nil {
+						s.dbgPrint(grn+"verified " + p.Endpoint + " as SOCKS" + sver+rst)
+						good = true
+						break
 					}
+				}
+				if !good {
+					s.dbgPrint(red+"failed to verify " + p.Endpoint+rst)
+					badProx.Check(p)
+					continue
+				}
+
+				switch p.Proto {
+				case "4":
+					s.Socks4 <- p
+				case "4a":
+					s.Socks4a <- p
+				case "5":
+					s.Socks5 <- p
 				}
 			}
 		})

@@ -23,3 +23,9 @@ func GetRandomUint32() uint32 {
 	}
 	return binary.LittleEndian.Uint32(b)
 }
+
+func (s *Swamp) dbgPrint(str string) {
+	if s.swampopt.Debug {
+		println("pxndscvm: " + str)
+	}
+}
