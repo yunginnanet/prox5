@@ -233,22 +233,28 @@ func (s *Swamp) tossUp() {
 	}
 }
 
-// Pause will cease all proxy pool operation. You will be able to start the proxy pool again, it will have the same Statistics, options, and ratelimits.
-// Options may be changed and proxy lists may be loaded when paused.
-// NOTE: There will be a few leftover validation attemps after pause, but no new jobs will be added.
+// Pause will cease the creation of any new proxy validation operations.
+// * You will be able to start the proxy pool again with Swamp.Resume(), it will have the same Statistics, options, and ratelimits.
+// * During pause you are still able to dispense proxies.
+// * Options may be changed and proxy lists may be loaded when paused.
+// * Pausing an already paused Swamp is a nonop.
 func (s *Swamp) Pause() {
-	s.mu.Lock()
+	if s.Status == Paused {
+		return
+	}
 
 	for n := 2; n > 0; n-- {
 		s.quit <- true
 	}
-
 	s.Status = Paused
 }
 
-// Resume will resume pause proxy pool operations, must be called after Pause or it will block.
+// Resume will resume pause proxy pool operations, attempting to resume a running Swamp is a non-op.
 func (s *Swamp) Resume() {
-	s.mu.Unlock()
+	if s.Status == Running {
+		return
+	}
+
 	s.Status = Running
 	go s.feed()
 	go s.tossUp()
