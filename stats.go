@@ -17,8 +17,8 @@ type Statistics struct {
 	// Dispensed is a simple ticker to keep track of proxies dispensed via our getters
 	Dispensed int
 
-	// Birthday represents the time we started checking proxies with this pool
-	Birthday time.Time
+	// birthday represents the time we started checking proxies with this pool
+	birthday time.Time
 
 	mu *sync.Mutex
 }
@@ -49,5 +49,5 @@ func (stats *Statistics) v5() {
 
 // GetUptime returns the total lifetime duration of our pool.
 func (stats *Statistics) GetUptime() time.Duration {
-	return time.Since(stats.Birthday)
+	return time.Since(stats.birthday)
 }

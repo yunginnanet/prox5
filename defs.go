@@ -104,7 +104,7 @@ func (p Proxy) UniqueKey() string {
 
 func init() {
 	useProx = rl.NewLimiter(60, 2)
-	badProx = rl.NewStrictLimiter(30, 50)
+	badProx = rl.NewStrictLimiter(60, 15)
 }
 
 // NewDefaultSwamp returns a Swamp with basic options.
@@ -120,7 +120,7 @@ func NewDefaultSwamp() *Swamp {
 			Valid4a:   0,
 			Valid5:    0,
 			Dispensed: 0,
-			Birthday:  time.Now(),
+			birthday:  time.Now(),
 			mu:        &sync.Mutex{},
 		},
 

@@ -147,7 +147,6 @@ func (s *Swamp) singleProxyCheck(sock Proxy) error {
 	}
 
 	sock.ProxiedIP = resp
-
 	return nil
 }
 
@@ -163,11 +162,13 @@ func (s *Swamp) validate() {
 		p := Proxy{
 			Endpoint: sock,
 		}
+
 		// ratelimited
 		if useProx.Check(p) {
 			// s.dbgPrint(blu+"useProx ratelimited: " + p.Endpoint+rst)
 			continue
 		}
+
 		// determined as bad, won't try again until it expires from that cache
 		if badProx.Peek(p) {
 			s.dbgPrint(ylw + "badProx ratelimited: " + p.Endpoint + rst)
@@ -187,6 +188,7 @@ func (s *Swamp) validate() {
 				break
 			}
 		}
+
 		if !good {
 			s.dbgPrint(ylw + "failed to verify " + p.Endpoint + rst)
 			badProx.Check(p)
@@ -211,7 +213,6 @@ func (s *Swamp) validate() {
 
 func (s *Swamp) tossUp() {
 	s.dbgPrint("tossUp() proxy checking loop start")
-
 	for {
 		if s.Status == Paused {
 			return
@@ -238,7 +239,6 @@ func (s *Swamp) Pause() {
 	if s.Status == Paused {
 		return
 	}
-
 	for n := 2; n > 0; n-- {
 		s.quit <- true
 	}
@@ -250,9 +250,7 @@ func (s *Swamp) Resume() {
 	if s.Status == Running {
 		return
 	}
-
 	s.Status = Running
 	go s.feed()
 	go s.tossUp()
-
 }
