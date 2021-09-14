@@ -59,16 +59,19 @@ func (s *Swamp) GetAnySOCKS() Proxy {
 			if !s.stillGood(sock) {
 				continue
 			}
+			s.Stats.v4()
 			return sock
 		case sock := <-s.Socks4a:
 			if !s.stillGood(sock) {
 				continue
 			}
+			s.Stats.v4a()
 			return sock
 		case sock := <-s.Socks5:
 			if !s.stillGood(sock) {
 				continue
 			}
+			s.Stats.v5()
 			return sock
 		}
 	}
@@ -77,6 +80,12 @@ func (s *Swamp) GetAnySOCKS() Proxy {
 func (s *Swamp) stillGood(candidate Proxy) bool {
 	if time.Since(candidate.Verified) > s.swampopt.Stale {
 		s.dbgPrint("proxy stale: " + candidate.Endpoint)
+		return false
+	}
+	if badProx.Peek(candidate) {
+		return false
+	}
+	if useProx.Check(candidate) {
 		return false
 	}
 	return true
