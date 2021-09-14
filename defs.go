@@ -114,7 +114,7 @@ func NewDefaultSwamp() *Swamp {
 		Socks5:  make(chan Proxy, 1000),
 		Socks4:  make(chan Proxy, 1000),
 		Socks4a: make(chan Proxy, 1000),
-		Pending: make(chan string, 500),
+		Pending: make(chan string, 10000),
 
 		Stats: &Statistics{
 			Valid4:    0,

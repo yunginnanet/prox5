@@ -82,12 +82,6 @@ func (s *Swamp) stillGood(candidate Proxy) bool {
 		s.dbgPrint("proxy stale: " + candidate.Endpoint)
 		return false
 	}
-	if badProx.Peek(candidate) {
-		return false
-	}
-	if useProx.Check(candidate) {
-		return false
-	}
 	return true
 }
 
