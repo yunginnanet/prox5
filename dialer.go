@@ -1,9 +1,9 @@
 package pxndscvm
 
 import (
+	"context"
 	"net"
 	"time"
-	"context"
 
 	"h12.io/socks"
 )

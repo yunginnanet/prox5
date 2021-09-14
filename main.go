@@ -97,26 +97,20 @@ func (s *Swamp) checkHTTP(sock Proxy) (string, error) {
 
 	var client *http.Client
 
+	var transporter = dialSocks
+
 	if sock.Proto == "none" {
-		//goland:noinspection GoDeprecation
-		client = &http.Client{
-			Transport: &http.Transport{
-				Dial:                proxy.Direct.Dial,
-				DisableKeepAlives:   true,
-				TLSClientConfig:     &tls.Config{InsecureSkipVerify: true},
-				TLSHandshakeTimeout: time.Duration(s.GetValidationTimeout()) * time.Second,
-			},
-		}
-	} else {
-		//goland:noinspection GoDeprecation
-		client = &http.Client{
-			Transport: &http.Transport{
-				Dial:                dialSocks,
-				DisableKeepAlives:   true,
-				TLSClientConfig:     &tls.Config{InsecureSkipVerify: true},
-				TLSHandshakeTimeout: time.Duration(s.GetValidationTimeout()) * time.Second,
-			},
-		}
+		transporter = proxy.Direct.Dial
+	}
+
+	//goland:noinspection GoDeprecation
+	client = &http.Client{
+		Transport: &http.Transport{
+			Dial:                transporter,
+			DisableKeepAlives:   true,
+			TLSClientConfig:     &tls.Config{InsecureSkipVerify: true},
+			TLSHandshakeTimeout: time.Duration(s.GetValidationTimeout()) * time.Second,
+		},
 	}
 
 	resp, err := client.Do(req)
