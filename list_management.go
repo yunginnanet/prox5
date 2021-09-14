@@ -19,12 +19,6 @@ func (s *Swamp) LoadProxyTXT(seedFile string) error {
 
 	scan := bufio.NewScanner(f)
 
-	if !s.started {
-		go s.tossUp()
-		go s.feed()
-		s.started = true
-	}
-
 	for scan.Scan() {
 		s.mu.Lock()
 		s.scvm = append(s.scvm, scan.Text())

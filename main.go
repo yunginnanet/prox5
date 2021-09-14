@@ -6,6 +6,15 @@ const (
 	rst = "\033[0m"
 )
 
+// Start starts our proxy pool operations. Trying to start a running Swamp is a nonop.
+func (s *Swamp) Start() {
+	if !s.started {
+		go s.tossUp()
+		go s.feed()
+		s.started = true
+	}
+}
+	
 /*
 Pause will cease the creation of any new proxy validation operations.
    * You will be able to start the proxy pool again with Swamp.Resume(), it will have the same Statistics, options, and ratelimits.
