@@ -26,6 +26,8 @@ func init() {
 		os.Exit(1)
 	}
 
+	swamp.Start()
+
 	println("[USAGE] q: quit | d: debug | a: socks4 | b: socks4a | c: socks5 | p: pause/unpause")
 }
 

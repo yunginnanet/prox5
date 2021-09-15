@@ -14,7 +14,7 @@ func (s *Swamp) Start() {
 		s.started = true
 	}
 }
-	
+
 /*
 Pause will cease the creation of any new proxy validation operations.
    * You will be able to start the proxy pool again with Swamp.Resume(), it will have the same Statistics, options, and ratelimits.

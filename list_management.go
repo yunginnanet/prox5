@@ -7,8 +7,7 @@ import (
 )
 
 // LoadProxyTXT loads proxies from a given seed file and randomly feeds them to the workers.
-// The first call to this function will start all background pool operations, essentially initializing the proxy pool.
-// Additional calls will add more proxies to the pool to be validated.
+// Call Start after this
 func (s *Swamp) LoadProxyTXT(seedFile string) error {
 	s.dbgPrint("LoadProxyTXT start")
 
