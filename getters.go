@@ -73,17 +73,15 @@ func (s *Swamp) GetAnySOCKS() Proxy {
 			}
 			s.Stats.dispense()
 			return sock
+		default:
+			time.Sleep(25 * time.Millisecond)
 		}
 	}
 }
 
 func (s *Swamp) stillGood(candidate Proxy) bool {
-	if useProx.Check(candidate) {
-		s.dbgPrint(ylw+"useprox ratelimited: " + candidate.Endpoint)
-		return false
-	}
 	if badProx.Peek(candidate) {
-		s.dbgPrint(ylw+"badprox ratelimited: " + candidate.Endpoint)
+		s.dbgPrint(ylw + "badprox ratelimited: " + candidate.Endpoint + rst)
 		return false
 	}
 	if time.Since(candidate.Verified) > s.swampopt.Stale {
@@ -91,7 +89,6 @@ func (s *Swamp) stillGood(candidate Proxy) bool {
 		go s.Stats.stale()
 		return false
 	}
-
 	return true
 }
 

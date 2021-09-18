@@ -2,6 +2,7 @@ package pxndscvm
 
 import (
 	"context"
+	"fmt"
 	"net"
 	"time"
 
@@ -21,6 +22,7 @@ func (s *Swamp) MysteryDialer(ctx context.Context, network, addr string) (net.Co
 		time.Sleep(10 * time.Millisecond)
 		candidate := s.GetAnySOCKS()
 		if !s.stillGood(candidate) {
+			s.dbgPrint("MysteryDialer cycle proxies, old: " + candidate.Endpoint)
 			continue
 		}
 
@@ -35,7 +37,8 @@ func (s *Swamp) MysteryDialer(ctx context.Context, network, addr string) (net.Co
 		return nil, err
 	}
 
-	var dialSocks = socks.Dial("socks" + sock.Proto + "://" + sock.Endpoint + "?timeout=10s")
-
+	socksString := fmt.Sprintf("socks%s://%s?timeout=15s", sock.Proto, sock.Endpoint)
+	s.dbgPrint("MysteryDialer using socks: " + socksString)
+	var dialSocks = socks.Dial(socksString)
 	return dialSocks(network, addr)
 }

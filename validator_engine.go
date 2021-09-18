@@ -123,7 +123,7 @@ func (s *Swamp) validate() {
 
 		// ratelimited
 		if useProx.Check(p) {
-			s.dbgPrint(ylw+"useProx ratelimited: " + p.Endpoint+rst)
+			s.dbgPrint(ylw + "useProx ratelimited: " + p.Endpoint + rst)
 			continue
 		}
 
