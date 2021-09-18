@@ -5,6 +5,12 @@ import (
 	"encoding/binary"
 )
 
+const (
+	grn = "\033[32m"
+	ylw = "\033[33m"
+	rst = "\033[0m"
+)
+
 // randStrChoice returns a random element from the given string slice
 func randStrChoice(choices []string) string {
 	strlen := len(choices)
@@ -22,10 +28,4 @@ func getRandomUint32() uint32 {
 		panic(err)
 	}
 	return binary.LittleEndian.Uint32(b)
-}
-
-func (s *Swamp) dbgPrint(str string) {
-	if s.swampopt.Debug {
-		println("pxndscvm: " + str)
-	}
 }

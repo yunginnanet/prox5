@@ -105,7 +105,7 @@ func (p Proxy) UniqueKey() string {
 func init() {
 	// see: https://pkg.go.dev/github.com/yunginnanet/Rate5
 	useProx = rl.NewLimiter(60, 2)
-	badProx = rl.NewStrictLimiter(60, 5)
+	badProx = rl.NewStrictLimiter(60, 3)
 }
 
 // NewDefaultSwamp returns a Swamp with basic options.

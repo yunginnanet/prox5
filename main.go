@@ -2,12 +2,6 @@ package pxndscvm
 
 import "errors"
 
-const (
-	grn = "\033[32m"
-	ylw = "\033[33m"
-	rst = "\033[0m"
-)
-
 // Start starts our proxy pool operations. Trying to start a running Swamp is a nonop.
 func (s *Swamp) Start() error {
 	if len(s.scvm) < 1 {

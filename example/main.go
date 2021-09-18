@@ -26,7 +26,9 @@ func init() {
 		os.Exit(1)
 	}
 
-	swamp.Start()
+	if err := swamp.Start(); err != nil {
+		panic(err)
+	}
 
 	println("[USAGE] q: quit | d: debug | a: socks4 | b: socks4a | c: socks5 | p: pause/unpause")
 }
@@ -77,7 +79,9 @@ func watchKeyPresses() {
 			if swamp.Status == 0 {
 				swamp.Pause()
 			} else {
-				swamp.Resume()
+				if err := swamp.Resume(); err != nil {
+					println(err.Error())
+				}
 			}
 		case "q":
 			quit <- true

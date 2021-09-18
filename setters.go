@@ -48,20 +48,6 @@ func (s *Swamp) SetValidationTimeout(newtimeout int) {
 	s.swampopt.ValidationTimeout = newtimeout
 }
 
-// EnableDebug enables printing of verbose messages during operation
-func (s *Swamp) EnableDebug() {
-	s.mu.Lock()
-	defer s.mu.Unlock()
-	s.swampopt.Debug = true
-}
-
-// DisableDebug enables printing of verbose messages during operation
-func (s *Swamp) DisableDebug() {
-	s.mu.Lock()
-	defer s.mu.Unlock()
-	s.swampopt.Debug = false
-}
-
 // SetMaxWorkers set the maximum workers for proxy checking, this must be set before calling LoadProxyTXT for the first time.
 func (s *Swamp) SetMaxWorkers(num int) error {
 	if s.started {

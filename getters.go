@@ -1,6 +1,7 @@
 package pxndscvm
 
 import (
+	"net"
 	"time"
 )
 
@@ -80,8 +81,16 @@ func (s *Swamp) GetAnySOCKS() Proxy {
 }
 
 func (s *Swamp) stillGood(candidate Proxy) bool {
+	if useProx.Peek(candidate) {
+		s.dbgPrint(ylw + "useProx ratelimited: " + candidate.Endpoint + rst)
+		return false
+	}
 	if badProx.Peek(candidate) {
-		s.dbgPrint(ylw + "badprox ratelimited: " + candidate.Endpoint + rst)
+		s.dbgPrint(ylw + "badProx ratelimited: " + candidate.Endpoint + rst)
+		return false
+	}
+	if _, err := net.DialTimeout("tcp", candidate.Endpoint, s.GetStaleTime()); err != nil {
+		s.dbgPrint(ylw + candidate.Endpoint + " failed dialing out during stillGood check: " + err.Error() + rst)
 		return false
 	}
 	if time.Since(candidate.Verified) > s.swampopt.Stale {

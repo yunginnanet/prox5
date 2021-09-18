@@ -3,10 +3,11 @@ package pxndscvm
 import (
 	"bufio"
 	"errors"
-	ipa "inet.af/netaddr"
 	"os"
 	"strconv"
 	"strings"
+
+	ipa "inet.af/netaddr"
 )
 
 // LoadProxyTXT loads proxies from a given seed file and randomly feeds them to the workers.
