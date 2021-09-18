@@ -1,5 +1,7 @@
 package pxndscvm
 
+import "errors"
+
 const (
 	grn = "\033[32m"
 	ylw = "\033[33m"
@@ -7,12 +9,17 @@ const (
 )
 
 // Start starts our proxy pool operations. Trying to start a running Swamp is a nonop.
-func (s *Swamp) Start() {
+func (s *Swamp) Start() error {
+	if len(s.scvm) < 1 {
+		return errors.New("there are no proxies in the list")
+	}
 	if !s.started {
 		go s.tossUp()
 		go s.feed()
 		s.started = true
+		return nil
 	}
+	return errors.New("already running")
 }
 
 /*
@@ -33,11 +40,15 @@ func (s *Swamp) Pause() {
 }
 
 // Resume will resume pause proxy pool operations, attempting to resume a running Swamp is a non-op.
-func (s *Swamp) Resume() {
+func (s *Swamp) Resume() error {
 	if s.Status == Running {
-		return
+		return nil
+	}
+	if len(s.scvm) < 1 {
+		return errors.New("there are no proxies in the list")
 	}
 	s.Status = Running
 	go s.feed()
 	go s.tossUp()
+	return nil
 }

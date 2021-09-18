@@ -30,12 +30,14 @@ func (s *Swamp) LoadProxyTXT(seedFile string) error {
 	}
 	return nil
 }
+
 // LoadSingleProxy loads a SOCKS proxy into our queue as the format: 127.0.0.1:1080 (host:port)
 func (s *Swamp) LoadSingleProxy(sock string) {
 	s.mu.Lock()
 	s.scvm = append(s.scvm, sock)
 	s.mu.Unlock()
 }
+
 // LoadMultiLineString loads a multiine string object with one (host:port) SOCKS proxy per line
 func (s *Swamp) LoadMultiLineString(socks string) error {
 	scan := bufio.NewScanner(strings.NewReader(socks))
@@ -44,10 +46,11 @@ func (s *Swamp) LoadMultiLineString(socks string) error {
 	}
 	return nil
 }
+
 // ClearSOCKSList clears the slice of proxies that we continually draw from at random for validation
 //	* Other operations (proxies that are still in buffered channels) will resume unless paused.
 func (s *Swamp) ClearSOCKSList() {
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	s.scvm=[]string{}
+	s.scvm = []string{}
 }
