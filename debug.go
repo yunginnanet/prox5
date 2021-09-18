@@ -2,7 +2,6 @@ package pxndscvm
 
 import (
 	"sync"
-	"time"
 )
 
 var (
@@ -19,34 +18,28 @@ func init() {
 // This will alter the flow of debug messages, they will no longer print to console, they will be pushed into this channel.
 // Make sure you pull from the channel eventually to avoid build up of blocked goroutines.
 func (s *Swamp) DebugChannel() chan string {
-	debugMutex.Lock()
-	defer debugMutex.Unlock()
 	if !s.DebugEnabled() {
 		s.EnableDebug()
 	}
+	debugMutex.Lock()
 	debugChan = make(chan string, 1000)
 	useDebugChannel = true
+	debugMutex.Unlock()
 	return debugChan
 }
 
 // DisableDebugChannel redirects debug messages back to the console.
 // DisableProxyChannel does not disable debug, use DisableDebug().
 func (s *Swamp) DisableDebugChannel() chan string {
+	debugMutex.Lock()
+	defer debugMutex.Unlock()
 	useDebugChannel = false
-
-	// Just in case..?
-	time.Sleep(100 * time.Millisecond)
-
 	close(debugChan)
-	useDebugChannel = true
-	return debugChan
 }
 
 // EnableDebug enables printing of verbose messages during operation
 func (s *Swamp) EnableDebug() {
-	s.mu.Lock()
 	debugMutex.Lock()
-	defer s.mu.Unlock()
 	defer debugMutex.Unlock()
 	s.swampopt.Debug = true
 }
@@ -54,27 +47,24 @@ func (s *Swamp) EnableDebug() {
 // DisableDebug enables printing of verbose messages during operation.
 // WARNING: if you are using a DebugChannel, you must read all of the messages in the channel's cache or this will block.
 func (s *Swamp) DisableDebug() {
-	s.mu.Lock()
 	debugMutex.Lock()
-	defer s.mu.Unlock()
 	defer debugMutex.Unlock()
 	s.swampopt.Debug = false
+	close(debugChan)
 }
 
 func (s *Swamp) dbgPrint(str string) {
 	debugMutex.RLock()
+	defer debugMutex.RUnlock()
 	if !s.swampopt.Debug {
 		return
 	}
-
 	if useDebugChannel {
 		go func() {
-			defer debugMutex.RUnlock()
 			debugChan <- str
+			println("sent down channel: " + str)
 		}()
 		return
 	}
-
-	debugMutex.RUnlock()
 	println("pxndscvm: " + str)
 }
