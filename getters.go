@@ -59,19 +59,19 @@ func (s *Swamp) GetAnySOCKS() Proxy {
 			if !s.stillGood(sock) {
 				continue
 			}
-			s.Stats.v4()
+			s.Stats.dispense()
 			return sock
 		case sock := <-s.Socks4a:
 			if !s.stillGood(sock) {
 				continue
 			}
-			s.Stats.v4a()
+			s.Stats.dispense()
 			return sock
 		case sock := <-s.Socks5:
 			if !s.stillGood(sock) {
 				continue
 			}
-			s.Stats.v5()
+			s.Stats.dispense()
 			return sock
 		}
 	}
