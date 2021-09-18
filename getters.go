@@ -78,10 +78,20 @@ func (s *Swamp) GetAnySOCKS() Proxy {
 }
 
 func (s *Swamp) stillGood(candidate Proxy) bool {
-	if time.Since(candidate.Verified) > s.swampopt.Stale {
-		s.dbgPrint("proxy stale: " + candidate.Endpoint)
+	if useProx.Check(candidate) {
+		s.dbgPrint(ylw+"useprox ratelimited: " + candidate.Endpoint)
 		return false
 	}
+	if badProx.Peek(candidate) {
+		s.dbgPrint(ylw+"badprox ratelimited: " + candidate.Endpoint)
+		return false
+	}
+	if time.Since(candidate.Verified) > s.swampopt.Stale {
+		s.dbgPrint("proxy stale: " + candidate.Endpoint)
+		go s.Stats.stale()
+		return false
+	}
+
 	return true
 }
 

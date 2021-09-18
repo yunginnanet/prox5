@@ -17,6 +17,9 @@ type Statistics struct {
 	// Dispensed is a simple ticker to keep track of proxies dispensed via our getters
 	Dispensed int
 
+	// Stale is the amount of proxies that failed our stale policy upon dispensing
+	Stale int
+
 	// birthday represents the time we started checking proxies with this pool
 	birthday time.Time
 
@@ -27,6 +30,12 @@ func (stats *Statistics) dispense() {
 	stats.mu.Lock()
 	defer stats.mu.Unlock()
 	stats.Dispensed++
+}
+
+func (stats *Statistics) stale() {
+	stats.mu.Lock()
+	defer stats.mu.Unlock()
+	stats.Stale++
 }
 
 func (stats *Statistics) v4() {

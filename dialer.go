@@ -35,7 +35,7 @@ func (s *Swamp) MysteryDialer(ctx context.Context, network, addr string) (net.Co
 		return nil, err
 	}
 
-	var dialSocks = socks.Dial("socks" + sock.Proto + "://" + sock.Endpoint + "?timeout=8s")
+	var dialSocks = socks.Dial("socks" + sock.Proto + "://" + sock.Endpoint + "?timeout=10s")
 
 	return dialSocks(network, addr)
 }

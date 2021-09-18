@@ -123,7 +123,7 @@ func (s *Swamp) validate() {
 
 		// ratelimited
 		if useProx.Check(p) {
-			// s.dbgPrint(blu+"useProx ratelimited: " + p.Endpoint+rst)
+			s.dbgPrint(ylw+"useProx ratelimited: " + p.Endpoint+rst)
 			continue
 		}
 
@@ -148,7 +148,7 @@ func (s *Swamp) validate() {
 		}
 
 		if !good {
-			s.dbgPrint(ylw + "failed to verify " + p.Endpoint + rst)
+			// s.dbgPrint(ylw + "failed to verify " + p.Endpoint + rst)
 			badProx.Check(p)
 			continue
 		}
@@ -157,13 +157,13 @@ func (s *Swamp) validate() {
 
 		switch p.Proto {
 		case "4":
-			s.Stats.v4()
+			go s.Stats.v4()
 			s.Socks4 <- p
 		case "4a":
-			s.Stats.v4a()
+			go s.Stats.v4a()
 			s.Socks4a <- p
 		case "5":
-			s.Stats.v5()
+			go s.Stats.v5()
 			s.Socks5 <- p
 		}
 	}
