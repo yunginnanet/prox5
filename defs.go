@@ -36,10 +36,14 @@ type Swamp struct {
 	// Pending is a constant stream of proxy strings to be verified
 	Pending chan string
 
+	// see: https://pkg.go.dev/github.com/yunginnanet/Rate5
+	useProx *rl.Limiter
+	badProx *rl.Limiter
+
 	quit     chan bool
 	scvm     []string
 	pool     *pond.WorkerPool
-	swampopt *SwampOptions
+	swampopt *swampOptions
 	started  bool
 	mu       *sync.RWMutex
 }
@@ -48,42 +52,66 @@ var (
 	defaultStaleTime = 1 * time.Hour
 	defWorkers       = 100
 	// Note: I've chosen to use https here exclusively assuring all validated proxies are SSL capable.
-	defaultChecks = []string{"https://wtfismyip.com/text", "https://myexternalip.com/raw", "https://ipinfo.io/ip", "https://api.ipify.org", "https://icanhazip.com/", "https://ifconfig.me/ip", "https://www.trackip.net/ip", "https://checkip.amazonaws.com/"}
+	defaultChecks = []string{
+		"https://wtfismyip.com/text",
+		"https://myexternalip.com/raw",
+		"https://ipinfo.io/ip",
+		"https://api.ipify.org/",
+		"https://icanhazip.com/",
+		"https://ifconfig.me/ip",
+		"https://www.trackip.net/ip",
+		"https://checkip.amazonaws.com/",
+	}
 )
 
-func defOpt() *SwampOptions {
-	return &SwampOptions{
-		UserAgents:        defaultUserAgents,
-		CheckEndpoints:    defaultChecks,
-		Stale:             defaultStaleTime,
-		MaxWorkers:        defWorkers,
-		ValidationTimeout: 5,
-		Debug:             false,
+// https://pkg.go.dev/github.com/yunginnanet/Rate5#Policy
+var defUseProx = rl.Policy{
+	Window: 60,
+	Burst:  2,
+}
+var defBadProx = rl.Policy{
+	Window: 60,
+	Burst:  3,
+}
+
+// Returns a pointer to our default options (modified and accessed later through concurrent safe getters and setters)
+func defOpt() *swampOptions {
+	return &swampOptions{
+		userAgents:     defaultUserAgents,
+		CheckEndpoints: defaultChecks,
+		stale:          defaultStaleTime,
+		maxWorkers:     defWorkers,
+
+		useProxConfig: defUseProx,
+		badProxConfig: defBadProx,
+
+		validationTimeout: 5,
+		debug:             false,
 	}
 }
 
-// SwampOptions holds our configuration for Swamp instances
-type SwampOptions struct {
-	// UserAgents contains a list of UserAgents to be randomly drawn from for proxied requests, this should be supplied via SetUserAgents
-	UserAgents []string
-	// Stale is the amount of time since verification that qualifies a proxy going stale.
+// swampOptions holds our configuration for Swamp instances.
+// This is implemented as a pointer, and should be interacted with via the setter and getter functions.
+type swampOptions struct {
+	// stale is the amount of time since verification that qualifies a proxy going stale.
 	// if a stale proxy is drawn during the use of our getter functions, it will be skipped.
-	Stale time.Duration
-	// Debug when enabled will print results as they come in
-	Debug bool
+	stale time.Duration
+	// userAgents contains a list of userAgents to be randomly drawn from for proxied requests, this should be supplied via SetUserAgents
+	userAgents []string
+	// debug when enabled will print results as they come in
+	debug bool
 	// CheckEndpoints includes web services that respond with (just) the WAN IP of the connection for validation purposes
 	CheckEndpoints []string
-	// MaxWorkers determines the maximum amount of workers used for checking proxies
-	MaxWorkers int
-	// ValidationTimeout defines the timeout (in seconds) for proxy validation operations.
+	// maxWorkers determines the maximum amount of workers used for checking proxies
+	maxWorkers int
+	// validationTimeout defines the timeout (in seconds) for proxy validation operations.
 	// This will apply for both the initial quick check (dial), and the second check (HTTP GET).
-	ValidationTimeout int
-}
+	validationTimeout int
 
-var (
-	useProx *rl.Limiter
-	badProx *rl.Limiter
-)
+	// TODO: make getters and setters for these
+	useProxConfig rl.Policy
+	badProxConfig rl.Policy
+}
 
 // Proxy represents an individual proxy
 type Proxy struct {
@@ -100,12 +128,6 @@ type Proxy struct {
 // UniqueKey is an implementation of the Identity interface from Rate5
 func (p Proxy) UniqueKey() string {
 	return p.Endpoint
-}
-
-func init() {
-	// see: https://pkg.go.dev/github.com/yunginnanet/Rate5
-	useProx = rl.NewLimiter(60, 2)
-	badProx = rl.NewStrictLimiter(60, 3)
 }
 
 // NewDefaultSwamp returns a Swamp with basic options.
@@ -125,12 +147,16 @@ func NewDefaultSwamp() *Swamp {
 			mu:        &sync.Mutex{},
 		},
 
-		quit:     make(chan bool),
 		swampopt: defOpt(),
-		mu:       &sync.RWMutex{},
+
+		quit: make(chan bool),
+		mu:   &sync.RWMutex{},
 	}
 
-	s.pool = pond.New(s.swampopt.MaxWorkers, 10000, pond.PanicHandler(func(p interface{}) {
+	s.useProx = rl.NewCustomLimiter(s.swampopt.useProxConfig)
+	s.badProx = rl.NewCustomLimiter(s.swampopt.badProxConfig)
+
+	s.pool = pond.New(s.swampopt.maxWorkers, 10000, pond.PanicHandler(func(p interface{}) {
 		fmt.Println("WORKER PANIC! ", p)
 	}))
 

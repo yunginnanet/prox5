@@ -10,14 +10,14 @@ func (s *Swamp) AddUserAgents(uagents []string) {
 	// mutex lock so that RLock during proxy checking will block while we change this value
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	s.swampopt.UserAgents = append(s.swampopt.UserAgents, uagents...)
+	s.swampopt.userAgents = append(s.swampopt.userAgents, uagents...)
 }
 
 // SetUserAgents sets the list of useragents we randomly choose from during proxied requests
 func (s *Swamp) SetUserAgents(uagents []string) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	s.swampopt.UserAgents = append(s.swampopt.UserAgents, uagents...)
+	s.swampopt.userAgents = append(s.swampopt.userAgents, uagents...)
 }
 
 // SetCheckEndpoints replaces the running list of whatismyip style endpoitns for validation. (must return only the WAN IP)
@@ -38,14 +38,14 @@ func (s *Swamp) AddCheckEndpoints(newendpoints []string) {
 func (s *Swamp) SetStaleTime(newtime time.Duration) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	s.swampopt.Stale = newtime
+	s.swampopt.stale = newtime
 }
 
-// SetValidationTimeout sets the ValidationTimeout option (in seconds).
+// SetValidationTimeout sets the validationTimeout option (in seconds).
 func (s *Swamp) SetValidationTimeout(newtimeout int) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	s.swampopt.ValidationTimeout = newtimeout
+	s.swampopt.validationTimeout = newtimeout
 }
 
 // SetMaxWorkers set the maximum workers for proxy checking, this must be set before calling LoadProxyTXT for the first time.
@@ -53,6 +53,6 @@ func (s *Swamp) SetMaxWorkers(num int) error {
 	if s.Status == Running {
 		return errors.New("can't change max workers during proxypool operation, try pausing first")
 	}
-	s.swampopt.MaxWorkers = num
+	s.swampopt.maxWorkers = num
 	return nil
 }

@@ -11,7 +11,6 @@ import (
 )
 
 // LoadProxyTXT loads proxies from a given seed file and randomly feeds them to the workers.
-// Call Start after this
 func (s *Swamp) LoadProxyTXT(seedFile string) error {
 	s.dbgPrint("LoadProxyTXT start")
 

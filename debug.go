@@ -6,8 +6,8 @@ import (
 
 var (
 	useDebugChannel = false
-	debugChan chan string
-	debugMutex *sync.RWMutex
+	debugChan       chan string
+	debugMutex      *sync.RWMutex
 )
 
 func init() {
@@ -22,15 +22,14 @@ func (s *Swamp) DebugChannel() chan string {
 	defer debugMutex.Unlock()
 	debugChan = make(chan string, 1000)
 	useDebugChannel = true
-	println("debugchannel enabled")
 	return debugChan
 }
 
-// DebugEnabled returns the current state of our Debug switch
+// DebugEnabled returns the current state of our debug switch
 func (s *Swamp) DebugEnabled() bool {
 	debugMutex.RLock()
 	defer debugMutex.RUnlock()
-	return s.swampopt.Debug
+	return s.swampopt.debug
 }
 
 // DisableDebugChannel redirects debug messages back to the console.
@@ -39,14 +38,13 @@ func (s *Swamp) DisableDebugChannel() {
 	debugMutex.Lock()
 	defer debugMutex.Unlock()
 	useDebugChannel = false
-	println("debugchannel enabled")
 }
 
 // EnableDebug enables printing of verbose messages during operation
 func (s *Swamp) EnableDebug() {
 	debugMutex.Lock()
 	defer debugMutex.Unlock()
-	s.swampopt.Debug = true
+	s.swampopt.debug = true
 }
 
 // DisableDebug enables printing of verbose messages during operation.
@@ -54,19 +52,17 @@ func (s *Swamp) EnableDebug() {
 func (s *Swamp) DisableDebug() {
 	debugMutex.Lock()
 	defer debugMutex.Unlock()
-	s.swampopt.Debug = false
-	println("debug disabled")
+	s.swampopt.debug = false
 }
 
 func (s *Swamp) dbgPrint(str string) {
 	debugMutex.RLock()
 	defer debugMutex.RUnlock()
-	if !s.swampopt.Debug {
+	if !s.swampopt.debug {
 		return
 	}
 	if useDebugChannel {
 		debugChan <- str
-		println("sent down channel: " + str)
 		return
 	}
 	println("pxndscvm: " + str)

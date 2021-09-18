@@ -88,19 +88,21 @@ func (s *Swamp) checkHTTP(sock Proxy) (string, error) {
 }
 
 func (s *Swamp) singleProxyCheck(sock Proxy) error {
+	dialPriorityMutex.RLock()
+	defer dialPriorityMutex.RUnlock()
 	if _, err := net.DialTimeout("tcp", sock.Endpoint, time.Duration(s.GetValidationTimeout())*time.Second); err != nil {
-		badProx.Check(sock)
+		s.badProx.Check(sock)
 		return err
 	}
 
 	resp, err := s.checkHTTP(sock)
 	if err != nil {
-		badProx.Check(sock)
+		s.badProx.Check(sock)
 		return err
 	}
 
 	if newip := net.ParseIP(resp); newip == nil {
-		badProx.Check(sock)
+		s.badProx.Check(sock)
 		return errors.New("bad response from http request: " + resp)
 	}
 
@@ -122,13 +124,13 @@ func (s *Swamp) validate() {
 		}
 
 		// ratelimited
-		if useProx.Check(p) {
+		if s.useProx.Check(p) {
 			s.dbgPrint(ylw + "useProx ratelimited: " + p.Endpoint + rst)
 			continue
 		}
 
 		// determined as bad, won't try again until it expires from that cache
-		if badProx.Peek(p) {
+		if s.badProx.Peek(p) {
 			s.dbgPrint(ylw + "badProx ratelimited: " + p.Endpoint + rst)
 			continue
 		}
@@ -149,7 +151,7 @@ func (s *Swamp) validate() {
 
 		if !good {
 			// s.dbgPrint(ylw + "failed to verify " + p.Endpoint + rst)
-			badProx.Check(p)
+			s.badProx.Check(p)
 			continue
 		}
 

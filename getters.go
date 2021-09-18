@@ -2,8 +2,15 @@ package pxndscvm
 
 import (
 	"net"
+	"sync"
 	"time"
 )
+
+var dialPriorityMutex *sync.RWMutex
+
+func init() {
+	dialPriorityMutex = &sync.RWMutex{}
+}
 
 // Socks5Str gets a SOCKS5 proxy that we have fully verified (dialed and then retrieved our IP address from a what-is-my-ip endpoint.
 // Will block if one is not available!
@@ -81,19 +88,21 @@ func (s *Swamp) GetAnySOCKS() Proxy {
 }
 
 func (s *Swamp) stillGood(candidate Proxy) bool {
-	if useProx.Peek(candidate) {
+	if s.useProx.Peek(candidate) {
 		s.dbgPrint(ylw + "useProx ratelimited: " + candidate.Endpoint + rst)
 		return false
 	}
-	if badProx.Peek(candidate) {
+	if s.badProx.Peek(candidate) {
 		s.dbgPrint(ylw + "badProx ratelimited: " + candidate.Endpoint + rst)
 		return false
 	}
-	if _, err := net.DialTimeout("tcp", candidate.Endpoint, s.GetStaleTime()); err != nil {
+	dialPriorityMutex.Lock()
+	if _, err := net.DialTimeout("tcp", candidate.Endpoint, time.Duration(s.GetValidationTimeout())*time.Second); err != nil {
 		s.dbgPrint(ylw + candidate.Endpoint + " failed dialing out during stillGood check: " + err.Error() + rst)
 		return false
 	}
-	if time.Since(candidate.Verified) > s.swampopt.Stale {
+	dialPriorityMutex.Unlock()
+	if time.Since(candidate.Verified) > s.swampopt.stale {
 		s.dbgPrint("proxy stale: " + candidate.Endpoint)
 		go s.Stats.stale()
 		return false
@@ -105,7 +114,7 @@ func (s *Swamp) stillGood(candidate Proxy) bool {
 func (s *Swamp) RandomUserAgent() string {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
-	return randStrChoice(s.swampopt.UserAgents)
+	return randStrChoice(s.swampopt.userAgents)
 }
 
 // GetRandomEndpoint returns a random whatismyip style endpoint from our Swamp's options
@@ -119,21 +128,21 @@ func (s *Swamp) GetRandomEndpoint() string {
 func (s *Swamp) GetStaleTime() time.Duration {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
-	return s.swampopt.Stale
+	return s.swampopt.stale
 }
 
-// GetValidationTimeout returns the current value of ValidationTimeout (in seconds).
+// GetValidationTimeout returns the current value of validationTimeout (in seconds).
 func (s *Swamp) GetValidationTimeout() int {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
-	return s.swampopt.ValidationTimeout
+	return s.swampopt.validationTimeout
 }
 
 // GetMaxWorkers returns maximum amount of workers that validate proxies concurrently. Note this is read-only during runtime.
 func (s *Swamp) GetMaxWorkers() int {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
-	return s.swampopt.MaxWorkers
+	return s.swampopt.maxWorkers
 }
 
 // TODO: Implement ways to access worker pool (pond) statistics

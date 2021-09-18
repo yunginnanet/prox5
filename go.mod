@@ -6,7 +6,7 @@ require (
 	github.com/alitto/pond v1.5.1
 	github.com/h12w/go-socks5 v0.0.0-20200522160539-76189e178364
 	github.com/mattn/go-tty v0.0.3
-	github.com/yunginnanet/Rate5 v0.0.0-20210907213727-36294aeeac1c
+	github.com/yunginnanet/Rate5 v0.0.0-20210918144058-dfa3665041eb
 	golang.org/x/net v0.0.0-20210908191846-a5e095526f91
 	h12.io/socks v1.0.3
 	inet.af/netaddr v0.0.0-20210903134321-85fa6c94624e
