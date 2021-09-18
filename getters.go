@@ -129,13 +129,6 @@ func (s *Swamp) GetValidationTimeout() int {
 	return s.swampopt.ValidationTimeout
 }
 
-// DebugEnabled returns the current state of our Debug switch
-func (s *Swamp) DebugEnabled() bool {
-	s.mu.RLock()
-	defer s.mu.RUnlock()
-	return s.swampopt.Debug
-}
-
 // GetMaxWorkers returns maximum amount of workers that validate proxies concurrently. Note this is read-only during runtime.
 func (s *Swamp) GetMaxWorkers() int {
 	s.mu.RLock()
