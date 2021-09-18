@@ -2,14 +2,19 @@ package pxndscvm
 
 import (
 	"net"
-	"sync"
+	"sync/atomic"
 	"time"
 )
 
-var dialPriorityMutex *sync.RWMutex
+const (
+	stateUnlocked uint32 = iota
+	stateLocked
+)
+
+var dialPrioritySpinlock uint32
 
 func init() {
-	dialPriorityMutex = &sync.RWMutex{}
+	atomic.StoreUint32(&dialPrioritySpinlock, stateUnlocked)
 }
 
 // Socks5Str gets a SOCKS5 proxy that we have fully verified (dialed and then retrieved our IP address from a what-is-my-ip endpoint.
@@ -88,20 +93,16 @@ func (s *Swamp) GetAnySOCKS() Proxy {
 }
 
 func (s *Swamp) stillGood(candidate Proxy) bool {
-	if s.useProx.Peek(candidate) {
-		s.dbgPrint(ylw + "useProx ratelimited: " + candidate.Endpoint + rst)
-		return false
-	}
 	if s.badProx.Peek(candidate) {
-		s.dbgPrint(ylw + "badProx ratelimited: " + candidate.Endpoint + rst)
+		s.dbgPrint(ylw + "badProx dial ratelimited: " + candidate.Endpoint + rst)
 		return false
 	}
-	dialPriorityMutex.Lock()
+
 	if _, err := net.DialTimeout("tcp", candidate.Endpoint, time.Duration(s.GetValidationTimeout())*time.Second); err != nil {
 		s.dbgPrint(ylw + candidate.Endpoint + " failed dialing out during stillGood check: " + err.Error() + rst)
 		return false
 	}
-	dialPriorityMutex.Unlock()
+
 	if time.Since(candidate.Verified) > s.swampopt.stale {
 		s.dbgPrint("proxy stale: " + candidate.Endpoint)
 		go s.Stats.stale()
