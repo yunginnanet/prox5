@@ -1,6 +1,7 @@
 package pxndscvm
 
 import (
+	"errors"
 	"sync"
 	"time"
 )
@@ -18,8 +19,9 @@ func (s *Swamp) svcDown() {
 }
 
 type swampMap struct {
-	plot map[string]*Proxy
-	mu   *sync.Mutex
+	plot   map[string]*Proxy
+	mu     *sync.Mutex
+	parent *Swamp
 }
 
 func (sm swampMap) add(sock string) (*Proxy, bool) {
@@ -28,8 +30,14 @@ func (sm swampMap) add(sock string) (*Proxy, bool) {
 	if sm.exists(sock) {
 		return nil, false
 	}
-	p := &Proxy{Endpoint: sock, lock: stateUnlocked}
-	sm.plot[sock]=p
+	p := &Proxy{
+		Endpoint:       sock,
+		lock:           stateUnlocked,
+		TimesValidated: 0,
+		TimesBad:       0,
+		parent:         sm.parent,
+	}
+	sm.plot[sock] = p
 	return p, true
 }
 
@@ -38,6 +46,16 @@ func (sm swampMap) exists(sock string) bool {
 		return false
 	}
 	return true
+}
+
+func (sm swampMap) delete(sock string) error {
+	sm.mu.Lock()
+	defer sm.mu.Unlock()
+	if !sm.exists(sock) {
+		return errors.New("proxy does not exist in map")
+	}
+	delete(sm.plot, sock)
+	return nil
 }
 
 func (sm swampMap) clear() {
@@ -86,8 +104,8 @@ func (s *Swamp) jobSpawner() {
 		select {
 		case <-s.quit:
 			return
-		default:
-			go s.pool.Submit(s.validate)
+		case sock := <-s.Pending:
+			go s.pool.Submit(sock.validate)
 			time.Sleep(time.Duration(10) * time.Millisecond)
 		}
 	}

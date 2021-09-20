@@ -51,7 +51,7 @@ func (s *Swamp) SetValidationTimeout(newtimeout int) {
 	s.swampopt.validationTimeout = newtimeout
 }
 
-// SetMaxWorkers set the maximum workers for proxy checking, this must be set before calling LoadProxyTXT for the first time.
+// SetMaxWorkers set the maximum workers for proxy checking and clears the current proxy map and worker pool jobs.
 func (s *Swamp) SetMaxWorkers(num int) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
@@ -63,6 +63,7 @@ func (s *Swamp) SetMaxWorkers(num int) error {
 	s.pool = pond.New(s.swampopt.maxWorkers, 1000000, pond.PanicHandler(func(p interface{}) {
 		fmt.Println("WORKER PANIC! ", p)
 	}))
+	s.swampmap.plot = make(map[string]*Proxy)
 	return nil
 }
 
@@ -71,4 +72,12 @@ func (s *Swamp) EnableRecycling(choice bool) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	s.swampopt.recycle = choice
+}
+
+// SetRemoveAfter sets the removeafter policy, the amount of times a recycled proxy is marked as bad until it is removed entirely.
+//    * Only applies when recycling is enabled *
+func (s *Swamp) SetRemoveAfter(choice int) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	s.swampopt.removeafter = choice
 }

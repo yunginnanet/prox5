@@ -54,7 +54,7 @@ func (s *Swamp) Socks4aStr() string {
 
 func (sock *Proxy) copy() (Proxy, error) {
 	if !atomic.CompareAndSwapUint32(&sock.lock, stateUnlocked, stateLocked) {
-		return Proxy{Endpoint:""}, errors.New("locked")
+		return Proxy{Endpoint: ""}, errors.New("locked")
 	}
 	atomic.StoreUint32(&sock.lock, stateUnlocked)
 
@@ -110,6 +110,13 @@ func (s *Swamp) stillGood(sock *Proxy) bool {
 		return false
 	}
 	defer atomic.StoreUint32(&sock.lock, stateUnlocked)
+
+	if sock.TimesBad > s.GetRemoveAfter() {
+		s.dbgPrint("removing proxy: " + sock.Endpoint)
+		if err := s.swampmap.delete(sock.Endpoint); err != nil {
+			s.dbgPrint(err.Error())
+		}
+	}
 
 	if s.badProx.Peek(sock) {
 		s.dbgPrint(ylw + "badProx dial ratelimited: " + sock.Endpoint + rst)

@@ -93,69 +93,62 @@ func (s *Swamp) singleProxyCheck(sock *Proxy) error {
 	return nil
 }
 
-func (s *Swamp) validate() {
+func (sock *Proxy) validate() {
 	var sversions = []string{"5", "4", "4a"}
-	for {
+
+	s := sock.parent
+	// ratelimited
+	if s.useProx.Check(sock) {
+		s.dbgPrint(ylw + "useProx ratelimited: " + sock.Endpoint + rst)
+		atomic.StoreUint32(&sock.lock, stateUnlocked)
+		return
+	}
+
+	// determined as bad, won't try again until it expires from that cache
+	if s.badProx.Peek(sock) {
+		s.dbgPrint(ylw + "badProx ratelimited: " + sock.Endpoint + rst)
+		atomic.StoreUint32(&sock.lock, stateUnlocked)
+		return
+	}
+
+	// try to use the proxy with all 3 SOCKS versions
+	var good = false
+	for _, sver := range sversions {
 		if s.Status == Paused {
 			return
 		}
-
-		sock := <-s.Pending
-		if !atomic.CompareAndSwapUint32(&sock.lock, stateUnlocked, stateLocked) {
-			continue
+		sock.Proto = sver
+		if err := s.singleProxyCheck(sock); err == nil {
+			s.dbgPrint(grn + "verified " + sock.Endpoint + " as SOCKS" + sver + rst)
+			good = true
+			break
 		}
+	}
 
-		// ratelimited
-		if s.useProx.Check(sock) {
-			s.dbgPrint(ylw + "useProx ratelimited: " + sock.Endpoint + rst)
-			atomic.StoreUint32(&sock.lock, stateUnlocked)
-			continue
+	if !good {
+		if failcount > 100 {
+			s.dbgPrint(ylw + "failed to verify ~100 proxies, last: " + sock.Endpoint)
+			failcount = 0
 		}
-
-		// determined as bad, won't try again until it expires from that cache
-		if s.badProx.Peek(sock) {
-			s.dbgPrint(ylw + "badProx ratelimited: " + sock.Endpoint + rst)
-			atomic.StoreUint32(&sock.lock, stateUnlocked)
-			continue
-		}
-
-		// try to use the proxy with all 3 SOCKS versions
-		var good = false
-		for _, sver := range sversions {
-			if s.Status == Paused {
-				return
-			}
-			sock.Proto = sver
-			if err := s.singleProxyCheck(sock); err == nil {
-				s.dbgPrint(grn + "verified " + sock.Endpoint + " as SOCKS" + sver + rst)
-				good = true
-				break
-			}
-		}
-
-		if !good {
-			if failcount > 100 {
-				s.dbgPrint(ylw + "failed to verify ~100 proxies, last: " + sock.Endpoint)
-				failcount = 0
-			}
-			s.badProx.Check(sock)
-			atomic.StoreUint32(&sock.lock, stateUnlocked)
-			continue
-		}
-
-		sock.LastVerified = time.Now()
+		sock.TimesBad++
+		s.badProx.Check(sock)
 		atomic.StoreUint32(&sock.lock, stateUnlocked)
+		return
+	}
 
-		switch sock.Proto {
-		case "4":
-			go s.Stats.v4()
-			s.Socks4 <- sock
-		case "4a":
-			go s.Stats.v4a()
-			s.Socks4a <- sock
-		case "5":
-			go s.Stats.v5()
-			s.Socks5 <- sock
-		}
+	sock.TimesValidated++
+	sock.LastVerified = time.Now()
+	atomic.StoreUint32(&sock.lock, stateUnlocked)
+
+	switch sock.Proto {
+	case "4":
+		go s.Stats.v4()
+		s.Socks4 <- sock
+	case "4a":
+		go s.Stats.v4a()
+		s.Socks4a <- sock
+	case "5":
+		go s.Stats.v5()
+		s.Socks5 <- sock
 	}
 }

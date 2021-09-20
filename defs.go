@@ -88,7 +88,8 @@ func defOpt() *swampOptions {
 		useProxConfig: defUseProx,
 		badProxConfig: defBadProx,
 
-		recycle: true,
+		removeafter: 10,
+		recycle:     true,
 
 		validationTimeout: 5,
 		debug:             false,
@@ -115,11 +116,14 @@ type swampOptions struct {
 
 	// recycle determines whether or not we recycle proxies pack into the pending channel after we dispense them
 	recycle bool
+	// remove proxy from recycling after being marked bad this many times
+	removeafter int
 
 	// TODO: make getters and setters for these
 	useProxConfig rl.Policy
 	badProxConfig rl.Policy
 }
+
 const (
 	stateUnlocked uint32 = iota
 	stateLocked
@@ -136,7 +140,13 @@ type Proxy struct {
 	// LastVerified is the time this proxy was last verified working
 	LastVerified time.Time
 
-	lock uint32
+	// TimesValidated is the amount of times the proxy has been validated.
+	TimesValidated int
+	// TimesBad is the amount of times the proxy has been marked as bad.
+	TimesBad int
+
+	parent *Swamp
+	lock   uint32
 }
 
 // UniqueKey is an implementation of the Identity interface from Rate5
@@ -163,14 +173,15 @@ func NewDefaultSwamp() *Swamp {
 
 		swampopt: defOpt(),
 
-		quit: make(chan bool),
-		mu:   &sync.RWMutex{},
+		quit:   make(chan bool),
+		mu:     &sync.RWMutex{},
 		Status: Paused,
 	}
 
 	s.swampmap = swampMap{
-		plot: make(map[string]*Proxy),
-		mu:   &sync.Mutex{},
+		plot:   make(map[string]*Proxy),
+		mu:     &sync.Mutex{},
+		parent: s,
 	}
 
 	s.useProx = rl.NewCustomLimiter(s.swampopt.useProxConfig)
