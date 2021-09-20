@@ -14,7 +14,7 @@ import (
 var inChan chan string
 
 func init() {
-	inChan = make(chan string, 100)
+	inChan = make(chan string, 100000)
 }
 
 func (s *Swamp) stage1(in string) bool {
@@ -28,13 +28,6 @@ func (s *Swamp) stage1(in string) bool {
 	if _, err := strconv.Atoi(split[1]); err != nil {
 		return false
 	}
-	s.mu.RLock()
-	if _, ok := s.swampmap[in]; ok {
-		s.mu.RUnlock()
-		return false
-	}
-	s.mu.RUnlock()
-
 	return true
 }
 
@@ -90,7 +83,5 @@ func (s *Swamp) LoadMultiLineString(socks string) int {
 // ClearSOCKSList clears the slice of proxies that we continually draw from at random for validation
 //	* Other operations (proxies that are still in buffered channels) will resume unless paused.
 func (s *Swamp) ClearSOCKSList() {
-	s.mu.Lock()
-	defer s.mu.Unlock()
-	s.swampmap = make(map[string]*Proxy)
+	s.swampmap.clear()
 }

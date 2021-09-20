@@ -14,13 +14,12 @@ func (s *Swamp) MysteryDialer(ctx context.Context, network, addr string) (net.Co
 	var sock Proxy
 	// pull down proxies from channel until we get a proxy good enough for our spoiled asses
 	for {
-		sock = Proxy{Endpoint: ""}
 		if err := ctx.Err(); err != nil {
 			return nil, err
 		}
 
 		time.Sleep(10 * time.Millisecond)
-		sock := s.GetAnySOCKS()
+		sock = s.GetAnySOCKS()
 
 		if sock.Endpoint != "" {
 			break

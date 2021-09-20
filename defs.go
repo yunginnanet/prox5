@@ -42,7 +42,7 @@ type Swamp struct {
 
 	quit chan bool
 
-	swampmap map[string]*Proxy
+	swampmap swampMap
 
 	pool           *pond.WorkerPool
 	swampopt       *swampOptions
@@ -88,6 +88,8 @@ func defOpt() *swampOptions {
 		useProxConfig: defUseProx,
 		badProxConfig: defBadProx,
 
+		recycle: true,
+
 		validationTimeout: 5,
 		debug:             false,
 	}
@@ -110,6 +112,9 @@ type swampOptions struct {
 	// validationTimeout defines the timeout (in seconds) for proxy validation operations.
 	// This will apply for both the initial quick check (dial), and the second check (HTTP GET).
 	validationTimeout int
+
+	// recycle determines whether or not we recycle proxies pack into the pending channel after we dispense them
+	recycle bool
 
 	// TODO: make getters and setters for these
 	useProxConfig rl.Policy
@@ -142,10 +147,10 @@ func (sock Proxy) UniqueKey() string {
 // NewDefaultSwamp returns a Swamp with basic options.
 func NewDefaultSwamp() *Swamp {
 	s := &Swamp{
-		Socks5:  make(chan *Proxy, 10000),
-		Socks4:  make(chan *Proxy, 10000),
-		Socks4a: make(chan *Proxy, 10000),
-		Pending: make(chan *Proxy, 10000),
+		Socks5:  make(chan *Proxy, 100000),
+		Socks4:  make(chan *Proxy, 100000),
+		Socks4a: make(chan *Proxy, 100000),
+		Pending: make(chan *Proxy, 100000),
 
 		Stats: &Statistics{
 			Valid4:    0,
@@ -162,7 +167,10 @@ func NewDefaultSwamp() *Swamp {
 		mu:   &sync.RWMutex{},
 	}
 
-	s.swampmap = make(map[string]*Proxy)
+	s.swampmap = swampMap{
+		plot: make(map[string]*Proxy),
+		mu:   &sync.Mutex{},
+	}
 
 	s.useProx = rl.NewCustomLimiter(s.swampopt.useProxConfig)
 	s.badProx = rl.NewCustomLimiter(s.swampopt.badProxConfig)

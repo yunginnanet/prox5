@@ -56,3 +56,10 @@ func (s *Swamp) SetMaxWorkers(num int) error {
 	s.swampopt.maxWorkers = num
 	return nil
 }
+
+// EnableRecycling toggles recycling used proxies back into the pending channel for revalidation after dispensed.
+func (s *Swamp) EnableRecycling(choice bool) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	s.swampopt.recycle = choice
+}

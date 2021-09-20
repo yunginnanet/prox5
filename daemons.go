@@ -1,6 +1,7 @@
 package pxndscvm
 
 import (
+	"sync"
 	"time"
 )
 
@@ -16,6 +17,34 @@ func (s *Swamp) svcDown() {
 	s.mu.Unlock()
 }
 
+type swampMap struct {
+	plot map[string]*Proxy
+	mu   *sync.Mutex
+}
+
+func (sm swampMap) add(sock string) (*Proxy, bool) {
+	sm.mu.Lock()
+	defer sm.mu.Unlock()
+	if sm.exists(sock) {
+		return nil, false
+	}
+	p := &Proxy{Endpoint: sock, lock: stateUnlocked}
+	sm.plot[sock]=p
+	return p, true
+}
+
+func (sm swampMap) exists(sock string) bool {
+	if _, ok := sm.plot[sock]; !ok {
+		return false
+	}
+	return true
+}
+
+func (sm swampMap) clear() {
+	sm.mu.Lock()
+	defer sm.mu.Unlock()
+	sm.plot = make(map[string]*Proxy)
+}
 
 func (s *Swamp) mapBuilder() {
 	s.svcUp()
@@ -30,13 +59,11 @@ func (s *Swamp) mapBuilder() {
 			if !s.stage1(in) {
 				continue
 			}
-			p := &Proxy{
-				Endpoint: in,
+			if p, ok := s.swampmap.add(in); !ok {
+				continue
+			} else {
+				s.Pending <- p
 			}
-			s.mu.Lock()
-			s.swampmap[in] = p
-			s.mu.Unlock()
-			s.Pending <- p
 		case <-s.quit:
 			return
 		default:
