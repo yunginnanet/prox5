@@ -9,14 +9,16 @@ import (
 	"net"
 	"net/http"
 	"strconv"
+	"sync/atomic"
 	"time"
 
 	"golang.org/x/net/proxy"
 	"h12.io/socks"
 )
 
+var failcount = 0
 
-func (s *Swamp) checkHTTP(sock Proxy) (string, error) {
+func (s *Swamp) checkHTTP(sock *Proxy) (string, error) {
 	req, err := http.NewRequest("GET", s.GetRandomEndpoint(), bytes.NewBuffer([]byte("")))
 	if err != nil {
 		return "", err
@@ -70,7 +72,7 @@ func (s *Swamp) checkHTTP(sock Proxy) (string, error) {
 	return string(rbody), err
 }
 
-func (s *Swamp) singleProxyCheck(sock Proxy) error {
+func (s *Swamp) singleProxyCheck(sock *Proxy) error {
 	if _, err := net.DialTimeout("tcp", sock.Endpoint, time.Duration(s.GetValidationTimeout())*time.Second); err != nil {
 		s.badProx.Check(sock)
 		return err
@@ -94,25 +96,26 @@ func (s *Swamp) singleProxyCheck(sock Proxy) error {
 func (s *Swamp) validate() {
 	var sversions = []string{"5", "4", "4a"}
 	for {
-
 		if s.Status == Paused {
 			return
 		}
 
 		sock := <-s.Pending
-		p := Proxy{
-			Endpoint: sock,
+		if !atomic.CompareAndSwapUint32(&sock.lock, stateUnlocked, stateLocked) {
+			continue
 		}
 
 		// ratelimited
-		if s.useProx.Check(p) {
-			s.dbgPrint(ylw + "useProx ratelimited: " + p.Endpoint + rst)
+		if s.useProx.Check(sock) {
+			s.dbgPrint(ylw + "useProx ratelimited: " + sock.Endpoint + rst)
+			atomic.StoreUint32(&sock.lock, stateUnlocked)
 			continue
 		}
 
 		// determined as bad, won't try again until it expires from that cache
-		if s.badProx.Peek(p) {
-			s.dbgPrint(ylw + "badProx ratelimited: " + p.Endpoint + rst)
+		if s.badProx.Peek(sock) {
+			s.dbgPrint(ylw + "badProx ratelimited: " + sock.Endpoint + rst)
+			atomic.StoreUint32(&sock.lock, stateUnlocked)
 			continue
 		}
 
@@ -122,32 +125,37 @@ func (s *Swamp) validate() {
 			if s.Status == Paused {
 				return
 			}
-			p.Proto = sver
-			if err := s.singleProxyCheck(p); err == nil {
-				s.dbgPrint(grn + "verified " + p.Endpoint + " as SOCKS" + sver + rst)
+			sock.Proto = sver
+			if err := s.singleProxyCheck(sock); err == nil {
+				s.dbgPrint(grn + "verified " + sock.Endpoint + " as SOCKS" + sver + rst)
 				good = true
 				break
 			}
 		}
 
 		if !good {
-			// s.dbgPrint(ylw + "failed to verify " + p.Endpoint + rst)
-			s.badProx.Check(p)
+			if failcount > 100 {
+				s.dbgPrint(ylw + "failed to verify ~100 proxies, last: " + sock.Endpoint)
+				failcount = 0
+			}
+			s.badProx.Check(sock)
+			atomic.StoreUint32(&sock.lock, stateUnlocked)
 			continue
 		}
 
-		p.Verified = time.Now()
+		sock.LastVerified = time.Now()
+		atomic.StoreUint32(&sock.lock, stateUnlocked)
 
-		switch p.Proto {
+		switch sock.Proto {
 		case "4":
 			go s.Stats.v4()
-			s.Socks4 <- p
+			s.Socks4 <- sock
 		case "4a":
 			go s.Stats.v4a()
-			s.Socks4a <- p
+			s.Socks4a <- sock
 		case "5":
 			go s.Stats.v5()
-			s.Socks5 <- p
+			s.Socks5 <- sock
 		}
 	}
 }

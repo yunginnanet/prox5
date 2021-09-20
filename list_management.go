@@ -9,6 +9,7 @@ import (
 	ipa "inet.af/netaddr"
 )
 
+
 // throw shit proxies here, get map
 var inChan chan string
 
@@ -24,7 +25,7 @@ func (s *Swamp) stage1(in string) bool {
 	if _, err := ipa.ParseIP(split[0]); err != nil {
 		return false
 	}
-	if _, err := strconv.Atoi(in); err != nil {
+	if _, err := strconv.Atoi(split[1]); err != nil {
 		return false
 	}
 	s.mu.RLock()

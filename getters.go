@@ -1,10 +1,11 @@
 package pxndscvm
 
 import (
+	"errors"
 	"net"
+	"sync/atomic"
 	"time"
 )
-
 
 // Socks5Str gets a SOCKS5 proxy that we have fully verified (dialed and then retrieved our IP address from a what-is-my-ip endpoint.
 // Will block if one is not available!
@@ -52,6 +53,19 @@ func (s *Swamp) Socks4aStr() string {
 	}
 }
 
+func (sock *Proxy) copy() (Proxy, error) {
+	if !atomic.CompareAndSwapUint32(&sock.lock, stateUnlocked, stateLocked) {
+		return Proxy{}, errors.New("locked")
+	}
+	defer atomic.StoreUint32(&sock.lock, stateUnlocked)
+	return Proxy{
+		Endpoint:     sock.Endpoint,
+		ProxiedIP:    sock.ProxiedIP,
+		Proto:        sock.Proto,
+		LastVerified: sock.LastVerified,
+	}, nil
+}
+
 // GetAnySOCKS retrieves any version SOCKS proxy as a Proxy type
 // Will block if one is not available!
 func (s *Swamp) GetAnySOCKS() Proxy {
@@ -61,40 +75,60 @@ func (s *Swamp) GetAnySOCKS() Proxy {
 			if !s.stillGood(sock) {
 				continue
 			}
+			var sox Proxy
+			var err error
+			if sox, err = sock.copy(); err != nil {
+				continue
+			}
 			s.Stats.dispense()
-			return sock
+			return sox
 		case sock := <-s.Socks4a:
 			if !s.stillGood(sock) {
 				continue
 			}
+			var sox Proxy
+			var err error
+			if sox, err = sock.copy(); err != nil {
+				continue
+			}
 			s.Stats.dispense()
-			return sock
+			return sox
 		case sock := <-s.Socks5:
 			if !s.stillGood(sock) {
 				continue
 			}
+			var sox Proxy
+			var err error
+			if sox, err = sock.copy(); err != nil {
+				continue
+			}
 			s.Stats.dispense()
-			return sock
+			return sox
 		default:
 			time.Sleep(25 * time.Millisecond)
 		}
 	}
 }
 
-func (s *Swamp) stillGood(candidate Proxy) bool {
+func (s *Swamp) stillGood(sock *Proxy) bool {
 
-	if s.badProx.Peek(candidate) {
-		s.dbgPrint(ylw + "badProx dial ratelimited: " + candidate.Endpoint + rst)
+	if !atomic.CompareAndSwapUint32(&sock.lock, stateUnlocked, stateLocked) {
+		return false
+	}
+	defer atomic.StoreUint32(&sock.lock, stateUnlocked)
+
+	if s.badProx.Peek(sock) {
+		s.dbgPrint(ylw + "badProx dial ratelimited: " + sock.Endpoint + rst)
 		return false
 	}
 
-	if _, err := net.DialTimeout("tcp", candidate.Endpoint, time.Duration(s.GetValidationTimeout())*time.Second); err != nil {
-		s.dbgPrint(ylw + candidate.Endpoint + " failed dialing out during stillGood check: " + err.Error() + rst)
+	if _, err := net.DialTimeout("tcp", sock.Endpoint, time.Duration(s.GetValidationTimeout())*time.Second); err != nil {
+		s.dbgPrint(ylw + sock.Endpoint + " failed dialing out during stillGood check: " + err.Error() + rst)
 		return false
 	}
 
-	if time.Since(candidate.Verified) > s.swampopt.stale {
-		s.dbgPrint("proxy stale: " + candidate.Endpoint)
+	if time.Since(sock.LastVerified) > s.swampopt.stale {
+		s.dbgPrint("proxy stale: " + sock.Endpoint)
 		go s.Stats.stale()
 		return false
 	}
@@ -136,6 +170,7 @@ func (s *Swamp) GetMaxWorkers() int {
 	defer s.mu.RUnlock()
 	return s.swampopt.maxWorkers
 }
+
 // IsRunning returns true if our background goroutines defined in daemons.go are currently operational
 func (s *Swamp) IsRunning() bool {
 	if s.runningdaemons == 2 {
@@ -143,7 +178,5 @@ func (s *Swamp) IsRunning() bool {
 	}
 	return false
 }
-
-
 
 // TODO: Implement ways to access worker pool (pond) statistics

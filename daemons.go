@@ -1,13 +1,14 @@
 package pxndscvm
 
-import "time"
+import (
+	"time"
+)
 
 func (s *Swamp) svcUp() {
 	s.mu.Lock()
 	s.runningdaemons++
 	s.mu.Unlock()
 }
-
 
 func (s *Swamp) svcDown() {
 	s.mu.Lock()
@@ -29,12 +30,14 @@ func (s *Swamp) mapBuilder() {
 			if !s.stage1(in) {
 				continue
 			}
-			s.mu.Lock()
-			s.swampmap[in] = &Proxy{
+			p := &Proxy{
 				Endpoint: in,
 			}
+			s.mu.Lock()
+			s.swampmap[in] = p
 			s.mu.Unlock()
-		case <- s.quit:
+			s.Pending <- p
+		case <-s.quit:
 			return
 		default:
 			time.Sleep(10 * time.Millisecond)
