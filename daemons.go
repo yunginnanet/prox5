@@ -7,15 +7,11 @@ import (
 )
 
 func (s *Swamp) svcUp() {
-	s.mu.Lock()
 	s.runningdaemons++
-	s.mu.Unlock()
 }
 
 func (s *Swamp) svcDown() {
-	s.mu.Lock()
 	s.runningdaemons--
-	s.mu.Unlock()
 }
 
 type swampMap struct {
@@ -85,7 +81,7 @@ func (s *Swamp) mapBuilder() {
 		case <-s.quit:
 			return
 		default:
-			time.Sleep(10 * time.Millisecond)
+			time.Sleep(100 * time.Millisecond)
 		}
 	}
 }
@@ -107,6 +103,8 @@ func (s *Swamp) jobSpawner() {
 		case sock := <-s.Pending:
 			go s.pool.Submit(sock.validate)
 			time.Sleep(time.Duration(10) * time.Millisecond)
+		default:
+			time.Sleep(100*time.Millisecond)
 		}
 	}
 }

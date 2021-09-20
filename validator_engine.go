@@ -39,7 +39,6 @@ func (s *Swamp) checkHTTP(sock *Proxy) (string, error) {
 		sock.Endpoint + "?timeout=" + strconv.Itoa(s.GetValidationTimeout()) + "s")
 
 	var client *http.Client
-
 	var transporter = dialSocks
 
 	if sock.Proto == "none" {
@@ -94,10 +93,9 @@ func (s *Swamp) singleProxyCheck(sock *Proxy) error {
 }
 
 func (sock *Proxy) validate() {
-	var sversions = []string{"5", "4", "4a"}
+	var sversions = []string{"4", "4a", "5"}
 
 	s := sock.parent
-	// ratelimited
 	if s.useProx.Check(sock) {
 		s.dbgPrint(ylw + "useProx ratelimited: " + sock.Endpoint + rst)
 		atomic.StoreUint32(&sock.lock, stateUnlocked)

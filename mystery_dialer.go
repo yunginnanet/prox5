@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"net"
-	"time"
 
 	"h12.io/socks"
 )
@@ -17,10 +16,7 @@ func (s *Swamp) MysteryDialer(ctx context.Context, network, addr string) (net.Co
 		if err := ctx.Err(); err != nil {
 			return nil, err
 		}
-
-		time.Sleep(10 * time.Millisecond)
 		sock = s.GetAnySOCKS()
-
 		if sock.Endpoint != "" {
 			break
 		}

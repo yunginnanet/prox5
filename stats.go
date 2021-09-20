@@ -13,16 +13,12 @@ type Statistics struct {
 	Valid4a int
 	// Valid5 is the amount of SOCKS5 proxies validated
 	Valid5 int
-
 	// Dispensed is a simple ticker to keep track of proxies dispensed via our getters
 	Dispensed int
-
 	// Stale is the amount of proxies that failed our stale policy upon dispensing
 	Stale int
-
 	// birthday represents the time we started checking proxies with this pool
 	birthday time.Time
-
 	mu *sync.Mutex
 }
 
@@ -31,7 +27,6 @@ func (stats *Statistics) dispense() {
 }
 
 func (stats *Statistics) stale() {
-
 	stats.Stale++
 }
 

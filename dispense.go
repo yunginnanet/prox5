@@ -133,9 +133,11 @@ func (s *Swamp) stillGood(sock *Proxy) bool {
 		return false
 	}
 
-	if s.GetRecyclingStatus() {
-		s.Pending <- sock
-	}
+	go func() {
+		if s.GetRecyclingStatus() {
+			s.Pending <- sock
+		}
+	}()
 
 	return true
 }
