@@ -12,6 +12,9 @@ func (s *Swamp) Start() error {
 	// tossUp feeds jobs to pond continuously
 	go s.jobSpawner()
 	s.started = true
+	s.mu.Lock()
+	s.Status = Running
+	s.mu.Unlock()
 	return nil
 }
 

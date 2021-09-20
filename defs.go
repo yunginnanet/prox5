@@ -165,6 +165,7 @@ func NewDefaultSwamp() *Swamp {
 
 		quit: make(chan bool),
 		mu:   &sync.RWMutex{},
+		Status: Paused,
 	}
 
 	s.swampmap = swampMap{

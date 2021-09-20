@@ -53,10 +53,12 @@ func (s *Swamp) SetValidationTimeout(newtimeout int) {
 
 // SetMaxWorkers set the maximum workers for proxy checking, this must be set before calling LoadProxyTXT for the first time.
 func (s *Swamp) SetMaxWorkers(num int) error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
 	if s.Status == Running {
 		return errors.New("can't change max workers during proxypool operation, try pausing first")
 	}
-	s.pool.Stop()
+	s.pool.StopAndWait()
 	s.swampopt.maxWorkers = num
 	s.pool = pond.New(s.swampopt.maxWorkers, 1000000, pond.PanicHandler(func(p interface{}) {
 		fmt.Println("WORKER PANIC! ", p)
