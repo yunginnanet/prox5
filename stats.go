@@ -27,32 +27,23 @@ type Statistics struct {
 }
 
 func (stats *Statistics) dispense() {
-	stats.mu.Lock()
-	defer stats.mu.Unlock()
 	stats.Dispensed++
 }
 
 func (stats *Statistics) stale() {
-	stats.mu.Lock()
-	defer stats.mu.Unlock()
+
 	stats.Stale++
 }
 
 func (stats *Statistics) v4() {
-	stats.mu.Lock()
-	defer stats.mu.Unlock()
 	stats.Valid4++
 }
 
 func (stats *Statistics) v4a() {
-	stats.mu.Lock()
-	defer stats.mu.Unlock()
 	stats.Valid4a++
 }
 
 func (stats *Statistics) v5() {
-	stats.mu.Lock()
-	defer stats.mu.Unlock()
 	stats.Valid5++
 }
 

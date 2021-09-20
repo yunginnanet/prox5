@@ -105,7 +105,6 @@ func (s *Swamp) GetAnySOCKS() Proxy {
 }
 
 func (s *Swamp) stillGood(sock *Proxy) bool {
-
 	if !atomic.CompareAndSwapUint32(&sock.lock, stateUnlocked, stateLocked) {
 		return false
 	}

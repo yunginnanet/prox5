@@ -18,8 +18,6 @@ func init() {
 // This will alter the flow of debug messages, they will no longer print to console, they will be pushed into this channel.
 // Make sure you pull from the channel eventually to avoid build up of blocked goroutines.
 func (s *Swamp) DebugChannel() chan string {
-	debugMutex.Lock()
-	defer debugMutex.Unlock()
 	debugChan = make(chan string, 1000)
 	useDebugChannel = true
 	return debugChan
@@ -27,8 +25,6 @@ func (s *Swamp) DebugChannel() chan string {
 
 // DebugEnabled returns the current state of our debug switch
 func (s *Swamp) DebugEnabled() bool {
-	debugMutex.RLock()
-	defer debugMutex.RUnlock()
 	return s.swampopt.debug
 }
 
@@ -56,8 +52,6 @@ func (s *Swamp) DisableDebug() {
 }
 
 func (s *Swamp) dbgPrint(str string) {
-	debugMutex.RLock()
-	defer debugMutex.RUnlock()
 	if !s.swampopt.debug {
 		return
 	}

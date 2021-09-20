@@ -25,20 +25,21 @@ Pause will cease the creation of any new proxy validation operations.
    * Options may be changed and proxy lists may be loaded when paused.
    * Pausing an already paused Swamp is a nonop.
 */
-func (s *Swamp) Pause() {
+func (s *Swamp) Pause() error {
 	if s.Status == Paused {
-		return
+		return errors.New("already paused")
 	}
 	for n := 2; n > 0; n-- {
 		s.quit <- true
 	}
 	s.Status = Paused
+	return nil
 }
 
 // Resume will resume pause proxy pool operations, attempting to resume a running Swamp is a non-op.
 func (s *Swamp) Resume() error {
-	if s.IsRunning() {
-		return errors.New("already running")
+	if s.Status != Paused {
+		return errors.New("not paused")
 	}
 	s.Status = Running
 	go s.mapBuilder()
