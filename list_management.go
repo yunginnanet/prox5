@@ -2,7 +2,6 @@ package pxndscvm
 
 import (
 	"bufio"
-	"errors"
 	"os"
 	"strconv"
 	"strings"
@@ -10,61 +9,81 @@ import (
 	ipa "inet.af/netaddr"
 )
 
+// throw shit proxies here, get map
+var inChan chan string
+
+func init() {
+	inChan = make(chan string, 100)
+}
+
+func (s *Swamp) stage1(in string) bool {
+	if !strings.Contains(in, ":") {
+		return false
+	}
+	split := strings.Split(in, ":")
+	if _, err := ipa.ParseIP(split[0]); err != nil {
+		return false
+	}
+	if _, err := strconv.Atoi(in); err != nil {
+		return false
+	}
+	s.mu.RLock()
+	if _, ok := s.swampmap[in]; ok {
+		s.mu.RUnlock()
+		return false
+	}
+	s.mu.RUnlock()
+
+	return true
+}
+
 // LoadProxyTXT loads proxies from a given seed file and randomly feeds them to the workers.
-func (s *Swamp) LoadProxyTXT(seedFile string) error {
-	s.dbgPrint("LoadProxyTXT start")
+func (s *Swamp) LoadProxyTXT(seedFile string) int {
+	var count int
+	s.dbgPrint("LoadProxyTXT start: "+seedFile)
+	defer s.dbgPrint("LoadProxyTXT finished: " + strconv.Itoa(count))
 
 	f, err := os.Open(seedFile)
 	if err != nil {
-		return err
+		panic(err)
+		return 0
 	}
 
 	scan := bufio.NewScanner(f)
 
 	for scan.Scan() {
-		s.mu.Lock()
-		s.scvm = append(s.scvm, scan.Text())
-		s.mu.Unlock()
+		if !s.stage1(scan.Text()) {
+			continue
+		}
+		go s.LoadSingleProxy(scan.Text())
+		count++
 	}
 
 	if err := f.Close(); err != nil {
 		s.dbgPrint(err.Error())
-		return err
+		return count
 	}
-	return nil
+
+	return count
 }
 
 // LoadSingleProxy loads a SOCKS proxy into our queue as the format: 127.0.0.1:1080 (host:port)
-func (s *Swamp) LoadSingleProxy(sock string) error {
-	if !strings.Contains(sock, ":") {
-		return errors.New("missing colon/missing port")
-	}
-	split := strings.Split(sock, ":")
-	if _, err := ipa.ParseIP(split[0]); err != nil {
-		return errors.New(split[0] + "is not an IP address")
-	}
-	if _, err := strconv.Atoi(split[1]); err != nil {
-		return errors.New(split[1] + "is not a number")
-	}
-	s.mu.Lock()
-	s.scvm = append(s.scvm, sock)
-	s.mu.Unlock()
-	return nil
+func (s *Swamp) LoadSingleProxy(sock string) {
+	inChan <- sock
 }
 
 // LoadMultiLineString loads a multiine string object with one (host:port) SOCKS proxy per line
-func (s *Swamp) LoadMultiLineString(socks string) (int, error) {
+func (s *Swamp) LoadMultiLineString(socks string) int {
 	var count int
 	scan := bufio.NewScanner(strings.NewReader(socks))
 	for scan.Scan() {
-		if err := s.LoadSingleProxy(scan.Text()); err == nil {
-			count++
-		}
+		go s.LoadSingleProxy(scan.Text())
+		count++
 	}
 	if count < 1 {
-		return 0, errors.New("no valid host:ip entries found in string")
+		return 0
 	}
-	return count, nil
+	return count
 }
 
 // ClearSOCKSList clears the slice of proxies that we continually draw from at random for validation
@@ -72,5 +91,5 @@ func (s *Swamp) LoadMultiLineString(socks string) (int, error) {
 func (s *Swamp) ClearSOCKSList() {
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	s.scvm = []string{}
+	s.swampmap = make(map[string]*Proxy)
 }

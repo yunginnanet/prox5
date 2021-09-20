@@ -2,20 +2,9 @@ package pxndscvm
 
 import (
 	"net"
-	"sync/atomic"
 	"time"
 )
 
-const (
-	stateUnlocked uint32 = iota
-	stateLocked
-)
-
-var dialPrioritySpinlock uint32
-
-func init() {
-	atomic.StoreUint32(&dialPrioritySpinlock, stateUnlocked)
-}
 
 // Socks5Str gets a SOCKS5 proxy that we have fully verified (dialed and then retrieved our IP address from a what-is-my-ip endpoint.
 // Will block if one is not available!
@@ -93,6 +82,7 @@ func (s *Swamp) GetAnySOCKS() Proxy {
 }
 
 func (s *Swamp) stillGood(candidate Proxy) bool {
+
 	if s.badProx.Peek(candidate) {
 		s.dbgPrint(ylw + "badProx dial ratelimited: " + candidate.Endpoint + rst)
 		return false
@@ -108,6 +98,7 @@ func (s *Swamp) stillGood(candidate Proxy) bool {
 		go s.Stats.stale()
 		return false
 	}
+
 	return true
 }
 
@@ -145,5 +136,14 @@ func (s *Swamp) GetMaxWorkers() int {
 	defer s.mu.RUnlock()
 	return s.swampopt.maxWorkers
 }
+// IsRunning returns true if our background goroutines defined in daemons.go are currently operational
+func (s *Swamp) IsRunning() bool {
+	if s.runningdaemons == 2 {
+		return true
+	}
+	return false
+}
+
+
 
 // TODO: Implement ways to access worker pool (pond) statistics

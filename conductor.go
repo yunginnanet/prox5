@@ -4,16 +4,15 @@ import "errors"
 
 // Start starts our proxy pool operations. Trying to start a running Swamp is a nonop.
 func (s *Swamp) Start() error {
-	if len(s.scvm) < 1 {
-		return errors.New("there are no proxies in the list")
+	if s.started {
+		return errors.New("already running")
 	}
-	if !s.started {
-		go s.tossUp()
-		go s.feed()
-		s.started = true
-		return nil
-	}
-	return errors.New("already running")
+	// mapBuilder builds deduplicated map with valid ips and ports
+	go s.mapBuilder()
+	// tossUp feeds jobs to pond continuously
+	go s.jobSpawner()
+	s.started = true
+	return nil
 }
 
 /*
@@ -35,14 +34,11 @@ func (s *Swamp) Pause() {
 
 // Resume will resume pause proxy pool operations, attempting to resume a running Swamp is a non-op.
 func (s *Swamp) Resume() error {
-	if s.Status == Running {
-		return nil
-	}
-	if len(s.scvm) < 1 {
-		return errors.New("there are no proxies in the list")
+	if s.IsRunning() {
+		return errors.New("already running")
 	}
 	s.Status = Running
-	go s.feed()
-	go s.tossUp()
+	go s.mapBuilder()
+	go s.jobSpawner()
 	return nil
 }

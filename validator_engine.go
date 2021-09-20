@@ -15,23 +15,6 @@ import (
 	"h12.io/socks"
 )
 
-func (s *Swamp) feed() {
-	s.dbgPrint("swamp feed start")
-	for {
-		if s.Status == Paused {
-			return
-		}
-		select {
-		case s.Pending <- randStrChoice(s.scvm):
-			//
-		case <-s.quit:
-			s.dbgPrint("feed() paused")
-			return
-		default:
-			time.Sleep(1 * time.Second)
-		}
-	}
-}
 
 func (s *Swamp) checkHTTP(sock Proxy) (string, error) {
 	req, err := http.NewRequest("GET", s.GetRandomEndpoint(), bytes.NewBuffer([]byte("")))
@@ -165,23 +148,6 @@ func (s *Swamp) validate() {
 		case "5":
 			go s.Stats.v5()
 			s.Socks5 <- p
-		}
-	}
-}
-
-func (s *Swamp) tossUp() {
-	s.dbgPrint("tossUp() proxy checking loop start")
-	for {
-		if s.Status == Paused {
-			return
-		}
-		select {
-		case <-s.quit:
-			s.dbgPrint("tossUp() paused")
-			return
-		default:
-			go s.pool.Submit(s.validate)
-			time.Sleep(time.Duration(10) * time.Millisecond)
 		}
 	}
 }

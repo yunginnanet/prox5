@@ -62,7 +62,9 @@ func (s *Swamp) dbgPrint(str string) {
 		return
 	}
 	if useDebugChannel {
-		debugChan <- str
+		go func() {
+			debugChan <- str
+		}()
 		return
 	}
 	println("pxndscvm: " + str)

@@ -40,12 +40,15 @@ type Swamp struct {
 	useProx *rl.Limiter
 	badProx *rl.Limiter
 
-	quit     chan bool
-	scvm     []string
-	pool     *pond.WorkerPool
-	swampopt *swampOptions
-	started  bool
-	mu       *sync.RWMutex
+	quit chan bool
+
+	swampmap map[string]*Proxy
+
+	pool           *pond.WorkerPool
+	swampopt       *swampOptions
+	runningdaemons int
+	started        bool
+	mu             *sync.RWMutex
 }
 
 var (
@@ -152,6 +155,8 @@ func NewDefaultSwamp() *Swamp {
 		quit: make(chan bool),
 		mu:   &sync.RWMutex{},
 	}
+
+	s.swampmap = make(map[string]*Proxy)
 
 	s.useProx = rl.NewCustomLimiter(s.swampopt.useProxConfig)
 	s.badProx = rl.NewCustomLimiter(s.swampopt.badProxConfig)
