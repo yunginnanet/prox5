@@ -2,7 +2,10 @@ package pxndscvm
 
 import (
 	"errors"
+	"fmt"
 	"time"
+
+	"github.com/alitto/pond"
 )
 
 // AddUserAgents appends to the list of useragents we randomly choose from during proxied requests
@@ -53,7 +56,11 @@ func (s *Swamp) SetMaxWorkers(num int) error {
 	if s.Status == Running {
 		return errors.New("can't change max workers during proxypool operation, try pausing first")
 	}
+	s.pool.Stop()
 	s.swampopt.maxWorkers = num
+	s.pool = pond.New(s.swampopt.maxWorkers, 1000000, pond.PanicHandler(func(p interface{}) {
+		fmt.Println("WORKER PANIC! ", p)
+	}))
 	return nil
 }
 

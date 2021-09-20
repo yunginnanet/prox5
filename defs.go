@@ -175,7 +175,7 @@ func NewDefaultSwamp() *Swamp {
 	s.useProx = rl.NewCustomLimiter(s.swampopt.useProxConfig)
 	s.badProx = rl.NewCustomLimiter(s.swampopt.badProxConfig)
 
-	s.pool = pond.New(s.swampopt.maxWorkers, 10000, pond.PanicHandler(func(p interface{}) {
+	s.pool = pond.New(s.swampopt.maxWorkers, 1000000, pond.PanicHandler(func(p interface{}) {
 		fmt.Println("WORKER PANIC! ", p)
 	}))
 
