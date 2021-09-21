@@ -39,7 +39,6 @@ func (s *Swamp) LoadProxyTXT(seedFile string) int {
 
 	f, err := os.Open(seedFile)
 	if err != nil {
-		panic(err)
 		return 0
 	}
 

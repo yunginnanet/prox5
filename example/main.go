@@ -20,9 +20,9 @@ func init() {
 		panic(err)
 	}
 
-	err := swamp.LoadProxyTXT("socks.list")
-	if err != nil {
-		println(err.Error())
+	count := swamp.LoadProxyTXT("socks.list")
+	if count < 1 {
+		println("file contained no valid SOCKS host:port combos")
 		os.Exit(1)
 	}
 
@@ -77,7 +77,10 @@ func watchKeyPresses() {
 			go get("5")
 		case "p":
 			if swamp.Status == 0 {
-				swamp.Pause()
+				err := swamp.Pause()
+				if err != nil {
+					println(err.Error())
+				}
 			} else {
 				if err := swamp.Resume(); err != nil {
 					println(err.Error())
