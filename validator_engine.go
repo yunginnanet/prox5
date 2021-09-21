@@ -141,12 +141,12 @@ func (sock *Proxy) validate() {
 	switch sock.Proto {
 	case "4":
 		go s.Stats.v4()
-		s.Socks4 <- sock
+		s.ValidSocks4 <- sock
 	case "4a":
 		go s.Stats.v4a()
-		s.Socks4a <- sock
+		s.ValidSocks4a <- sock
 	case "5":
 		go s.Stats.v5()
-		s.Socks5 <- sock
+		s.ValidSocks5 <- sock
 	}
 }

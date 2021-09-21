@@ -19,7 +19,7 @@ type Statistics struct {
 	Stale int
 	// birthday represents the time we started checking proxies with this pool
 	birthday time.Time
-	mu *sync.Mutex
+	mu       *sync.Mutex
 }
 
 func (stats *Statistics) dispense() {

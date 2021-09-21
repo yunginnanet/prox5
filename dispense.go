@@ -12,7 +12,7 @@ import (
 func (s *Swamp) Socks5Str() string {
 	for {
 		select {
-		case sock := <-s.Socks5:
+		case sock := <-s.ValidSocks5:
 			if !s.stillGood(sock) {
 				continue
 			}
@@ -27,7 +27,7 @@ func (s *Swamp) Socks5Str() string {
 func (s *Swamp) Socks4Str() string {
 	for {
 		select {
-		case sock := <-s.Socks4:
+		case sock := <-s.ValidSocks4:
 			if !s.stillGood(sock) {
 				continue
 			}
@@ -42,7 +42,7 @@ func (s *Swamp) Socks4Str() string {
 func (s *Swamp) Socks4aStr() string {
 	for {
 		select {
-		case sock := <-s.Socks4a:
+		case sock := <-s.ValidSocks4a:
 			if !s.stillGood(sock) {
 				continue
 			}
@@ -71,7 +71,7 @@ func (sock *Proxy) copy() (Proxy, error) {
 func (s *Swamp) GetAnySOCKS() Proxy {
 	for {
 		select {
-		case sock := <-s.Socks4:
+		case sock := <-s.ValidSocks4:
 			if !s.stillGood(sock) {
 				continue
 			}
@@ -80,7 +80,7 @@ func (s *Swamp) GetAnySOCKS() Proxy {
 				return sox
 			}
 			continue
-		case sock := <-s.Socks4a:
+		case sock := <-s.ValidSocks4a:
 			if !s.stillGood(sock) {
 				continue
 			}
@@ -89,7 +89,7 @@ func (s *Swamp) GetAnySOCKS() Proxy {
 				return sox
 			}
 			continue
-		case sock := <-s.Socks5:
+		case sock := <-s.ValidSocks5:
 			if !s.stillGood(sock) {
 				continue
 			}

@@ -23,7 +23,7 @@ func (s *Swamp) DebugChannel() chan string {
 	return debugChan
 }
 
-// DebugEnabled returns the current state of our debug switch
+// DebugEnabled returns the current state of our debug switch.
 func (s *Swamp) DebugEnabled() bool {
 	return s.swampopt.debug
 }

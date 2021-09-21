@@ -21,12 +21,12 @@ const (
 
 // Swamp represents a proxy pool
 type Swamp struct {
-	// Socks5 is a constant stream of verified Socks5 proxies
-	Socks5 chan *Proxy
-	// Socks4 is a constant stream of verified Socks4 proxies
-	Socks4 chan *Proxy
-	// Socks4a is a constant stream of verified Socks5 proxies
-	Socks4a chan *Proxy
+	// ValidSocks5 is a constant stream of verified ValidSocks5 proxies
+	ValidSocks5 chan *Proxy
+	// ValidSocks4 is a constant stream of verified ValidSocks4 proxies
+	ValidSocks4 chan *Proxy
+	// ValidSocks4a is a constant stream of verified ValidSocks5 proxies
+	ValidSocks4a chan *Proxy
 
 	// Stats holds the Statistics for our swamp
 	Stats *Statistics
@@ -149,18 +149,20 @@ type Proxy struct {
 	lock   uint32
 }
 
-// UniqueKey is an implementation of the Identity interface from Rate5
+// UniqueKey is an implementation of the Identity interface from Rate5.
+// See: https://pkg.go.dev/github.com/yunginnanet/Rate5#Identity
 func (sock Proxy) UniqueKey() string {
 	return sock.Endpoint
 }
 
 // NewDefaultSwamp returns a Swamp with basic options.
+// After calling this you can use the various "setters" to change the options before calling Swamp.Start().
 func NewDefaultSwamp() *Swamp {
 	s := &Swamp{
-		Socks5:  make(chan *Proxy, 100000),
-		Socks4:  make(chan *Proxy, 100000),
-		Socks4a: make(chan *Proxy, 100000),
-		Pending: make(chan *Proxy, 100000),
+		ValidSocks5:  make(chan *Proxy, 100000),
+		ValidSocks4:  make(chan *Proxy, 100000),
+		ValidSocks4a: make(chan *Proxy, 100000),
+		Pending:      make(chan *Proxy, 100000),
 
 		Stats: &Statistics{
 			Valid4:    0,

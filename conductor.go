@@ -2,7 +2,7 @@ package pxndscvm
 
 import "errors"
 
-// Start starts our proxy pool operations. Trying to start a running Swamp is a nonop.
+// Start starts our proxy pool operations. Trying to start a running Swamp will return an error.
 func (s *Swamp) Start() error {
 	if s.started {
 		return errors.New("already running")

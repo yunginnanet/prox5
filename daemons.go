@@ -104,7 +104,7 @@ func (s *Swamp) jobSpawner() {
 			go s.pool.Submit(sock.validate)
 			time.Sleep(time.Duration(10) * time.Millisecond)
 		default:
-			time.Sleep(100*time.Millisecond)
+			time.Sleep(100 * time.Millisecond)
 		}
 	}
 }

@@ -9,8 +9,8 @@ import (
 	ipa "inet.af/netaddr"
 )
 
-
 // throw shit proxies here, get map
+// see daemons.go
 var inChan chan string
 
 func init() {
@@ -31,10 +31,10 @@ func (s *Swamp) stage1(in string) bool {
 	return true
 }
 
-// LoadProxyTXT loads proxies from a given seed file and randomly feeds them to the workers.
+// LoadProxyTXT loads proxies from a given seed file and feeds them to the mapBuilder to be later queued automatically for validation.
 func (s *Swamp) LoadProxyTXT(seedFile string) int {
 	var count int
-	s.dbgPrint("LoadProxyTXT start: "+seedFile)
+	s.dbgPrint("LoadProxyTXT start: " + seedFile)
 	defer s.dbgPrint("LoadProxyTXT finished: " + strconv.Itoa(count))
 
 	f, err := os.Open(seedFile)
@@ -60,12 +60,12 @@ func (s *Swamp) LoadProxyTXT(seedFile string) int {
 	return count
 }
 
-// LoadSingleProxy loads a SOCKS proxy into our queue as the format: 127.0.0.1:1080 (host:port)
+// LoadSingleProxy loads a SOCKS proxy into our map. Uses the format: 127.0.0.1:1080 (host:port).
 func (s *Swamp) LoadSingleProxy(sock string) {
 	inChan <- sock
 }
 
-// LoadMultiLineString loads a multiine string object with one (host:port) SOCKS proxy per line
+// LoadMultiLineString loads a multiine string object with one (host:port) SOCKS proxy per line.
 func (s *Swamp) LoadMultiLineString(socks string) int {
 	var count int
 	scan := bufio.NewScanner(strings.NewReader(socks))
@@ -79,8 +79,8 @@ func (s *Swamp) LoadMultiLineString(socks string) int {
 	return count
 }
 
-// ClearSOCKSList clears the slice of proxies that we continually draw from at random for validation
-//	* Other operations (proxies that are still in buffered channels) will resume unless paused.
+// ClearSOCKSList clears the map of proxies that we have on record.
+// Other operations (proxies that are still in buffered channels) will continue unless paused.
 func (s *Swamp) ClearSOCKSList() {
 	s.swampmap.clear()
 }
