@@ -4,7 +4,6 @@ import (
 	"errors"
 	"strconv"
 	"sync"
-	"time"
 )
 
 func (s *Swamp) svcUp() {
@@ -123,15 +122,14 @@ func (s *Swamp) jobSpawner() {
 			return
 		}
 		select {
-		case <-s.quit:
-			return
 		case sock := <-s.Pending:
 			if err := s.pool.Submit(sock.validate); err != nil {
 				s.dbgPrint(ylw+err.Error()+rst)
 			}
-			time.Sleep(time.Duration(10) * time.Millisecond)
+		case <-s.quit:
+			return
 		default:
-			time.Sleep(10 * time.Millisecond)
+			//
 		}
 	}
 }

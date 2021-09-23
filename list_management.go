@@ -15,7 +15,7 @@ import (
 var inChan chan string
 
 func init() {
-	inChan = make(chan string, 100000)
+	inChan = make(chan string, 1000000)
 }
 
 func (s *Swamp) stage1(in string) (string, bool) {

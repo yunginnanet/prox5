@@ -99,7 +99,6 @@ func (s *Swamp) GetAnySOCKS() Proxy {
 			}
 			continue
 		default:
-			time.Sleep(25 * time.Millisecond)
 		}
 	}
 }
