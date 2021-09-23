@@ -75,10 +75,13 @@ func (s *Swamp) dbgPrint(str string) {
 	}
 
 	if useDebugChannel {
-		go func() {
-			debugChan <- str
-		}()
-		return
+		select {
+		case debugChan <- str:
+			return
+		default:
+			println("pxndscvm overflow: " + str)
+			return
+		}
 	}
 	println("pxndscvm: " + str)
 }

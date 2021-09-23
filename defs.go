@@ -181,11 +181,11 @@ func NewDefaultSwamp() *Swamp {
 	var err error
 	s.pool, err = ants.NewPool(s.swampopt.maxWorkers, ants.WithOptions(ants.Options{
 		ExpiryDuration: 5 * time.Minute,
-		PanicHandler: s.pondPanic,
+		PanicHandler:   s.pondPanic,
 	}))
 
 	if err != nil {
-		s.dbgPrint(red+"CRITICAL: "+err.Error()+rst)
+		s.dbgPrint(red + "CRITICAL: " + err.Error() + rst)
 		panic(err)
 	}
 
