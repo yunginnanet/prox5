@@ -166,7 +166,7 @@ func NewDefaultSwamp() *Swamp {
 
 		quit:   make(chan bool),
 		mu:     &sync.RWMutex{},
-		Status: Paused,
+		Status: New,
 	}
 
 	s.swampmap = swampMap{
@@ -181,7 +181,6 @@ func NewDefaultSwamp() *Swamp {
 	var err error
 	s.pool, err = ants.NewPool(s.swampopt.maxWorkers, ants.WithOptions(ants.Options{
 		ExpiryDuration: 5 * time.Minute,
-		PreAlloc: true,
 		PanicHandler: s.pondPanic,
 	}))
 
