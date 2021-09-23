@@ -16,7 +16,7 @@ func (s *Swamp) svcDown() {
 
 type swampMap struct {
 	plot   map[string]*Proxy
-	mu     *sync.Mutex
+	mu     *sync.RWMutex
 	parent *Swamp
 }
 
@@ -94,10 +94,13 @@ func (s *Swamp) recycling() int {
 	}
 	s.mu.RLock()
 	defer s.mu.RUnlock()
+	s.swampmap.mu.RLock()
 	if len(s.swampmap.plot) < 1 {
+		s.swampmap.mu.RUnlock()
 		return 0
 	}
 	var count int
+
 	for _, sock := range s.swampmap.plot {
 		select {
 		case s.Pending <- sock:
@@ -106,6 +109,7 @@ func (s *Swamp) recycling() int {
 			continue
 		}
 	}
+	s.swampmap.mu.RUnlock()
 	return count
 }
 

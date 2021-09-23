@@ -171,7 +171,7 @@ func NewDefaultSwamp() *Swamp {
 
 	s.swampmap = swampMap{
 		plot:   make(map[string]*Proxy),
-		mu:     &sync.Mutex{},
+		mu:     &sync.RWMutex{},
 		parent: s,
 	}
 
