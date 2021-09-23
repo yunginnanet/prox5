@@ -17,6 +17,8 @@ type Swamp struct {
 	ValidSocks4 chan *Proxy
 	// ValidSocks4a is a constant stream of verified ValidSocks5 proxies
 	ValidSocks4a chan *Proxy
+	// ValidHTTP is a constant stream of verified ValidSocks5 proxies
+	ValidHTTP chan *Proxy
 
 	// Stats holds the Statistics for our swamp
 	Stats *Statistics

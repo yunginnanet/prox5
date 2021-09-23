@@ -13,6 +13,8 @@ type Statistics struct {
 	Valid4a int
 	// Valid5 is the amount of SOCKS5 proxies validated
 	Valid5 int
+	// ValidHTTP is the amount of HTTP proxies validated
+	ValidHTTP int
 	// Dispensed is a simple ticker to keep track of proxies dispensed via our getters
 	Dispensed int
 	// Stale is the amount of proxies that failed our stale policy upon dispensing
@@ -43,6 +45,11 @@ func (stats *Statistics) v4a() {
 func (stats *Statistics) v5() {
 	stats.Valid5++
 }
+
+func (stats *Statistics) http() {
+	stats.ValidHTTP++
+}
+
 
 // GetUptime returns the total lifetime duration of our pool.
 func (stats *Statistics) GetUptime() time.Duration {
