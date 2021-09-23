@@ -83,8 +83,7 @@ func (s *Swamp) mapBuilder() {
 		case <-s.quit:
 			return
 		default:
-			count := s.recycling()
-			s.dbgPrint(ylw + "recycled " + strconv.Itoa(count) + " proxies from our map" + rst)
+			//
 		}
 	}
 }
@@ -129,7 +128,8 @@ func (s *Swamp) jobSpawner() {
 		case <-s.quit:
 			return
 		default:
-			//
+			count := s.recycling()
+			s.dbgPrint(ylw + "recycled " + strconv.Itoa(count) + " proxies from our map" + rst)
 		}
 	}
 }
