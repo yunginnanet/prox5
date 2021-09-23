@@ -5,18 +5,8 @@ import (
 	"sync"
 	"time"
 
-	"github.com/alitto/pond"
+	"github.com/panjf2000/ants/v2"
 	rl "github.com/yunginnanet/Rate5"
-)
-
-// SwampStatus represents the current state of our Swamp.
-type SwampStatus int
-
-const (
-	// Running means the proxy pool is currently taking in proxys and validating them, and is available to dispense proxies.
-	Running SwampStatus = iota
-	// Paused means the proxy pool has been with Swamp.Pause() and may be resumed with Swamp.Resume()
-	Paused
 )
 
 // Swamp represents a proxy pool
@@ -44,10 +34,9 @@ type Swamp struct {
 
 	swampmap swampMap
 
-	pool           *pond.WorkerPool
+	pool           *ants.Pool
 	swampopt       *swampOptions
 	runningdaemons int
-	started        bool
 	mu             *sync.RWMutex
 }
 
@@ -88,7 +77,7 @@ func defOpt() *swampOptions {
 		useProxConfig: defUseProx,
 		badProxConfig: defBadProx,
 
-		removeafter: 10,
+		removeafter: 5,
 		recycle:     true,
 
 		validationTimeout: 5,
@@ -159,10 +148,10 @@ func (sock Proxy) UniqueKey() string {
 // After calling this you can use the various "setters" to change the options before calling Swamp.Start().
 func NewDefaultSwamp() *Swamp {
 	s := &Swamp{
-		ValidSocks5:  make(chan *Proxy, 100000),
-		ValidSocks4:  make(chan *Proxy, 100000),
-		ValidSocks4a: make(chan *Proxy, 100000),
-		Pending:      make(chan *Proxy, 100000),
+		ValidSocks5:  make(chan *Proxy, 1000000),
+		ValidSocks4:  make(chan *Proxy, 1000000),
+		ValidSocks4a: make(chan *Proxy, 1000000),
+		Pending:      make(chan *Proxy, 100000000),
 
 		Stats: &Statistics{
 			Valid4:    0,
@@ -189,11 +178,24 @@ func NewDefaultSwamp() *Swamp {
 	s.useProx = rl.NewCustomLimiter(s.swampopt.useProxConfig)
 	s.badProx = rl.NewCustomLimiter(s.swampopt.badProxConfig)
 
-	s.pool = pond.New(s.swampopt.maxWorkers, 1000000, pond.PanicHandler(func(p interface{}) {
-		fmt.Println("WORKER PANIC! ", p)
+	var err error
+	s.pool, err = ants.NewPool(s.swampopt.maxWorkers, ants.WithOptions(ants.Options{
+		ExpiryDuration: 5 * time.Minute,
+		PreAlloc: true,
+		PanicHandler: s.pondPanic,
 	}))
 
+	if err != nil {
+		s.dbgPrint(red+"CRITICAL: "+err.Error()+rst)
+		panic(err)
+	}
+
 	return s
+}
+
+func (s *Swamp) pondPanic(p interface{}) {
+	fmt.Println("WORKER PANIC! ", p)
+	s.dbgPrint(red + "PANIC! " + fmt.Sprintf("%v", p))
 }
 
 // defaultUserAgents is a small list of user agents to use during validation.

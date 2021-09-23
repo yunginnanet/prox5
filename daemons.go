@@ -2,6 +2,7 @@ package pxndscvm
 
 import (
 	"errors"
+	"strconv"
 	"sync"
 	"time"
 )
@@ -61,6 +62,8 @@ func (sm swampMap) clear() {
 }
 
 func (s *Swamp) mapBuilder() {
+	var filtered string
+	var ok bool
 	s.svcUp()
 	s.dbgPrint("map builder started")
 	defer func() {
@@ -70,10 +73,10 @@ func (s *Swamp) mapBuilder() {
 	for {
 		select {
 		case in := <-inChan:
-			if !s.stage1(in) {
+			if filtered, ok = s.stage1(in); !ok {
 				continue
 			}
-			if p, ok := s.swampmap.add(in); !ok {
+			if p, ok := s.swampmap.add(filtered); !ok {
 				continue
 			} else {
 				s.Pending <- p
@@ -81,9 +84,31 @@ func (s *Swamp) mapBuilder() {
 		case <-s.quit:
 			return
 		default:
-			time.Sleep(100 * time.Millisecond)
+			count := s.recycling()
+			s.dbgPrint(ylw + "recycled " + strconv.Itoa(count) + " proxies from our map" + rst)
 		}
 	}
+}
+
+func (s *Swamp) recycling() int {
+	if !s.GetRecyclingStatus() {
+		return 0
+	}
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+	if len(s.swampmap.plot) < 1 {
+		return 0
+	}
+	var count int
+	for _, sock := range s.swampmap.plot {
+		select {
+		case s.Pending <- sock:
+			count++
+		default:
+			continue
+		}
+	}
+	return count
 }
 
 func (s *Swamp) jobSpawner() {
@@ -101,10 +126,12 @@ func (s *Swamp) jobSpawner() {
 		case <-s.quit:
 			return
 		case sock := <-s.Pending:
-			go s.pool.Submit(sock.validate)
+			if err := s.pool.Submit(sock.validate); err != nil {
+				s.dbgPrint(ylw+err.Error()+rst)
+			}
 			time.Sleep(time.Duration(10) * time.Millisecond)
 		default:
-			time.Sleep(100 * time.Millisecond)
+			time.Sleep(10 * time.Millisecond)
 		}
 	}
 }

@@ -54,6 +54,14 @@ func (s *Swamp) GetRecyclingStatus() bool {
 	return s.swampopt.recycle
 }
 
+// GetWorkers retrieves pond worker statistics:
+//    * return MaxWorkers, RunningWorkers, IdleWorkers
+func (s *Swamp) GetWorkers() (int, int, int) {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+	return  s.pool.Cap(), s.pool.Running(), s.pool.Free()
+}
+
 // GetRemoveAfter retrieves the removeafter policy, the amount of times a recycled proxy is marked as bad until it is removed entirely.
 //    *  returns -1 if recycling is disabled.
 func (s *Swamp) GetRemoveAfter() int {
@@ -63,12 +71,4 @@ func (s *Swamp) GetRemoveAfter() int {
 		return -1
 	}
 	return s.swampopt.removeafter
-}
-
-// GetWorkers retrieves pond worker statistics:
-//    * return MaxWorkers, RunningWorkers, IdleWorkers
-func (s *Swamp) GetWorkers() (int, int, int) {
-	s.mu.RLock()
-	defer s.mu.RUnlock()
-	return s.pool.MaxWorkers(), s.pool.RunningWorkers(), s.pool.IdleWorkers()
 }

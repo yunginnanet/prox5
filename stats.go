@@ -17,6 +17,8 @@ type Statistics struct {
 	Dispensed int
 	// Stale is the amount of proxies that failed our stale policy upon dispensing
 	Stale int
+	// Checked is the amount of proxies we've checked.
+	Checked int
 	// birthday represents the time we started checking proxies with this pool
 	birthday time.Time
 	mu       *sync.Mutex

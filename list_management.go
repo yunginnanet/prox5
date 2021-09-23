@@ -2,6 +2,7 @@ package pxndscvm
 
 import (
 	"bufio"
+	"fmt"
 	"os"
 	"strconv"
 	"strings"
@@ -17,23 +18,25 @@ func init() {
 	inChan = make(chan string, 100000)
 }
 
-func (s *Swamp) stage1(in string) bool {
+func (s *Swamp) stage1(in string) (string, bool) {
 	if !strings.Contains(in, ":") {
-		return false
+		return in, false
 	}
 	split := strings.Split(in, ":")
 	if _, err := ipa.ParseIP(split[0]); err != nil {
-		return false
+		return in, false
 	}
 	if _, err := strconv.Atoi(split[1]); err != nil {
-		return false
+		return in, false
 	}
-	return true
+	return fmt.Sprintf("%s:%s", split[0], split[1]), true
 }
 
 // LoadProxyTXT loads proxies from a given seed file and feeds them to the mapBuilder to be later queued automatically for validation.
 func (s *Swamp) LoadProxyTXT(seedFile string) int {
 	var count int
+	var filtered string
+	var ok bool
 	s.dbgPrint("LoadProxyTXT start: " + seedFile)
 	defer s.dbgPrint("LoadProxyTXT finished: " + strconv.Itoa(count))
 
@@ -45,10 +48,10 @@ func (s *Swamp) LoadProxyTXT(seedFile string) int {
 	scan := bufio.NewScanner(f)
 
 	for scan.Scan() {
-		if !s.stage1(scan.Text()) {
+		if filtered, ok = s.stage1(scan.Text()); !ok {
 			continue
 		}
-		go s.LoadSingleProxy(scan.Text())
+		go s.LoadSingleProxy(filtered)
 		count++
 	}
 

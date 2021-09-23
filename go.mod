@@ -3,9 +3,9 @@ module git.tcp.direct/kayos/pxndscvm
 go 1.17
 
 require (
-	github.com/alitto/pond v1.5.1
 	github.com/h12w/go-socks5 v0.0.0-20200522160539-76189e178364
 	github.com/mattn/go-tty v0.0.3
+	github.com/panjf2000/ants/v2 v2.4.6
 	github.com/yunginnanet/Rate5 v0.0.0-20210918144058-dfa3665041eb
 	golang.org/x/net v0.0.0-20210908191846-a5e095526f91
 	h12.io/socks v1.0.3

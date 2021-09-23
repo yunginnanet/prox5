@@ -7,6 +7,7 @@ import (
 
 const (
 	grn = "\033[32m"
+	red =  "\033[31m"
 	ylw = "\033[33m"
 	rst = "\033[0m"
 )

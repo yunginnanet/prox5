@@ -72,6 +72,7 @@ func (s *Swamp) checkHTTP(sock *Proxy) (string, error) {
 }
 
 func (s *Swamp) singleProxyCheck(sock *Proxy) error {
+	s.Stats.Checked++
 	if _, err := net.DialTimeout("tcp", sock.Endpoint, time.Duration(s.GetValidationTimeout())*time.Second); err != nil {
 		s.badProx.Check(sock)
 		return err
