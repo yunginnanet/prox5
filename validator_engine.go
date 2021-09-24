@@ -62,7 +62,7 @@ func (s *Swamp) checkHTTP(sock *Proxy) (string, error) {
 	}
 
 	var t int
-	switch sock.Proto {
+	switch sock.Proto.Load().(string) {
 	case "5":
 		t = socks.SOCKS5
 	case "4":
@@ -73,11 +73,11 @@ func (s *Swamp) checkHTTP(sock *Proxy) (string, error) {
 
 	var dialSocks = socks.DialSocksProxy(t, sock.Endpoint)
 	var transportDialer = dialSocks
-	if sock.Proto == "none" {
+	if sock.Proto.Load().(string) == "none" {
 		transportDialer = proxy.Direct.Dial
 	}
 
-	// if sock.Proto != "http" {
+	// if sock.Proto.Load().(string) != "http" {
 	transporter.Dial = transportDialer
 
 	// } else {
@@ -155,7 +155,7 @@ func (sock *Proxy) validate() {
 			return
 		}
 
-		sock.Proto = sver
+		sock.Proto.Store(sver)
 		if err := s.singleProxyCheck(sock); err == nil {
 			//			if sock.Proto != "http" {
 			s.dbgPrint(grn + "verified " + sock.Endpoint + " as SOCKS" + sver + rst)
@@ -178,7 +178,7 @@ func (sock *Proxy) validate() {
 	sock.good()
 	atomic.StoreUint32(&sock.lock, stateUnlocked)
 
-	switch sock.Proto {
+	switch sock.Proto.Load().(string) {
 	case "4":
 		go func() {
 			s.Stats.v4()

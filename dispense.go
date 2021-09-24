@@ -68,32 +68,33 @@ func (sock *Proxy) copy() (Proxy, error) {
 // GetAnySOCKS retrieves any version SOCKS proxy as a Proxy type
 // Will block if one is not available!
 func (s *Swamp) GetAnySOCKS(extradial bool) Proxy {
+	dishout := func(sock *Proxy) (Proxy, bool) {
+		if !s.stillGood(sock, extradial) {
+			return Proxy{}, false
+		}
+		if sox, err := sock.copy(); err == nil {
+			s.Stats.dispense()
+			return sox, true
+		}
+		return Proxy{}, false
+	}
+
 	for {
+		var sox Proxy
+		var ok bool
 		select {
 		case sock := <-s.ValidSocks4:
-			if !s.stillGood(sock, true) {
-				continue
-			}
-			if sox, err := sock.copy(); err == nil {
-				s.Stats.dispense()
+			if sox, ok = dishout(sock); ok {
 				return sox
 			}
 			continue
 		case sock := <-s.ValidSocks4a:
-			if !s.stillGood(sock, extradial) {
-				continue
-			}
-			if sox, err := sock.copy(); err == nil {
-				s.Stats.dispense()
+			if sox, ok = dishout(sock); ok {
 				return sox
 			}
 			continue
 		case sock := <-s.ValidSocks5:
-			if !s.stillGood(sock, extradial) {
-				continue
-			}
-			if sox, err := sock.copy(); err == nil {
-				s.Stats.dispense()
+			if sox, ok = dishout(sock); ok {
 				return sox
 			}
 			continue
@@ -128,7 +129,7 @@ func (s *Swamp) stillGood(sock *Proxy, extradial bool) bool {
 		}
 	}
 
-	if time.Since(sock.lastValidated.Load().(time.Time)) > s.swampopt.stale {
+	if time.Since(sock.lastValidated.Load().(time.Time)) > s.swampopt.stale.Load().(time.Duration) {
 		s.dbgPrint("proxy stale: " + sock.Endpoint)
 		go s.Stats.stale()
 		return false

@@ -74,20 +74,21 @@ var defBadProx = rl.Policy{
 // Returns a pointer to our default options (modified and accessed later through concurrent safe getters and setters)
 func defOpt() *swampOptions {
 	sm := &swampOptions{
-		userAgents:     defaultUserAgents,
-		CheckEndpoints: defaultChecks,
-		stale:          defaultStaleTime,
-		maxWorkers:     defWorkers,
-
 		useProxConfig: defUseProx,
 		badProxConfig: defBadProx,
 
-		removeafter: 5,
-		recycle:     true,
-
-		debug: false,
+		checkEndpoints: defaultChecks,
+		userAgents: defaultUserAgents,
 	}
-	sm.validationTimeout.Store(time.Duration(5) * time.Second)
+
+	sm.removeafter.Store(5)
+	sm.recycle.Store(true)
+	sm.debug.Store(false)
+	sm.validationTimeout.Store(time.Duration(12) * time.Second)
+
+	sm.stale.Store(defaultStaleTime)
+	sm.maxWorkers.Store(defWorkers)
+
 	return sm
 }
 
@@ -116,23 +117,23 @@ func getScvm(moss net.Conn) *scvm {
 type swampOptions struct {
 	// stale is the amount of time since verification that qualifies a proxy going stale.
 	// if a stale proxy is drawn during the use of our getter functions, it will be skipped.
-	stale time.Duration
+	stale atomic.Value
 	// userAgents contains a list of userAgents to be randomly drawn from for proxied requests, this should be supplied via SetUserAgents
 	userAgents []string
 	// debug when enabled will print results as they come in
-	debug bool
-	// CheckEndpoints includes web services that respond with (just) the WAN IP of the connection for validation purposes
-	CheckEndpoints []string
+	debug atomic.Value
+	// checkEndpoints includes web services that respond with (just) the WAN IP of the connection for validation purposes
+	checkEndpoints []string
 	// maxWorkers determines the maximum amount of workers used for checking proxies
-	maxWorkers int
+	maxWorkers atomic.Value
 	// validationTimeout defines the timeout for proxy validation operations.
 	// This will apply for both the initial quick check (dial), and the second check (HTTP GET).
 	validationTimeout atomic.Value
 
 	// recycle determines whether or not we recycle proxies pack into the pending channel after we dispense them
-	recycle bool
+	recycle atomic.Value
 	// remove proxy from recycling after being marked bad this many times
-	removeafter int
+	removeafter atomic.Value
 
 	// TODO: make getters and setters for these
 	useProxConfig rl.Policy
@@ -151,7 +152,7 @@ type Proxy struct {
 	// ProxiedIP is the address that we end up having when making proxied requests through this proxy
 	ProxiedIP string
 	// Proto is the version/Protocol (currently SOCKS* only) of the proxy
-	Proto string
+	Proto atomic.Value
 	// lastValidated is the time this proxy was last verified working
 	lastValidated atomic.Value
 	// timesValidated is the amount of times the proxy has been validated.
@@ -204,7 +205,7 @@ func NewDefaultSwamp() *Swamp {
 	s.badProx = rl.NewCustomLimiter(s.swampopt.badProxConfig)
 
 	var err error
-	s.pool, err = ants.NewPool(s.swampopt.maxWorkers, ants.WithOptions(ants.Options{
+	s.pool, err = ants.NewPool(s.swampopt.maxWorkers.Load().(int), ants.WithOptions(ants.Options{
 		ExpiryDuration: 2 * time.Minute,
 		PanicHandler:   s.pondPanic,
 	}))

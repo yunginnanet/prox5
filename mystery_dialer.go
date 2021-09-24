@@ -12,6 +12,7 @@ import (
 func (s *Swamp) MysteryDialer(ctx context.Context, network, addr string) (net.Conn, error) {
 	var sock Proxy
 	var socksString string
+	var conn net.Conn
 	// pull down proxies from channel until we get a proxy good enough for our spoiled asses
 
 	for {
@@ -22,16 +23,16 @@ func (s *Swamp) MysteryDialer(ctx context.Context, network, addr string) (net.Co
 		sock = s.GetAnySOCKS(false)
 		s.dbgPrint("dialer trying: " + sock.Endpoint + "...")
 
-		socksString = fmt.Sprintf("socks%s://%s?timeout=%ds", sock.Proto, sock.Endpoint, s.GetValidationTimeout())
+		var err error
+		socksString = fmt.Sprintf("socks%s://%s?timeout=%ss", sock.GetProto(), sock.Endpoint, s.GetTimeoutSecondsStr())
 		dialSocks := socks.Dial(socksString)
-		if _, err := dialSocks("tcp", addr); err != nil {
-			s.dbgPrint(ylw + "unable to reach [redacted] with SOCKS: " + sock.Endpoint + ", cycling..." + rst)
+		if conn, err = dialSocks(network, addr); err != nil {
+			s.dbgPrint(ylw + "unable to reach [redacted] with " + socksString + ", cycling..." + rst)
 			continue
 		}
 		break
 	}
 
-	dialSocks := socks.Dial(socksString)
 	s.dbgPrint(grn + "MysteryDialer using socks: " + socksString + rst)
-	return dialSocks(network, addr)
+	return conn, nil
 }

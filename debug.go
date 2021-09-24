@@ -39,7 +39,7 @@ func (s *Swamp) DebugChannel() chan string {
 
 // DebugEnabled returns the current state of our debug switch.
 func (s *Swamp) DebugEnabled() bool {
-	return s.swampopt.debug
+	return s.swampopt.debug.Load().(bool)
 }
 
 // DisableDebugChannel redirects debug messages back to the console.
@@ -52,21 +52,17 @@ func (s *Swamp) DisableDebugChannel() {
 
 // EnableDebug enables printing of verbose messages during operation
 func (s *Swamp) EnableDebug() {
-	debugMutex.Lock()
-	defer debugMutex.Unlock()
-	s.swampopt.debug = true
+	s.swampopt.debug.Store(true)
 }
 
 // DisableDebug enables printing of verbose messages during operation.
 // WARNING: if you are using a DebugChannel, you must read all of the messages in the channel's cache or this will block.
 func (s *Swamp) DisableDebug() {
-	debugMutex.Lock()
-	defer debugMutex.Unlock()
-	s.swampopt.debug = false
+	s.swampopt.debug.Store(false)
 }
 
 func (s *Swamp) dbgPrint(str string) {
-	if !s.swampopt.debug {
+	if !s.swampopt.debug.Load().(bool) {
 		return
 	}
 
