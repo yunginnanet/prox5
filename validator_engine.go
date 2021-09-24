@@ -8,7 +8,7 @@ import (
 	"io/ioutil"
 	"net"
 	"net/http"
-//	"net/url"
+	//	"net/url"
 	"sync/atomic"
 	"time"
 
@@ -34,18 +34,27 @@ func (s *Swamp) prepHTTP() (*http.Client, *http.Transport, *http.Request, error)
 	var transporter = &http.Transport{
 		DisableKeepAlives:   true,
 		TLSClientConfig:     &tls.Config{InsecureSkipVerify: true},
-		TLSHandshakeTimeout: time.Duration(s.GetValidationTimeout()) * time.Second,
+		TLSHandshakeTimeout: s.swampopt.validationTimeout.Load().(time.Duration),
 	}
-	
+
 	return client, transporter, req, err
+}
+
+func (sock *Proxy) bad() {
+	sock.timesBad.Store(sock.timesBad.Load().(int) + 1)
+}
+
+func (sock *Proxy) good() {
+	sock.timesValidated.Store(sock.timesValidated.Load().(int) + 1)
+	sock.lastValidated.Store(time.Now())
 }
 
 func (s *Swamp) checkHTTP(sock *Proxy) (string, error) {
 	var (
-		client *http.Client
+		client      *http.Client
 		transporter *http.Transport
-		req *http.Request
-		err error
+		req         *http.Request
+		err         error
 	)
 
 	if client, transporter, req, err = s.prepHTTP(); err != nil {
@@ -68,20 +77,20 @@ func (s *Swamp) checkHTTP(sock *Proxy) (string, error) {
 		transportDialer = proxy.Direct.Dial
 	}
 
-	//if sock.Proto != "http" {
+	// if sock.Proto != "http" {
 	transporter.Dial = transportDialer
 
-	//} else {
+	// } else {
 	//	if purl, err := url.Parse("http://" + sock.Endpoint); err == nil {
 	//		transporter.Proxy = http.ProxyURL(purl)
 	//	} else {
 	//		return "", err
 	//	}
-	//}
+	// }
 
 	client = &http.Client{
 		Transport: transporter,
-		Timeout:   time.Duration(s.swampopt.validationTimeout) * time.Second,
+		Timeout:   s.swampopt.validationTimeout.Load().(time.Duration),
 	}
 
 	resp, err := client.Do(req)
@@ -102,7 +111,7 @@ func (s *Swamp) checkHTTP(sock *Proxy) (string, error) {
 
 func (s *Swamp) singleProxyCheck(sock *Proxy) error {
 	s.Stats.Checked++
-	if _, err := net.DialTimeout("tcp", sock.Endpoint, time.Duration(s.GetValidationTimeout())*time.Second); err != nil {
+	if _, err := net.DialTimeout("tcp", sock.Endpoint, s.swampopt.validationTimeout.Load().(time.Duration)); err != nil {
 		s.badProx.Check(sock)
 		return err
 	}
@@ -148,11 +157,11 @@ func (sock *Proxy) validate() {
 
 		sock.Proto = sver
 		if err := s.singleProxyCheck(sock); err == nil {
-//			if sock.Proto != "http" {
+			//			if sock.Proto != "http" {
 			s.dbgPrint(grn + "verified " + sock.Endpoint + " as SOCKS" + sver + rst)
-//			} else {
-//				s.dbgPrint(ylw + "verified " + sock.Endpoint + " as http (not usable yet)" + rst)
-//			}
+			//			} else {
+			//				s.dbgPrint(ylw + "verified " + sock.Endpoint + " as http (not usable yet)" + rst)
+			//			}
 			good = true
 			break
 		}
@@ -160,14 +169,13 @@ func (sock *Proxy) validate() {
 
 	if !good {
 		s.dbgPrint(red + "failed to verify: " + sock.Endpoint)
-		sock.TimesBad++
+		sock.bad()
 		s.badProx.Check(sock)
 		atomic.StoreUint32(&sock.lock, stateUnlocked)
 		return
 	}
 
-	sock.TimesValidated++
-	sock.LastVerified = time.Now()
+	sock.good()
 	atomic.StoreUint32(&sock.lock, stateUnlocked)
 
 	switch sock.Proto {

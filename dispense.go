@@ -59,10 +59,9 @@ func (sock *Proxy) copy() (Proxy, error) {
 	atomic.StoreUint32(&sock.lock, stateUnlocked)
 
 	return Proxy{
-		Endpoint:     sock.Endpoint,
-		ProxiedIP:    sock.ProxiedIP,
-		Proto:        sock.Proto,
-		LastVerified: sock.LastVerified,
+		Endpoint:  sock.Endpoint,
+		ProxiedIP: sock.ProxiedIP,
+		Proto:     sock.Proto,
 	}, nil
 }
 
@@ -110,7 +109,7 @@ func (s *Swamp) stillGood(sock *Proxy, extradial bool) bool {
 	}
 	defer atomic.StoreUint32(&sock.lock, stateUnlocked)
 
-	if sock.TimesBad > s.GetRemoveAfter() {
+	if sock.timesBad.Load().(int) > s.GetRemoveAfter() {
 		s.dbgPrint(red + "deleting from map (too many failures): " + sock.Endpoint + rst)
 		if err := s.swampmap.delete(sock.Endpoint); err != nil {
 			s.dbgPrint(err.Error())
@@ -123,13 +122,13 @@ func (s *Swamp) stillGood(sock *Proxy, extradial bool) bool {
 	}
 
 	if extradial {
-		if _, err := net.DialTimeout("tcp", sock.Endpoint, time.Duration(s.GetValidationTimeout())*time.Second); err != nil {
+		if _, err := net.DialTimeout("tcp", sock.Endpoint, s.GetValidationTimeout()); err != nil {
 			s.dbgPrint(ylw + sock.Endpoint + " failed dialing out during stillGood check: " + err.Error() + rst)
 			return false
 		}
 	}
 
-	if time.Since(sock.LastVerified) > s.swampopt.stale {
+	if time.Since(sock.lastValidated.Load().(time.Time)) > s.swampopt.stale {
 		s.dbgPrint("proxy stale: " + sock.Endpoint)
 		go s.Stats.stale()
 		return false

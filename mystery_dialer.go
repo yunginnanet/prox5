@@ -32,6 +32,6 @@ func (s *Swamp) MysteryDialer(ctx context.Context, network, addr string) (net.Co
 	}
 
 	dialSocks := socks.Dial(socksString)
-	s.dbgPrint(grn+"MysteryDialer using socks: " + socksString+rst)
+	s.dbgPrint(grn + "MysteryDialer using socks: " + socksString + rst)
 	return dialSocks(network, addr)
 }

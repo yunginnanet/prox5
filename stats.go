@@ -50,7 +50,6 @@ func (stats *Statistics) http() {
 	stats.ValidHTTP++
 }
 
-
 // GetUptime returns the total lifetime duration of our pool.
 func (stats *Statistics) GetUptime() time.Duration {
 	return time.Since(stats.birthday)

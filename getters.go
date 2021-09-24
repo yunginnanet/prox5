@@ -26,10 +26,10 @@ func (s *Swamp) GetStaleTime() time.Duration {
 }
 
 // GetValidationTimeout returns the current value of validationTimeout (in seconds).
-func (s *Swamp) GetValidationTimeout() int {
+func (s *Swamp) GetValidationTimeout() time.Duration {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
-	return s.swampopt.validationTimeout
+	return s.swampopt.validationTimeout.Load().(time.Duration)
 }
 
 // GetMaxWorkers returns maximum amount of workers that validate proxies concurrently. Note this is read-only during runtime.
@@ -59,7 +59,7 @@ func (s *Swamp) GetRecyclingStatus() bool {
 func (s *Swamp) GetWorkers() (int, int, int) {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
-	return  s.pool.Cap(), s.pool.Running(), s.pool.Free()
+	return s.pool.Cap(), s.pool.Running(), s.pool.Free()
 }
 
 // GetRemoveAfter retrieves the removeafter policy, the amount of times a recycled proxy is marked as bad until it is removed entirely.

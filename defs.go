@@ -3,6 +3,7 @@ package pxndscvm
 import (
 	"fmt"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"github.com/panjf2000/ants/v2"
@@ -35,6 +36,8 @@ type Swamp struct {
 	quit chan bool
 
 	swampmap swampMap
+
+	reaper sync.Pool
 
 	pool           *ants.Pool
 	swampopt       *swampOptions
@@ -70,7 +73,7 @@ var defBadProx = rl.Policy{
 
 // Returns a pointer to our default options (modified and accessed later through concurrent safe getters and setters)
 func defOpt() *swampOptions {
-	return &swampOptions{
+	sm := &swampOptions{
 		userAgents:     defaultUserAgents,
 		CheckEndpoints: defaultChecks,
 		stale:          defaultStaleTime,
@@ -82,10 +85,31 @@ func defOpt() *swampOptions {
 		removeafter: 5,
 		recycle:     true,
 
-		validationTimeout: 5,
-		debug:             false,
+		debug: false,
 	}
+	sm.validationTimeout.Store(time.Duration(5) * time.Second)
+	return sm
 }
+
+/*type connPoolOptions struct {
+	dialer    func() (net.Conn, error)
+	deathFunc func(*Conn) error
+}
+*/
+
+/*// scvm is a pooled net.Conn
+type scvm struct {
+	moss net.Conn
+	used atomic.Value
+}
+
+func getScvm(moss net.Conn) *scvm {
+	s := &scvm{
+		moss: moss,
+	}
+	s.used.Store(time.Now())
+	return s
+}*/
 
 // swampOptions holds our configuration for Swamp instances.
 // This is implemented as a pointer, and should be interacted with via the setter and getter functions.
@@ -101,9 +125,9 @@ type swampOptions struct {
 	CheckEndpoints []string
 	// maxWorkers determines the maximum amount of workers used for checking proxies
 	maxWorkers int
-	// validationTimeout defines the timeout (in seconds) for proxy validation operations.
+	// validationTimeout defines the timeout for proxy validation operations.
 	// This will apply for both the initial quick check (dial), and the second check (HTTP GET).
-	validationTimeout int
+	validationTimeout atomic.Value
 
 	// recycle determines whether or not we recycle proxies pack into the pending channel after we dispense them
 	recycle bool
@@ -128,13 +152,12 @@ type Proxy struct {
 	ProxiedIP string
 	// Proto is the version/Protocol (currently SOCKS* only) of the proxy
 	Proto string
-	// LastVerified is the time this proxy was last verified working
-	LastVerified time.Time
-
-	// TimesValidated is the amount of times the proxy has been validated.
-	TimesValidated int
-	// TimesBad is the amount of times the proxy has been marked as bad.
-	TimesBad int
+	// lastValidated is the time this proxy was last verified working
+	lastValidated atomic.Value
+	// timesValidated is the amount of times the proxy has been validated.
+	timesValidated atomic.Value
+	// timesBad is the amount of times the proxy has been marked as bad.
+	timesBad atomic.Value
 
 	parent *Swamp
 	lock   uint32
@@ -191,6 +214,14 @@ func NewDefaultSwamp() *Swamp {
 		panic(err)
 	}
 
+	/*	s.reaper = sync.Pool{
+			New: func() interface{} {
+				clock := time.NewTimer(time.Duration(s.swampopt.validationTimeout) * time.Second)
+				clock.Stop()
+				return clock
+			},
+		}
+	*/
 	return s
 }
 

@@ -27,12 +27,12 @@ func (sm swampMap) add(sock string) (*Proxy, bool) {
 		return nil, false
 	}
 	p := &Proxy{
-		Endpoint:       sock,
-		lock:           stateUnlocked,
-		TimesValidated: 0,
-		TimesBad:       0,
-		parent:         sm.parent,
+		Endpoint: sock,
+		lock:     stateUnlocked,
+		parent:   sm.parent,
 	}
+	p.timesValidated.Store(0)
+	p.timesBad.Store(0)
 	sm.plot[sock] = p
 	return p, true
 }
@@ -127,7 +127,7 @@ func (s *Swamp) jobSpawner() {
 		select {
 		case sock := <-s.Pending:
 			if err := s.pool.Submit(sock.validate); err != nil {
-				s.dbgPrint(ylw+err.Error()+rst)
+				s.dbgPrint(ylw + err.Error() + rst)
 			}
 		case <-s.quit:
 			return

@@ -40,11 +40,9 @@ func (s *Swamp) SetStaleTime(newtime time.Duration) {
 	s.swampopt.stale = newtime
 }
 
-// SetValidationTimeout sets the validationTimeout option (in seconds).
-func (s *Swamp) SetValidationTimeout(newtimeout int) {
-	s.mu.Lock()
-	defer s.mu.Unlock()
-	s.swampopt.validationTimeout = newtimeout
+// SetValidationTimeout sets the validationTimeout option.
+func (s *Swamp) SetValidationTimeout(timeout time.Duration) {
+	s.swampopt.validationTimeout.Store(timeout)
 }
 
 // SetMaxWorkers set the maximum workers for proxy checking and clears the current proxy map and worker pool jobs.
