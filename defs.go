@@ -150,10 +150,10 @@ func (sock Proxy) UniqueKey() string {
 // After calling this you can use the various "setters" to change the options before calling Swamp.Start().
 func NewDefaultSwamp() *Swamp {
 	s := &Swamp{
-		ValidSocks5:  make(chan *Proxy, 1000000),
-		ValidSocks4:  make(chan *Proxy, 1000000),
-		ValidSocks4a: make(chan *Proxy, 1000000),
-		Pending:      make(chan *Proxy, 100000000),
+		ValidSocks5:  make(chan *Proxy, 10000000),
+		ValidSocks4:  make(chan *Proxy, 10000000),
+		ValidSocks4a: make(chan *Proxy, 10000000),
+		Pending:      make(chan *Proxy, 10000000),
 
 		Stats: &Statistics{
 			Valid4:    0,
@@ -182,7 +182,7 @@ func NewDefaultSwamp() *Swamp {
 
 	var err error
 	s.pool, err = ants.NewPool(s.swampopt.maxWorkers, ants.WithOptions(ants.Options{
-		ExpiryDuration: 5 * time.Minute,
+		ExpiryDuration: 2 * time.Minute,
 		PanicHandler:   s.pondPanic,
 	}))
 

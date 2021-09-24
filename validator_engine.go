@@ -8,8 +8,7 @@ import (
 	"io/ioutil"
 	"net"
 	"net/http"
-	"net/url"
-	"strconv"
+//	"net/url"
 	"sync/atomic"
 	"time"
 
@@ -17,14 +16,11 @@ import (
 	"h12.io/socks"
 )
 
-var failcount = 0
-
-func (s *Swamp) checkHTTP(sock *Proxy) (string, error) {
+func (s *Swamp) prepHTTP() (*http.Client, *http.Transport, *http.Request, error) {
 	req, err := http.NewRequest("GET", s.GetRandomEndpoint(), bytes.NewBuffer([]byte("")))
 	if err != nil {
-		return "", err
+		return nil, nil, nil, err
 	}
-
 	headers := make(map[string]string)
 	headers["User-Agent"] = s.RandomUserAgent()
 	headers["Accept"] = "text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,image/apng,*/*;q=0.8"
@@ -34,35 +30,58 @@ func (s *Swamp) checkHTTP(sock *Proxy) (string, error) {
 	for header, value := range headers {
 		req.Header.Set(header, value)
 	}
-
 	var client *http.Client
 	var transporter = &http.Transport{
 		DisableKeepAlives:   true,
 		TLSClientConfig:     &tls.Config{InsecureSkipVerify: true},
 		TLSHandshakeTimeout: time.Duration(s.GetValidationTimeout()) * time.Second,
 	}
+	
+	return client, transporter, req, err
+}
 
-	var dialSocks = socks.Dial("socks" + sock.Proto + "://" +
-		sock.Endpoint + "?timeout=" + strconv.Itoa(s.GetValidationTimeout()) + "s")
+func (s *Swamp) checkHTTP(sock *Proxy) (string, error) {
+	var (
+		client *http.Client
+		transporter *http.Transport
+		req *http.Request
+		err error
+	)
+
+	if client, transporter, req, err = s.prepHTTP(); err != nil {
+		return "", err
+	}
+
+	var t int
+	switch sock.Proto {
+	case "5":
+		t = socks.SOCKS5
+	case "4":
+		t = socks.SOCKS4
+	case "4a":
+		t = socks.SOCKS4A
+	}
+
+	var dialSocks = socks.DialSocksProxy(t, sock.Endpoint)
 	var transportDialer = dialSocks
-
 	if sock.Proto == "none" {
 		transportDialer = proxy.Direct.Dial
 	}
 
-	if sock.Proto != "http" {
-		transporter.Dial = transportDialer
-	} else {
-		if purl, err := url.Parse("http://" + sock.Endpoint); err == nil {
-			transporter.Proxy = http.ProxyURL(purl)
-		} else {
-			return "", err
-		}
-	}
+	//if sock.Proto != "http" {
+	transporter.Dial = transportDialer
+
+	//} else {
+	//	if purl, err := url.Parse("http://" + sock.Endpoint); err == nil {
+	//		transporter.Proxy = http.ProxyURL(purl)
+	//	} else {
+	//		return "", err
+	//	}
+	//}
 
 	client = &http.Client{
 		Transport: transporter,
-		Timeout: time.Duration(s.swampopt.validationTimeout) * time.Second,
+		Timeout:   time.Duration(s.swampopt.validationTimeout) * time.Second,
 	}
 
 	resp, err := client.Do(req)
@@ -104,7 +123,7 @@ func (s *Swamp) singleProxyCheck(sock *Proxy) error {
 }
 
 func (sock *Proxy) validate() {
-	var sversions = []string{"4", "5", "4a", "http"}
+	var sversions = []string{"4", "5", "4a"}
 
 	s := sock.parent
 	if s.useProx.Check(sock) {
@@ -129,11 +148,11 @@ func (sock *Proxy) validate() {
 
 		sock.Proto = sver
 		if err := s.singleProxyCheck(sock); err == nil {
-			if sock.Proto != "http" {
-				s.dbgPrint(grn + "verified " + sock.Endpoint + " as SOCKS" + sver + rst)
-			} else {
-				s.dbgPrint(ylw + "verified " + sock.Endpoint + " as http (not usable yet)" + rst)
-			}
+//			if sock.Proto != "http" {
+			s.dbgPrint(grn + "verified " + sock.Endpoint + " as SOCKS" + sver + rst)
+//			} else {
+//				s.dbgPrint(ylw + "verified " + sock.Endpoint + " as http (not usable yet)" + rst)
+//			}
 			good = true
 			break
 		}
@@ -153,16 +172,24 @@ func (sock *Proxy) validate() {
 
 	switch sock.Proto {
 	case "4":
-		go s.Stats.v4()
-		s.ValidSocks4 <- sock
+		go func() {
+			s.Stats.v4()
+			s.ValidSocks4 <- sock
+		}()
+		return
 	case "4a":
-		go s.Stats.v4a()
-		s.ValidSocks4a <- sock
+		go func() {
+			s.Stats.v4a()
+			s.ValidSocks4a <- sock
+		}()
+		return
 	case "5":
-		go s.Stats.v5()
-		s.ValidSocks5 <- sock
-	case "http":
-		go s.Stats.http()
-		s.ValidHTTP <- sock
+		go func() {
+			s.Stats.v5()
+			s.ValidSocks5 <- sock
+		}()
+		return
+	default:
+		return
 	}
 }
