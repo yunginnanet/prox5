@@ -20,7 +20,7 @@ func (s *Swamp) MysteryDialer(ctx context.Context, network, addr string) (net.Co
 			return nil, err
 		}
 
-		sock = s.GetAnySOCKS(false)
+		sock = s.GetAnySOCKS()
 		s.dbgPrint("dialer trying: " + sock.Endpoint + "...")
 
 		var err error

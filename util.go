@@ -1,8 +1,8 @@
 package pxndscvm
 
 import (
-	"crypto/rand"
-	"encoding/binary"
+	quiccmaffs "math/rand"
+	"time"
 )
 
 const (
@@ -24,9 +24,11 @@ func randStrChoice(choices []string) string {
 
 // getRandomUint32 retrieves a cryptographically sound random 32 bit unsigned little endian integer
 func getRandomUint32() uint32 {
-	b := make([]byte, 8192)
-	if _, err := rand.Read(b); err != nil {
-		panic(err)
-	}
-	return binary.LittleEndian.Uint32(b)
+	quiccmaffs.Seed(time.Now().UnixNano())
+	return quiccmaffs.Uint32()
+}
+
+func randSleep() {
+	quiccmaffs.Seed(time.Now().UnixNano())
+	time.Sleep(time.Duration(quiccmaffs.Intn(500)) * time.Millisecond)
 }

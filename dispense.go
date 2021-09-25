@@ -2,7 +2,6 @@ package pxndscvm
 
 import (
 	"errors"
-	"net"
 	"sync/atomic"
 	"time"
 )
@@ -13,7 +12,7 @@ func (s *Swamp) Socks5Str() string {
 	for {
 		select {
 		case sock := <-s.ValidSocks5:
-			if !s.stillGood(sock, true) {
+			if !s.stillGood(sock) {
 				continue
 			}
 			s.Stats.dispense()
@@ -28,7 +27,7 @@ func (s *Swamp) Socks4Str() string {
 	for {
 		select {
 		case sock := <-s.ValidSocks4:
-			if !s.stillGood(sock, true) {
+			if !s.stillGood(sock) {
 				continue
 			}
 			s.Stats.dispense()
@@ -43,7 +42,7 @@ func (s *Swamp) Socks4aStr() string {
 	for {
 		select {
 		case sock := <-s.ValidSocks4a:
-			if !s.stillGood(sock, true) {
+			if !s.stillGood(sock) {
 				continue
 			}
 			s.Stats.dispense()
@@ -67,9 +66,9 @@ func (sock *Proxy) copy() (Proxy, error) {
 
 // GetAnySOCKS retrieves any version SOCKS proxy as a Proxy type
 // Will block if one is not available!
-func (s *Swamp) GetAnySOCKS(extradial bool) Proxy {
+func (s *Swamp) GetAnySOCKS() Proxy {
 	dishout := func(sock *Proxy) (Proxy, bool) {
-		if !s.stillGood(sock, extradial) {
+		if !s.stillGood(sock) {
 			return Proxy{}, false
 		}
 		if sox, err := sock.copy(); err == nil {
@@ -99,13 +98,14 @@ func (s *Swamp) GetAnySOCKS(extradial bool) Proxy {
 			}
 			continue
 		default:
+			s.dbgPrint(red+"no valid proxies in channels, sleeping"+rst)
+			time.Sleep(10 * time.Second)
 		}
 	}
 }
 
-func (s *Swamp) stillGood(sock *Proxy, extradial bool) bool {
-
-	if !atomic.CompareAndSwapUint32(&sock.lock, stateUnlocked, stateLocked) {
+func (s *Swamp) stillGood(sock *Proxy) bool {
+	for !atomic.CompareAndSwapUint32(&sock.lock, stateUnlocked, stateLocked) {
 		return false
 	}
 	defer atomic.StoreUint32(&sock.lock, stateUnlocked)
@@ -120,13 +120,6 @@ func (s *Swamp) stillGood(sock *Proxy, extradial bool) bool {
 	if s.badProx.Peek(sock) {
 		s.dbgPrint(ylw + "badProx dial ratelimited: " + sock.Endpoint + rst)
 		return false
-	}
-
-	if extradial {
-		if _, err := net.DialTimeout("tcp", sock.Endpoint, s.GetValidationTimeout()); err != nil {
-			s.dbgPrint(ylw + sock.Endpoint + " failed dialing out during stillGood check: " + err.Error() + rst)
-			return false
-		}
 	}
 
 	if time.Since(sock.lastValidated.Load().(time.Time)) > s.swampopt.stale.Load().(time.Duration) {
