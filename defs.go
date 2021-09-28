@@ -48,6 +48,7 @@ type Swamp struct {
 var (
 	defaultStaleTime = 1 * time.Hour
 	defWorkers       = 100
+	defBailout       = 3
 	// Note: I've chosen to use https here exclusively assuring all validated proxies are SSL capable.
 	defaultChecks = []string{
 		"https://wtfismyip.com/text",
@@ -78,7 +79,7 @@ func defOpt() *swampOptions {
 		badProxConfig: defBadProx,
 
 		checkEndpoints: defaultChecks,
-		userAgents: defaultUserAgents,
+		userAgents:     defaultUserAgents,
 	}
 
 	sm.removeafter.Store(5)
@@ -86,6 +87,7 @@ func defOpt() *swampOptions {
 	sm.debug.Store(false)
 	sm.validationTimeout.Store(time.Duration(12) * time.Second)
 
+	sm.dialerBailout.Store(defBailout)
 	sm.stale.Store(defaultStaleTime)
 	sm.maxWorkers.Store(defWorkers)
 
@@ -129,6 +131,8 @@ type swampOptions struct {
 	// validationTimeout defines the timeout for proxy validation operations.
 	// This will apply for both the initial quick check (dial), and the second check (HTTP GET).
 	validationTimeout atomic.Value
+
+	dialerBailout atomic.Value
 
 	// recycle determines whether or not we recycle proxies pack into the pending channel after we dispense them
 	recycle atomic.Value

@@ -8,7 +8,7 @@ import (
 func (s *Swamp) AddUserAgents(uagents []string) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	s.swampopt.userAgents=append(s.swampopt.userAgents, uagents...)
+	s.swampopt.userAgents = append(s.swampopt.userAgents, uagents...)
 }
 
 // SetUserAgents sets the list of useragents we randomly choose from during proxied requests
@@ -29,7 +29,7 @@ func (s *Swamp) SetCheckEndpoints(newendpoints []string) {
 func (s *Swamp) AddCheckEndpoints(endpoints []string) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	s.swampopt.checkEndpoints=append(s.swampopt.checkEndpoints, endpoints...)
+	s.swampopt.checkEndpoints = append(s.swampopt.checkEndpoints, endpoints...)
 }
 
 // SetStaleTime replaces the duration of time after which a proxy will be considered "stale". stale proxies will be skipped upon retrieval.
@@ -60,6 +60,12 @@ func (s *Swamp) DisableRecycling() {
 
 // SetRemoveAfter sets the removeafter policy, the amount of times a recycled proxy is marked as bad until it is removed entirely.
 //    * Only applies when recycling is enabled *
-func (s *Swamp) SetRemoveAfter(choice int) {
-	s.swampopt.removeafter.Store(choice)
+func (s *Swamp) SetRemoveAfter(timesfailed int) {
+	s.swampopt.removeafter.Store(timesfailed)
+}
+
+// SetDialerBailout sets the amount of times the MysteryDialer will dial out and fail before it bails out.
+//	  * The dialer will attempt to redial a destination with a different proxy a specified amount of times before it gives up
+func (s *Swamp) SetDialerBailout(dialattempts int) {
+	s.swampopt.dialerBailout.Store(dialattempts)
 }

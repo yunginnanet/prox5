@@ -37,7 +37,7 @@ func (s *Swamp) GetValidationTimeout() time.Duration {
 // GetTimeoutSecondsStr returns the current value of validationTimeout (in seconds string).
 func (s *Swamp) GetTimeoutSecondsStr() string {
 	timeout := s.swampopt.validationTimeout.Load().(time.Duration)
-	return strconv.Itoa(int(timeout/time.Second))
+	return strconv.Itoa(int(timeout / time.Second))
 }
 
 // GetMaxWorkers returns maximum amount of workers that validate proxies concurrently. Note this is read-only during runtime.
@@ -75,4 +75,9 @@ func (s *Swamp) GetRemoveAfter() int {
 		return -1
 	}
 	return s.swampopt.removeafter.Load().(int)
+}
+
+// GetDialerBailout retrieves the dialer bailout policy. See SetDialerBailout for more info.
+func (s *Swamp) GetDialerBailout() int {
+	return s.swampopt.dialerBailout.Load().(int)
 }
