@@ -6,7 +6,7 @@ require (
 	github.com/h12w/go-socks5 v0.0.0-20200522160539-76189e178364
 	github.com/mattn/go-tty v0.0.3
 	github.com/panjf2000/ants/v2 v2.4.6
-	github.com/yunginnanet/Rate5 v0.0.0-20210928082520-1b86097f6294
+	github.com/yunginnanet/Rate5 v0.0.0-20210928173319-64db6c59e7ab
 	golang.org/x/net v0.0.0-20210908191846-a5e095526f91
 	h12.io/socks v1.0.3
 	inet.af/netaddr v0.0.0-20210903134321-85fa6c94624e
