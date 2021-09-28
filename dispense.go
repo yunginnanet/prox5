@@ -106,7 +106,7 @@ func (s *Swamp) GetAnySOCKS() Proxy {
 
 func (s *Swamp) stillGood(sock *Proxy) bool {
 	for !atomic.CompareAndSwapUint32(&sock.lock, stateUnlocked, stateLocked) {
-		return false
+		time.Sleep(100 * time.Millisecond)
 	}
 	defer atomic.StoreUint32(&sock.lock, stateUnlocked)
 
