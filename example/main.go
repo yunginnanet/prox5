@@ -16,7 +16,7 @@ var quit chan bool
 func init() {
 	quit = make(chan bool)
 	swamp = pxndscvm.NewDefaultSwamp()
-	if err := swamp.SetMaxWorkers(1000); err != nil {
+	if err := swamp.SetMaxWorkers(5000); err != nil {
 		panic(err)
 	}
 

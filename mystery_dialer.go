@@ -5,7 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"net"
-
+	"strconv"
 	"h12.io/socks"
 )
 
@@ -21,8 +21,9 @@ func (s *Swamp) MysteryDialer(ctx context.Context, network, addr string) (net.Co
 	var count int
 	// pull down proxies from channel until we get a proxy good enough for our spoiled asses
 	for {
-		if count > s.GetDialerBailout() {
-			return nil, errors.New("giving up after 8 tries")
+		max := s.GetDialerBailout()
+		if count > max {
+			return nil, errors.New("giving up after " + strconv.Itoa(max) + " tries")
 		}
 		if err := ctx.Err(); err != nil {
 			return nil, err
