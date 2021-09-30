@@ -3,7 +3,7 @@ module git.tcp.direct/kayos/pxndscvm
 go 1.17
 
 require (
-	github.com/h12w/go-socks5 v0.0.0-20200522160539-76189e178364
+	git.tcp.direct/kayos/go-socks5 v1.0.1
 	github.com/mattn/go-tty v0.0.3
 	github.com/panjf2000/ants/v2 v2.4.6
 	github.com/yunginnanet/Rate5 v0.4.3

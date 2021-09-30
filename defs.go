@@ -21,6 +21,8 @@ type Swamp struct {
 	// ValidHTTP is a constant stream of verified ValidSocks5 proxies
 	ValidHTTP chan *Proxy
 
+	socksServerLogger socksLogger
+
 	// Stats holds the Statistics for our swamp
 	Stats *Statistics
 
@@ -32,6 +34,8 @@ type Swamp struct {
 	// see: https://pkg.go.dev/github.com/yunginnanet/Rate5
 	useProx *rl.Limiter
 	badProx *rl.Limiter
+
+	socks5ServerAuth socksCreds
 
 	quit chan bool
 
@@ -204,6 +208,8 @@ func NewDefaultSwamp() *Swamp {
 		mu:     &sync.RWMutex{},
 		parent: s,
 	}
+
+	s.socksServerLogger = socksLogger{parent: s}
 
 	s.useProx = rl.NewCustomLimiter(s.swampopt.useProxConfig)
 	s.badProx = rl.NewCustomLimiter(s.swampopt.badProxConfig)
