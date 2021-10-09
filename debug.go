@@ -1,4 +1,4 @@
-package pxndscvm
+package Prox5
 
 import (
 	"sync"
@@ -75,9 +75,9 @@ func (s *Swamp) dbgPrint(str string) {
 		case debugChan <- str:
 			return
 		default:
-			println("pxndscvm overflow: " + str)
+			println("Prox5 overflow: " + str)
 			return
 		}
 	}
-	println("pxndscvm: " + str)
+	println("Prox5: " + str)
 }

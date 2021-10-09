@@ -1,4 +1,4 @@
-package pxndscvm
+package Prox5
 
 import (
 	"errors"

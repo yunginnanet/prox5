@@ -7,15 +7,15 @@ import (
 
 	"github.com/mattn/go-tty"
 
-	"git.tcp.direct/kayos/pxndscvm"
+	"git.tcp.direct/kayos/Prox5"
 )
 
-var swamp *pxndscvm.Swamp
+var swamp *Prox5.Swamp
 var quit chan bool
 
 func init() {
 	quit = make(chan bool)
-	swamp = pxndscvm.NewDefaultSwamp()
+	swamp = Prox5.NewDefaultSwamp()
 	if err := swamp.SetMaxWorkers(5000); err != nil {
 		panic(err)
 	}
