@@ -4,9 +4,9 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"h12.io/socks"
 	"net"
 	"strconv"
-	"h12.io/socks"
 )
 
 func (s *Swamp) DialContext(ctx context.Context, network, addr string) (net.Conn, error) {

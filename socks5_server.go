@@ -12,10 +12,10 @@ type socksLogger struct {
 
 // Printf is used to handle socks server logging.
 func (s socksLogger) Printf(format string, a ...interface{}) {
-		s.parent.dbgPrint(fmt.Sprintf(format, a...))
+	s.parent.dbgPrint(fmt.Sprintf(format, a...))
 }
 
-type socksCreds struct{
+type socksCreds struct {
 	username string
 	password string
 }
@@ -41,7 +41,7 @@ func (s *Swamp) StartSOCKS5Server(listen, username, password string) error {
 		Logger:      s.socksServerLogger,
 	}
 
-	s.dbgPrint("listening for SOCKS5 connections on "+ listen)
+	s.dbgPrint("listening for SOCKS5 connections on " + listen)
 
 	server, err := socks5.New(conf)
 	if err != nil {
