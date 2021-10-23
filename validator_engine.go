@@ -173,8 +173,6 @@ func (sock *Proxy) validate() {
 			//			}
 			good = true
 			break
-		} else {
-			s.dbgPrint(err.Error())
 		}
 	}
 

@@ -96,12 +96,12 @@ func (s *Swamp) LoadProxyTXT(seedFile string) int {
 			continue
 		}
 
-		count.Store(count.Load().(int)+1)
+		count.Store(count.Load().(int) + 1)
 		go s.LoadSingleProxy(scan.Text())
 	}
 
 	if err := f.Close(); err != nil {
-		s.dbgPrint(err.Error())
+		s.dbgPrint(red + err.Error() + rst)
 	}
 
 	return count.Load().(int)

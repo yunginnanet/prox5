@@ -87,7 +87,7 @@ func (s *Swamp) stillGood(sock *Proxy) bool {
 	if sock.timesBad.Load().(int) > s.GetRemoveAfter() {
 		s.dbgPrint(red + "deleting from map (too many failures): " + sock.Endpoint + rst)
 		if err := s.swampmap.delete(sock.Endpoint); err != nil {
-			s.dbgPrint(err.Error())
+			s.dbgPrint(red + err.Error() + rst)
 		}
 	}
 
