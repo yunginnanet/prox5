@@ -5,6 +5,7 @@ import "errors"
 // SwampStatus represents the current state of our Swamp.
 type SwampStatus uint32
 
+
 const (
 	// Running means the proxy pool is currently taking in proxys and validating them, and is available to dispense proxies.
 	Running SwampStatus = iota
@@ -43,22 +44,31 @@ func (s *Swamp) Pause() error {
 	if s.IsRunning() {
 		return errors.New("already paused")
 	}
-	s.mu.RLock()
-	for n := s.runningdaemons; n > 0; n-- {
-		s.quit <- true
+
+	s.dbgPrint("pausing...")
+	var svcbuf = make(chan bool, s.svcStatus())
+	for s.svcStatus() != 0 {
+		svcbuf <- true
+		select {
+			case q := <- svcbuf:
+				s.quit <- q
+			default:
+
+		}
 	}
-	s.mu.RUnlock()
 
 	s.Status = Paused
 	return nil
 }
 
-// Resume will resume pause proxy pool operations, attempting to resume a running Swamp is a non-op.
+// Resume will resume pause proxy pool operations, attempting to resume a running Swamp is returns an error.
 func (s *Swamp) Resume() error {
-	if !s.IsRunning() && s.Status != New {
+	s.conductor = make(chan bool, 2)
+	if s.IsRunning() || s.Status == New {
 		return errors.New("not paused")
 	}
 	go s.mapBuilder()
 	go s.jobSpawner()
+	<-s.conductor
 	return nil
 }

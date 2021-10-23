@@ -18,18 +18,53 @@ func init() {
 	inChan = make(chan string, 1000000)
 }
 
-func (s *Swamp) stage1(in string) (string, bool) {
+func filter(in string) (filtered string, ok bool) {
 	if !strings.Contains(in, ":") {
 		return in, false
 	}
+
 	split := strings.Split(in, ":")
-	if _, err := ipa.ParseIP(split[0]); err != nil {
+	switch len(split) {
+	case 1:
+		return in, false
+	case 2:
+		combo, err := ipa.ParseIPPort(in)
+		if err != nil {
+			return in, false
+		}
+		return combo.String(), true
+	case 3:
+		combo, err := ipa.ParseIPPort(split[0] + ":" + split[1])
+		if err != nil {
+			return in, false
+		}
+		return fmt.Sprintf("%s:%s@%s", split[2], split[3], combo.String()), true
+	default:
+		if !strings.Contains(split[0], "[") || !strings.Contains(split[0], "]") {
+			return in, false
+		}
+	}
+
+	split = strings.Split(in, "]:")
+	if len(split) != 2 {
 		return in, false
 	}
-	if _, err := strconv.Atoi(split[1]); err != nil {
+
+	combo, err := ipa.ParseIPPort(split[0] + "]:" + split[1])
+	if err != nil {
 		return in, false
 	}
-	return fmt.Sprintf("%s:%s", split[0], split[1]), true
+
+	if !strings.Contains(split[1], ":") {
+		return combo.String(), true
+	}
+
+	split6 := strings.Split(split[1], ":")
+	if len(split6) != 2 {
+		return in, false
+	}
+
+	return fmt.Sprintf("%s:%s@%s", split6[0], split6[1], combo.String()), true
 }
 
 // LoadProxyTXT loads proxies from a given seed file and feeds them to the mapBuilder to be later queued automatically for validation.
@@ -48,7 +83,7 @@ func (s *Swamp) LoadProxyTXT(seedFile string) int {
 	scan := bufio.NewScanner(f)
 
 	for scan.Scan() {
-		if filtered, ok = s.stage1(scan.Text()); !ok {
+		if filtered, ok = filter(scan.Text()); !ok {
 			continue
 		}
 		go s.LoadSingleProxy(filtered)
@@ -57,7 +92,6 @@ func (s *Swamp) LoadProxyTXT(seedFile string) int {
 
 	if err := f.Close(); err != nil {
 		s.dbgPrint(err.Error())
-		return count
 	}
 
 	return count
@@ -83,7 +117,7 @@ func (s *Swamp) LoadMultiLineString(socks string) int {
 }
 
 // ClearSOCKSList clears the map of proxies that we have on record.
-// Other operations (proxies that are still in buffered channels) will continue unless paused.
+// Other operations (proxies that are still in buffered channels) will continue.
 func (s *Swamp) ClearSOCKSList() {
 	s.swampmap.clear()
 }

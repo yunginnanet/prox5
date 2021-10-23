@@ -3,15 +3,28 @@ package Prox5
 import (
 	"errors"
 	"strconv"
+	"strings"
 	"sync"
 )
 
+
 func (s *Swamp) svcUp() {
+	s.mu.Lock()
 	s.runningdaemons++
+	s.conductor <- true
+	s.mu.Unlock()
 }
 
 func (s *Swamp) svcDown() {
+	s.mu.Lock()
 	s.runningdaemons--
+	s.mu.Unlock()
+}
+
+func (s *Swamp) svcStatus() int {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+	return s.runningdaemons
 }
 
 type swampMap struct {
@@ -23,6 +36,17 @@ type swampMap struct {
 func (sm swampMap) add(sock string) (*Proxy, bool) {
 	sm.mu.Lock()
 	defer sm.mu.Unlock()
+
+	var auth = &proxyAuth{}
+
+	if strings.Contains(sock, "@") {
+		split := strings.Split(sock, "@")
+		sock = split[1]
+		authsplit := strings.Split(split[0], ":")
+		auth.username = authsplit[0]
+		auth.password = authsplit[1]
+	}
+
 	if sm.exists(sock) {
 		return nil, false
 	}
@@ -63,16 +87,19 @@ func (sm swampMap) clear() {
 func (s *Swamp) mapBuilder() {
 	var filtered string
 	var ok bool
+
 	s.svcUp()
-	s.dbgPrint("map builder started")
 	defer func() {
 		s.svcDown()
 		s.dbgPrint("map builder paused")
 	}()
+
+	s.dbgPrint("map builder started")
+
 	for {
 		select {
 		case in := <-inChan:
-			if filtered, ok = s.stage1(in); !ok {
+			if filtered, ok = filter(in); !ok {
 				continue
 			}
 			if p, ok := s.swampmap.add(filtered); !ok {

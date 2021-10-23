@@ -109,9 +109,16 @@ func (s *Swamp) checkHTTP(sock *Proxy) (string, error) {
 	return string(rbody), err
 }
 
-func (s *Swamp) singleProxyCheck(sock *Proxy) error {
+func (s *Swamp) anothaOne() {
 	s.Stats.Checked++
-	if _, err := net.DialTimeout("tcp", sock.Endpoint, s.swampopt.validationTimeout.Load().(time.Duration)); err != nil {
+}
+
+func (s *Swamp) singleProxyCheck(sock *Proxy) error {
+	defer s.anothaOne()
+
+	if _, err := net.DialTimeout("tcp", sock.Endpoint,
+		s.swampopt.validationTimeout.Load().(time.Duration)); err != nil {
+
 		s.badProx.Check(sock)
 		return err
 	}
@@ -128,6 +135,7 @@ func (s *Swamp) singleProxyCheck(sock *Proxy) error {
 	}
 
 	sock.ProxiedIP = resp
+
 	return nil
 }
 

@@ -46,6 +46,7 @@ type Swamp struct {
 	pool           *ants.Pool
 	swampopt       *swampOptions
 	runningdaemons int
+	conductor      chan bool
 	mu             *sync.RWMutex
 }
 
@@ -153,6 +154,11 @@ const (
 	stateLocked
 )
 
+type proxyAuth struct {
+	username string
+	password string
+}
+
 // Proxy represents an individual proxy
 type Proxy struct {
 	// Endpoint is the address:port of the proxy that we connect to
@@ -168,6 +174,8 @@ type Proxy struct {
 	// timesBad is the amount of times the proxy has been marked as bad.
 	timesBad atomic.Value
 
+	auth *proxyAuth
+
 	parent *Swamp
 	lock   uint32
 }
@@ -182,10 +190,10 @@ func (sock Proxy) UniqueKey() string {
 // After calling this you can use the various "setters" to change the options before calling Swamp.Start().
 func NewDefaultSwamp() *Swamp {
 	s := &Swamp{
-		ValidSocks5:  make(chan *Proxy, 10000000),
-		ValidSocks4:  make(chan *Proxy, 10000000),
-		ValidSocks4a: make(chan *Proxy, 10000000),
-		Pending:      make(chan *Proxy, 10000000),
+		ValidSocks5:  make(chan *Proxy, 1000000),
+		ValidSocks4:  make(chan *Proxy, 1000000),
+		ValidSocks4a: make(chan *Proxy, 1000000),
+		Pending:      make(chan *Proxy, 1000000),
 
 		Stats: &Statistics{
 			Valid4:    0,
