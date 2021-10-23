@@ -3,10 +3,8 @@ package Prox5
 import (
 	"errors"
 	"strconv"
-	"strings"
 	"sync"
 )
-
 
 func (s *Swamp) svcUp() {
 	s.mu.Lock()
@@ -37,28 +35,20 @@ func (sm swampMap) add(sock string) (*Proxy, bool) {
 	sm.mu.Lock()
 	defer sm.mu.Unlock()
 
-	var auth = &proxyAuth{}
-
-	if strings.Contains(sock, "@") {
-		split := strings.Split(sock, "@")
-		sock = split[1]
-		authsplit := strings.Split(split[0], ":")
-		auth.username = authsplit[0]
-		auth.password = authsplit[1]
-	}
-
 	if sm.exists(sock) {
 		return nil, false
 	}
+
 	p := &Proxy{
 		Endpoint: sock,
 		lock:     stateUnlocked,
 		parent:   sm.parent,
 	}
+
 	p.timesValidated.Store(0)
 	p.timesBad.Store(0)
 	sm.plot[sock] = p
-	return p, true
+	return sm.plot[sock], true
 }
 
 func (sm swampMap) exists(sock string) bool {

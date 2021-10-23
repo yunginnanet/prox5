@@ -154,11 +154,6 @@ const (
 	stateLocked
 )
 
-type proxyAuth struct {
-	username string
-	password string
-}
-
 // Proxy represents an individual proxy
 type Proxy struct {
 	// Endpoint is the address:port of the proxy that we connect to
@@ -173,8 +168,6 @@ type Proxy struct {
 	timesValidated atomic.Value
 	// timesBad is the amount of times the proxy has been marked as bad.
 	timesBad atomic.Value
-
-	auth *proxyAuth
 
 	parent *Swamp
 	lock   uint32
