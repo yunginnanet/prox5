@@ -6,7 +6,9 @@ import (
 	"os"
 	"strconv"
 	"strings"
+	"sync/atomic"
 
+	"github.com/miekg/dns"
 	ipa "inet.af/netaddr"
 )
 
@@ -15,7 +17,7 @@ import (
 var inChan chan string
 
 func init() {
-	inChan = make(chan string, 1000000)
+	inChan = make(chan string, 100000)
 }
 
 func filter(in string) (filtered string, ok bool) {
@@ -33,7 +35,10 @@ func filter(in string) (filtered string, ok bool) {
 			return in, false
 		}
 		return combo.String(), true
-	case 3:
+	case 4:
+		if _, ok := dns.IsDomainName(split[0]); ok {
+			return fmt.Sprintf("%s:%s@%s:%s", split[2], split[3], split[0], split[1]), true
+		}
 		combo, err := ipa.ParseIPPort(split[0] + ":" + split[1])
 		if err != nil {
 			return in, false
@@ -69,32 +74,37 @@ func filter(in string) (filtered string, ok bool) {
 
 // LoadProxyTXT loads proxies from a given seed file and feeds them to the mapBuilder to be later queued automatically for validation.
 func (s *Swamp) LoadProxyTXT(seedFile string) int {
-	var count int
-	var filtered string
+	var count = &atomic.Value{}
+	count.Store(0)
 	var ok bool
+
 	s.dbgPrint("LoadProxyTXT start: " + seedFile)
-	defer s.dbgPrint("LoadProxyTXT finished: " + strconv.Itoa(count))
+	defer func() {
+		s.dbgPrint("LoadProxyTXT finished: " + strconv.Itoa(count.Load().(int)))
+	}()
 
 	f, err := os.Open(seedFile)
 	if err != nil {
+		s.dbgPrint(red + err.Error() + rst)
 		return 0
 	}
 
 	scan := bufio.NewScanner(f)
 
 	for scan.Scan() {
-		if filtered, ok = filter(scan.Text()); !ok {
+		if _, ok = filter(scan.Text()); !ok {
 			continue
 		}
-		go s.LoadSingleProxy(filtered)
-		count++
+
+		count.Store(count.Load().(int)+1)
+		go s.LoadSingleProxy(scan.Text())
 	}
 
 	if err := f.Close(); err != nil {
 		s.dbgPrint(err.Error())
 	}
 
-	return count
+	return count.Load().(int)
 }
 
 // LoadSingleProxy loads a SOCKS proxy into our map. Uses the format: 127.0.0.1:1080 (host:port).

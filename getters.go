@@ -42,15 +42,16 @@ func (s *Swamp) GetTimeoutSecondsStr() string {
 
 // GetMaxWorkers returns maximum amount of workers that validate proxies concurrently. Note this is read-only during runtime.
 func (s *Swamp) GetMaxWorkers() int {
-	return s.swampopt.maxWorkers.Load().(int)
+	return s.pool.Cap()
 }
 
 // IsRunning returns true if our background goroutines defined in daemons.go are currently operational
 func (s *Swamp) IsRunning() bool {
-	if s.runningdaemons == 2 {
-		return true
+	if s.runningdaemons.Load() == nil {
+		println("nil")
+		return false
 	}
-	return false
+	return s.runningdaemons.Load().(int) > 0
 }
 
 // GetRecyclingStatus retrieves the current recycling status, see EnableRecycling.

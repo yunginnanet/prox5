@@ -4,10 +4,12 @@ import (
 	"bytes"
 	"crypto/tls"
 	"errors"
+	"fmt"
 	"io"
 	"io/ioutil"
 	"net"
 	"net/http"
+	"strings"
 	//	"net/url"
 	"sync/atomic"
 	"time"
@@ -61,19 +63,13 @@ func (s *Swamp) checkHTTP(sock *Proxy) (string, error) {
 		return "", err
 	}
 
-	var t int
-	switch sock.Proto.Load().(string) {
-	case "5":
-		t = socks.SOCKS5
-	case "4":
-		t = socks.SOCKS4
-	case "4a":
-		t = socks.SOCKS4A
-	default:
-		return "", errors.New("invalid protocol loaded")
-	}
+	var dialSocks = socks.Dial(fmt.Sprintf(
+		"socks%s://%s/?timeout=%ss",
+		sock.Proto.Load().(string),
+		sock.Endpoint,
+		s.GetTimeoutSecondsStr()),
+	)
 
-	var dialSocks = socks.DialSocksProxy(t, sock.Endpoint)
 	var transportDialer = dialSocks
 	if sock.Proto.Load().(string) == "none" {
 		transportDialer = proxy.Direct.Dial
@@ -117,10 +113,13 @@ func (s *Swamp) anothaOne() {
 
 func (s *Swamp) singleProxyCheck(sock *Proxy) error {
 	defer s.anothaOne()
-
-	if _, err := net.DialTimeout("tcp", sock.Endpoint,
+	split := strings.Split(sock.Endpoint, "@")
+	endpoint := split[0]
+	if len(split) == 2 {
+		endpoint = split[1]
+	}
+	if _, err := net.DialTimeout("tcp", endpoint,
 		s.swampopt.validationTimeout.Load().(time.Duration)); err != nil {
-
 		s.badProx.Check(sock)
 		return err
 	}
@@ -146,7 +145,7 @@ func (sock *Proxy) validate() {
 
 	s := sock.parent
 	if s.useProx.Check(sock) {
-		s.dbgPrint(ylw + "useProx ratelimited: " + sock.Endpoint + rst)
+		// s.dbgPrint(ylw + "useProx ratelimited: " + sock.Endpoint + rst)
 		atomic.StoreUint32(&sock.lock, stateUnlocked)
 		return
 	}
@@ -161,7 +160,7 @@ func (sock *Proxy) validate() {
 	// try to use the proxy with all 3 SOCKS versions
 	var good = false
 	for _, sver := range sversions {
-		if s.Status == Paused {
+		if s.Status.Load().(SwampStatus) == Paused {
 			return
 		}
 
@@ -174,11 +173,13 @@ func (sock *Proxy) validate() {
 			//			}
 			good = true
 			break
+		} else {
+			s.dbgPrint(err.Error())
 		}
 	}
 
 	if !good {
-		s.dbgPrint(red + "failed to verify: " + sock.Endpoint)
+		s.dbgPrint(red + "failed to verify: " + sock.Endpoint + rst)
 		sock.bad()
 		s.badProx.Check(sock)
 		atomic.StoreUint32(&sock.lock, stateUnlocked)

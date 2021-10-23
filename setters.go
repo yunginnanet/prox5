@@ -43,9 +43,8 @@ func (s *Swamp) SetValidationTimeout(timeout time.Duration) {
 }
 
 // SetMaxWorkers set the maximum workers for proxy checking and clears the current proxy map and worker pool jobs.
-func (s *Swamp) SetMaxWorkers(num int) error {
+func (s *Swamp) SetMaxWorkers(num int) {
 	s.pool.Tune(num)
-	return nil
 }
 
 // EnableRecycling disables recycling used proxies back into the pending channel for revalidation after dispensed.

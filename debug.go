@@ -2,30 +2,16 @@ package Prox5
 
 import (
 	"sync"
-
-	rate5 "github.com/yunginnanet/Rate5"
 )
 
 var (
 	useDebugChannel = false
 	debugChan       chan string
 	debugMutex      *sync.RWMutex
-	debugRatelimit  *rate5.Limiter
 )
-
-type debugLine struct {
-	s string
-}
-
-// UniqueKey implements rate5's Identity interface.
-// https://pkg.go.dev/github.com/yunginnanet/Rate5#Identity
-func (dbg debugLine) UniqueKey() string {
-	return dbg.s
-}
 
 func init() {
 	debugMutex = &sync.RWMutex{}
-	debugRatelimit = rate5.NewStrictLimiter(120, 2)
 }
 
 // DebugChannel will return a channel which will receive debug messages once debug is enabled.
@@ -63,10 +49,6 @@ func (s *Swamp) DisableDebug() {
 
 func (s *Swamp) dbgPrint(str string) {
 	if !s.swampopt.debug.Load().(bool) {
-		return
-	}
-
-	if debugRatelimit.Check(debugLine{s: str}) {
 		return
 	}
 

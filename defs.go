@@ -26,7 +26,7 @@ type Swamp struct {
 	// Stats holds the Statistics for our swamp
 	Stats *Statistics
 
-	Status SwampStatus
+	Status atomic.Value
 
 	// Pending is a constant stream of proxy strings to be verified
 	Pending chan *Proxy
@@ -43,11 +43,11 @@ type Swamp struct {
 
 	reaper sync.Pool
 
+	mu             *sync.RWMutex
 	pool           *ants.Pool
 	swampopt       *swampOptions
-	runningdaemons int
+	runningdaemons atomic.Value
 	conductor      chan bool
-	mu             *sync.RWMutex
 }
 
 var (
@@ -95,7 +95,7 @@ func defOpt() *swampOptions {
 
 	sm.dialerBailout.Store(defBailout)
 	sm.stale.Store(defaultStaleTime)
-	sm.maxWorkers.Store(defWorkers)
+	sm.maxWorkers = defWorkers
 
 	return sm
 }
@@ -126,14 +126,19 @@ type swampOptions struct {
 	// stale is the amount of time since verification that qualifies a proxy going stale.
 	// if a stale proxy is drawn during the use of our getter functions, it will be skipped.
 	stale atomic.Value
+
 	// userAgents contains a list of userAgents to be randomly drawn from for proxied requests, this should be supplied via SetUserAgents
 	userAgents []string
+
 	// debug when enabled will print results as they come in
 	debug atomic.Value
+
 	// checkEndpoints includes web services that respond with (just) the WAN IP of the connection for validation purposes
 	checkEndpoints []string
+
 	// maxWorkers determines the maximum amount of workers used for checking proxies
-	maxWorkers atomic.Value
+	maxWorkers int
+
 	// validationTimeout defines the timeout for proxy validation operations.
 	// This will apply for both the initial quick check (dial), and the second check (HTTP GET).
 	validationTimeout atomic.Value
@@ -170,8 +175,8 @@ type Proxy struct {
 	// timesBad is the amount of times the proxy has been marked as bad.
 	timesBad atomic.Value
 
-	parent *Swamp
-	lock   uint32
+	parent   *Swamp
+	lock     uint32
 	hardlock *sync.Mutex
 }
 
@@ -202,9 +207,12 @@ func NewDefaultSwamp() *Swamp {
 		swampopt: defOpt(),
 
 		quit:   make(chan bool),
+		conductor: make(chan bool),
 		mu:     &sync.RWMutex{},
-		Status: New,
+		Status: atomic.Value{},
 	}
+
+	s.Status.Store(New)
 
 	s.swampmap = swampMap{
 		plot:   make(map[string]*Proxy),
@@ -214,11 +222,13 @@ func NewDefaultSwamp() *Swamp {
 
 	s.socksServerLogger = socksLogger{parent: s}
 
+	s.runningdaemons.Store(0)
+
 	s.useProx = rl.NewCustomLimiter(s.swampopt.useProxConfig)
 	s.badProx = rl.NewCustomLimiter(s.swampopt.badProxConfig)
 
 	var err error
-	s.pool, err = ants.NewPool(s.swampopt.maxWorkers.Load().(int), ants.WithOptions(ants.Options{
+	s.pool, err = ants.NewPool(s.swampopt.maxWorkers, ants.WithOptions(ants.Options{
 		ExpiryDuration: 2 * time.Minute,
 		PanicHandler:   s.pondPanic,
 	}))

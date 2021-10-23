@@ -5,25 +5,16 @@ import (
 	"strconv"
 	"sync"
 	"sync/atomic"
+	"time"
 )
 
 func (s *Swamp) svcUp() {
-	s.mu.Lock()
-	s.runningdaemons++
-	s.conductor <- true
-	s.mu.Unlock()
+	s.runningdaemons.Store(s.runningdaemons.Load().(int) + 1)
 }
 
 func (s *Swamp) svcDown() {
-	s.mu.Lock()
-	s.runningdaemons--
-	s.mu.Unlock()
-}
-
-func (s *Swamp) svcStatus() int {
-	s.mu.RLock()
-	defer s.mu.RUnlock()
-	return s.runningdaemons
+	s.quit <- true
+	s.runningdaemons.Store(s.runningdaemons.Load().(int) - 1)
 }
 
 type swampMap struct {
@@ -40,15 +31,14 @@ func (sm swampMap) add(sock string) (*Proxy, bool) {
 		return nil, false
 	}
 
-	p := &Proxy{
+	sm.plot[sock] = &Proxy{
 		Endpoint: sock,
 		lock:     stateUnlocked,
 		parent:   sm.parent,
 	}
 
-	p.timesValidated.Store(0)
-	p.timesBad.Store(0)
-	sm.plot[sock] = p
+	sm.plot[sock].timesValidated.Store(0)
+	sm.plot[sock].timesBad.Store(0)
 	return sm.plot[sock], true
 }
 
@@ -62,6 +52,7 @@ func (sm swampMap) exists(sock string) bool {
 func (sm swampMap) delete(sock string) error {
 	sm.mu.Lock()
 	defer sm.mu.Unlock()
+
 	if !sm.exists(sock) {
 		return errors.New("proxy does not exist in map")
 	}
@@ -69,7 +60,7 @@ func (sm swampMap) delete(sock string) error {
 		randSleep()
 	}
 
-	sm.plot[sock]=nil
+	sm.plot[sock] = nil
 	delete(sm.plot, sock)
 	return nil
 }
@@ -77,6 +68,7 @@ func (sm swampMap) delete(sock string) error {
 func (sm swampMap) clear() {
 	sm.mu.Lock()
 	defer sm.mu.Unlock()
+
 	sm.plot = make(map[string]*Proxy)
 }
 
@@ -84,41 +76,37 @@ func (s *Swamp) mapBuilder() {
 	var filtered string
 	var ok bool
 
-	s.svcUp()
-	defer func() {
-		s.svcDown()
-		s.dbgPrint("map builder paused")
-	}()
+
+	defer s.dbgPrint("map builder paused")
 
 	s.dbgPrint("map builder started")
 
-	for {
-		select {
-		case in := <-inChan:
-			if filtered, ok = filter(in); !ok {
-				continue
+	go func() {
+		for {
+			select {
+			case in := <-inChan:
+				if filtered, ok = filter(in); !ok {
+					continue
+				}
+				if p, ok := s.swampmap.add(filtered); !ok {
+					continue
+				} else {
+					s.Pending <- p
+				}
+			default:
+				//
 			}
-			if p, ok := s.swampmap.add(filtered); !ok {
-				continue
-			} else {
-				s.Pending <- p
-			}
-		case <-s.quit:
-			return
-		default:
-			//
 		}
-	}
+	}()
+	s.conductor <- true
+	s.svcUp()
+	<-s.quit
 }
 
 func (s *Swamp) recycling() int {
 	if !s.GetRecyclingStatus() {
 		return 0
 	}
-	s.mu.RLock()
-	s.swampmap.mu.RLock()
-	defer s.mu.RUnlock()
-	defer s.swampmap.mu.RUnlock()
 
 	if len(s.swampmap.plot) < 1 {
 		return 0
@@ -138,26 +126,25 @@ func (s *Swamp) recycling() int {
 }
 
 func (s *Swamp) jobSpawner() {
-	s.svcUp()
+
 	s.dbgPrint("job spawner started")
-	defer func() {
-		s.svcDown()
-		s.dbgPrint("job spawner paused")
-	}()
-	for {
-		if s.Status == Paused {
-			return
-		}
-		select {
-		case sock := <-s.Pending:
-			if err := s.pool.Submit(sock.validate); err != nil {
-				s.dbgPrint(ylw + err.Error() + rst)
+	defer s.dbgPrint("map builder paused")
+
+	go func() {
+		for {
+			select {
+			case sock := <-s.Pending:
+				if err := s.pool.Submit(sock.validate); err != nil {
+					s.dbgPrint(ylw + err.Error() + rst)
+				}
+			default:
+				time.Sleep(1 * time.Second)
+				count := s.recycling()
+				s.dbgPrint(ylw + "recycled " + strconv.Itoa(count) + " proxies from our map" + rst)
 			}
-		case <-s.quit:
-			return
-		default:
-			count := s.recycling()
-			s.dbgPrint(ylw + "recycled " + strconv.Itoa(count) + " proxies from our map" + rst)
 		}
-	}
+	}()
+
+	s.svcUp()
+	<-s.quit
 }

@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	"os"
+	"strconv"
 	"time"
 
 	"github.com/mattn/go-tty"
@@ -16,9 +17,8 @@ var quit chan bool
 func init() {
 	quit = make(chan bool)
 	swamp = Prox5.NewDefaultSwamp()
-	if err := swamp.SetMaxWorkers(5000); err != nil {
-		panic(err)
-	}
+	swamp.SetMaxWorkers(5)
+	swamp.EnableDebug()
 
 	count := swamp.LoadProxyTXT("socks.list")
 	if count < 1 {
@@ -54,12 +54,7 @@ func watchKeyPresses() {
 	if err != nil {
 		panic(err)
 	}
-	defer func(t *tty.TTY) {
-		err := t.Close()
-		if err != nil {
-			panic(err)
-		}
-	}(t)
+	var done = false
 
 	for {
 		r, err := t.ReadRune()
@@ -75,6 +70,12 @@ func watchKeyPresses() {
 				println("enabling debug")
 				swamp.EnableDebug()
 			}
+		case "+":
+			swamp.SetMaxWorkers(swamp.GetMaxWorkers() + 1)
+			println("New worker count: " + strconv.Itoa(swamp.GetMaxWorkers()))
+		case "-":
+			swamp.SetMaxWorkers(swamp.GetMaxWorkers() - 1)
+			println("New worker count: " + strconv.Itoa(swamp.GetMaxWorkers()))
 		case "a":
 			go get("4")
 		case "b":
@@ -82,7 +83,7 @@ func watchKeyPresses() {
 		case "c":
 			go get("5")
 		case "p":
-			if swamp.Status == 0 {
+			if swamp.IsRunning() {
 				err := swamp.Pause()
 				if err != nil {
 					println(err.Error())
@@ -93,23 +94,30 @@ func watchKeyPresses() {
 				}
 			}
 		case "q":
-			quit <- true
+			done = true
+			break
 		default:
-			time.Sleep(25 * time.Millisecond)
+			//
+		}
+		if done {
+			break
 		}
 	}
+
+	t.Close()
+	quit <- true
+	return
 }
 
 func main() {
 	go watchKeyPresses()
 
-	for {
-		select {
-		case <-quit:
-			return
-		default:
+	go func() {
+		for {
 			fmt.Printf("4: %d, 4a: %d, 5: %d \n", swamp.Stats.Valid4, swamp.Stats.Valid4a, swamp.Stats.Valid5)
-			time.Sleep(1 * time.Second)
+			time.Sleep(5 * time.Second)
 		}
-	}
+	}()
+
+	<-quit
 }

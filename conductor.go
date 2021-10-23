@@ -5,7 +5,6 @@ import "errors"
 // SwampStatus represents the current state of our Swamp.
 type SwampStatus uint32
 
-
 const (
 	// Running means the proxy pool is currently taking in proxys and validating them, and is available to dispense proxies.
 	Running SwampStatus = iota
@@ -17,19 +16,14 @@ const (
 
 // Start starts our proxy pool operations. Trying to start a running Swamp will return an error.
 func (s *Swamp) Start() error {
-	s.mu.RLock()
-	if s.Status != New {
-		s.mu.RUnlock()
+	if s.Status.Load().(SwampStatus) != New {
 		return errors.New("this swamp is not new, use resume if it is paused")
 	}
-	s.mu.RUnlock()
-	// mapBuilder builds deduplicated map with valid ips and ports
-	go s.mapBuilder()
-	// tossUp feeds jobs to pond continuously
-	go s.jobSpawner()
-	s.mu.Lock()
-	s.Status = Running
-	s.mu.Unlock()
+
+	s.runningdaemons.Store(0)
+
+	s.getThisDread()
+
 	return nil
 }
 
@@ -41,34 +35,55 @@ Pause will cease the creation of any new proxy validation operations.
    * Pausing an already paused Swamp is a nonop.
 */
 func (s *Swamp) Pause() error {
-	if s.IsRunning() {
-		return errors.New("already paused")
+	if !s.IsRunning() {
+		return errors.New("not running")
 	}
 
 	s.dbgPrint("pausing...")
-	var svcbuf = make(chan bool, s.svcStatus())
-	for s.svcStatus() != 0 {
-		svcbuf <- true
-		select {
-			case q := <- svcbuf:
-				s.quit <- q
-			default:
+	var svcbuf = make(chan bool, 2)
 
+	for {
+		select {
+		case svcbuf <- true:
+			//
+		default:
+			break
+		}
+		select {
+		case <-svcbuf:
+			go s.svcDown()
+		default:
+			break
+		}
+		if !s.IsRunning() {
+			break
 		}
 	}
 
-	s.Status = Paused
+	s.Status.Store(Paused)
 	return nil
+}
+
+func (s *Swamp) getThisDread() {
+	go s.mapBuilder()
+	<-s.conductor
+	go s.jobSpawner()
+
+	for {
+		if s.IsRunning() {
+			s.Status.Store(Running)
+			break
+		}
+	}
 }
 
 // Resume will resume pause proxy pool operations, attempting to resume a running Swamp is returns an error.
 func (s *Swamp) Resume() error {
-	s.conductor = make(chan bool, 2)
-	if s.IsRunning() || s.Status == New {
+	if s.IsRunning() {
 		return errors.New("not paused")
 	}
-	go s.mapBuilder()
-	go s.jobSpawner()
-	<-s.conductor
+
+	s.getThisDread()
+
 	return nil
 }
