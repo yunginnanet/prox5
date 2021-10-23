@@ -53,7 +53,7 @@ type Swamp struct {
 var (
 	defaultStaleTime = 1 * time.Hour
 	defWorkers       = 100
-	defBailout       = 3
+	defBailout       = 5
 	// Note: I've chosen to use https here exclusively assuring all validated proxies are SSL capable.
 	defaultChecks = []string{
 		"https://wtfismyip.com/text",
@@ -72,6 +72,7 @@ var defUseProx = rl.Policy{
 	Window: 60,
 	Burst:  2,
 }
+
 var defBadProx = rl.Policy{
 	Window: 60,
 	Burst:  3,
@@ -171,6 +172,7 @@ type Proxy struct {
 
 	parent *Swamp
 	lock   uint32
+	hardlock *sync.Mutex
 }
 
 // UniqueKey is an implementation of the Identity interface from Rate5.

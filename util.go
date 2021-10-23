@@ -33,7 +33,7 @@ func randSleep() {
 	time.Sleep(time.Duration(quiccmaffs.Intn(500)) * time.Millisecond)
 }
 
-func allNil(obj ...interface{}) bool {
+/*func allNil(obj ...interface{}) bool {
 	for _, o := range obj {
 		if o != nil {
 			return false
@@ -41,3 +41,4 @@ func allNil(obj ...interface{}) bool {
 	}
 	return true
 }
+*/

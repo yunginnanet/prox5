@@ -4,6 +4,7 @@ import (
 	"errors"
 	"strconv"
 	"sync"
+	"sync/atomic"
 )
 
 func (s *Swamp) svcUp() {
@@ -64,6 +65,11 @@ func (sm swampMap) delete(sock string) error {
 	if !sm.exists(sock) {
 		return errors.New("proxy does not exist in map")
 	}
+	for !atomic.CompareAndSwapUint32(&sm.plot[sock].lock, stateUnlocked, stateLocked) {
+		randSleep()
+	}
+
+	sm.plot[sock]=nil
 	delete(sm.plot, sock)
 	return nil
 }
@@ -110,10 +116,11 @@ func (s *Swamp) recycling() int {
 		return 0
 	}
 	s.mu.RLock()
-	defer s.mu.RUnlock()
 	s.swampmap.mu.RLock()
+	defer s.mu.RUnlock()
+	defer s.swampmap.mu.RUnlock()
+
 	if len(s.swampmap.plot) < 1 {
-		s.swampmap.mu.RUnlock()
 		return 0
 	}
 	var count int
@@ -126,7 +133,7 @@ func (s *Swamp) recycling() int {
 			continue
 		}
 	}
-	s.swampmap.mu.RUnlock()
+
 	return count
 }
 

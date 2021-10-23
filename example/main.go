@@ -44,6 +44,7 @@ func get(ver string) {
 	case "5":
 		println("retrieving SOCKS5...")
 		println(swamp.Socks5Str())
+	default:
 
 	}
 }
@@ -53,7 +54,12 @@ func watchKeyPresses() {
 	if err != nil {
 		panic(err)
 	}
-	defer t.Close()
+	defer func(t *tty.TTY) {
+		err := t.Close()
+		if err != nil {
+			panic(err)
+		}
+	}(t)
 
 	for {
 		r, err := t.ReadRune()

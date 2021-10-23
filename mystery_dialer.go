@@ -4,18 +4,21 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"h12.io/socks"
 	"net"
 	"strconv"
+	"sync/atomic"
+
+	"h12.io/socks"
 )
 
+// DialContext is a simple stub adapter for compatibility with certain packages.
 func (s *Swamp) DialContext(ctx context.Context, network, addr string) (net.Conn, error) {
 	return s.MysteryDialer(ctx, network, addr)
 }
 
 // MysteryDialer is a dialer function that will use a different proxy for every request.
 func (s *Swamp) MysteryDialer(ctx context.Context, network, addr string) (net.Conn, error) {
-	var sock Proxy
+	var sock *Proxy
 	var socksString string
 	var conn net.Conn
 	var count int
@@ -28,14 +31,29 @@ func (s *Swamp) MysteryDialer(ctx context.Context, network, addr string) (net.Co
 		if err := ctx.Err(); err != nil {
 			return nil, err
 		}
+
 		sock = s.GetAnySOCKS()
-		s.dbgPrint("dialer trying: " + sock.Endpoint + "...")
+		for !atomic.CompareAndSwapUint32(&sock.lock, stateUnlocked, stateLocked) {
+			if sock == nil {
+				break
+			}
+			randSleep()
+		}
+
 		var err error
+
+		if sock == nil {
+			continue
+		}
+
+		s.dbgPrint("dialer trying: " + sock.Endpoint + "...")
 		socksString = fmt.Sprintf("socks%s://%s?timeout=%ss", sock.GetProto(), sock.Endpoint, s.GetTimeoutSecondsStr())
+		atomic.StoreUint32(&sock.lock, stateUnlocked)
 		dialSocks := socks.Dial(socksString)
 		if conn, err = dialSocks(network, addr); err != nil {
 			count++
 			s.dbgPrint(ylw + "unable to reach [redacted] with " + socksString + ", cycling..." + rst)
+
 			continue
 		}
 		break

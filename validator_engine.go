@@ -69,6 +69,8 @@ func (s *Swamp) checkHTTP(sock *Proxy) (string, error) {
 		t = socks.SOCKS4
 	case "4a":
 		t = socks.SOCKS4A
+	default:
+		return "", errors.New("invalid protocol loaded")
 	}
 
 	var dialSocks = socks.DialSocksProxy(t, sock.Endpoint)

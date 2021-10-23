@@ -1,7 +1,6 @@
 package Prox5
 
 import (
-	"errors"
 	"sync/atomic"
 	"time"
 )
@@ -24,13 +23,13 @@ func (s *Swamp) Socks5Str() string {
 // Socks4Str gets a SOCKS4 proxy that we have fully verified.
 // Will block if one is not available!
 func (s *Swamp) Socks4Str() string {
+	defer s.Stats.dispense()
 	for {
 		select {
 		case sock := <-s.ValidSocks4:
 			if !s.stillGood(sock) {
 				continue
 			}
-			s.Stats.dispense()
 			return sock.Endpoint
 		}
 	}
@@ -39,62 +38,37 @@ func (s *Swamp) Socks4Str() string {
 // Socks4aStr gets a SOCKS4 proxy that we have fully verified.
 // Will block if one is not available!
 func (s *Swamp) Socks4aStr() string {
+	defer s.Stats.dispense()
 	for {
 		select {
 		case sock := <-s.ValidSocks4a:
 			if !s.stillGood(sock) {
 				continue
 			}
-			s.Stats.dispense()
 			return sock.Endpoint
 		}
 	}
 }
 
-func (sock *Proxy) copy() (Proxy, error) {
-	if !atomic.CompareAndSwapUint32(&sock.lock, stateUnlocked, stateLocked) {
-		return Proxy{Endpoint: ""}, errors.New("locked")
-	}
-	atomic.StoreUint32(&sock.lock, stateUnlocked)
-
-	return Proxy{
-		Endpoint:  sock.Endpoint,
-		ProxiedIP: sock.ProxiedIP,
-		Proto:     sock.Proto,
-	}, nil
-}
-
 // GetAnySOCKS retrieves any version SOCKS proxy as a Proxy type
 // Will block if one is not available!
-func (s *Swamp) GetAnySOCKS() Proxy {
-	dishout := func(sock *Proxy) (Proxy, bool) {
-		if !s.stillGood(sock) {
-			return Proxy{}, false
-		}
-		if sox, err := sock.copy(); err == nil {
-			s.Stats.dispense()
-			return sox, true
-		}
-		return Proxy{}, false
-	}
-
+func (s *Swamp) GetAnySOCKS() *Proxy {
+	defer s.Stats.dispense()
 	for {
-		var sox Proxy
-		var ok bool
 		select {
 		case sock := <-s.ValidSocks4:
-			if sox, ok = dishout(sock); ok {
-				return sox
+			if s.stillGood(sock) {
+				return sock
 			}
 			continue
 		case sock := <-s.ValidSocks4a:
-			if sox, ok = dishout(sock); ok {
-				return sox
+			if s.stillGood(sock) {
+				return sock
 			}
 			continue
 		case sock := <-s.ValidSocks5:
-			if sox, ok = dishout(sock); ok {
-				return sox
+			if s.stillGood(sock) {
+				return sock
 			}
 			continue
 		default:
@@ -106,7 +80,7 @@ func (s *Swamp) GetAnySOCKS() Proxy {
 
 func (s *Swamp) stillGood(sock *Proxy) bool {
 	for !atomic.CompareAndSwapUint32(&sock.lock, stateUnlocked, stateLocked) {
-		time.Sleep(100 * time.Millisecond)
+		randSleep()
 	}
 	defer atomic.StoreUint32(&sock.lock, stateUnlocked)
 
