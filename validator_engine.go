@@ -6,7 +6,6 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"net"
 	"net/http"
 	"strings"
@@ -103,7 +102,7 @@ func (s *Swamp) checkHTTP(sock *Proxy) (string, error) {
 		}
 	}(resp.Body)
 
-	rbody, err := ioutil.ReadAll(resp.Body)
+	rbody, err := io.ReadAll(resp.Body)
 	return string(rbody), err
 }
 

@@ -6,7 +6,7 @@ import (
 )
 
 // GetProto safely retrieves the protocol value of the Proxy.
-func (sock Proxy) GetProto() string {
+func (sock *Proxy) GetProto() string {
 	return sock.Proto.Load().(string)
 }
 
@@ -61,7 +61,7 @@ func (s *Swamp) GetRecyclingStatus() bool {
 
 // GetWorkers retrieves pond worker statistics:
 //    * return MaxWorkers, RunningWorkers, IdleWorkers
-func (s *Swamp) GetWorkers() (int, int, int) {
+func (s *Swamp) GetWorkers() (maxWorkers, runningWorkers, idleWorkers int) {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
 	return s.pool.Cap(), s.pool.Running(), s.pool.Free()

@@ -182,7 +182,7 @@ type Proxy struct {
 
 // UniqueKey is an implementation of the Identity interface from Rate5.
 // See: https://pkg.go.dev/github.com/yunginnanet/Rate5#Identity
-func (sock Proxy) UniqueKey() string {
+func (sock *Proxy) UniqueKey() string {
 	return sock.Endpoint
 }
 

@@ -12,6 +12,14 @@ import (
 	ipa "inet.af/netaddr"
 )
 
+var verbose = true
+
+func verbosePrint(s string) {
+	if verbose {
+		println(s)
+	}
+}
+
 // throw shit proxies here, get map
 // see daemons.go
 var inChan chan string
@@ -30,12 +38,24 @@ func filter(in string) (filtered string, ok bool) {
 	case 1:
 		return in, false
 	case 2:
+		println(in)
+		if _, err := strconv.Atoi(split[1]); err != nil {
+			verbosePrint(err.Error())
+			return filtered, false
+		}
+		if _, ok := dns.IsDomainName(split[0]); ok {
+			return in, true
+		}
 		combo, err := ipa.ParseIPPort(in)
 		if err != nil {
+			verbosePrint(err.Error())
 			return in, false
 		}
 		return combo.String(), true
 	case 4:
+		if _, err := strconv.Atoi(split[1]); err != nil {
+			return filtered, false
+		}
 		if _, ok := dns.IsDomainName(split[0]); ok {
 			return fmt.Sprintf("%s:%s@%s:%s", split[2], split[3], split[0], split[1]), true
 		}
