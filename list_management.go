@@ -8,6 +8,7 @@ import (
 	"strconv"
 	"strings"
 	"sync/atomic"
+	"time"
 
 	"github.com/miekg/dns"
 	ipa "inet.af/netaddr"
@@ -96,23 +97,26 @@ func (s *Swamp) LoadProxyTXT(seedFile string) int {
 	var count = &atomic.Value{}
 	count.Store(0)
 
-	s.dbgPrint("LoadProxyTXT start: " + seedFile)
-	defer func() {
-		s.dbgPrint("LoadProxyTXT finished: " + strconv.Itoa(count.Load().(int)))
-	}()
-
 	f, err := os.Open(seedFile)
 	if err != nil {
 		s.dbgPrint(red + err.Error() + rst)
 		return 0
 	}
 
-	bs, err := io.ReadAll(f)
-	sockstr := string(bs)
+	s.dbgPrint("LoadProxyTXT start: " + seedFile)
+	defer func() {
+		s.dbgPrint("LoadProxyTXT finished: " + strconv.Itoa(count.Load().(int)))
+		if err := f.Close(); err != nil {
+			s.dbgPrint(red + err.Error() + rst)
+		}
+	}()
 
-	if err := f.Close(); err != nil {
+	bs, err := io.ReadAll(f)
+	if err != nil {
 		s.dbgPrint(red + err.Error() + rst)
+		return 0
 	}
+	sockstr := string(bs)
 
 	count.Store(s.LoadMultiLineString(sockstr))
 	return count.Load().(int)
@@ -123,12 +127,19 @@ func (s *Swamp) LoadSingleProxy(sock string) (ok bool) {
 	if sock, ok = s.filter(sock); !ok {
 		return
 	}
-	go s.LoadSingleProxy(sock)
+	go s.loadSingleProxy(sock)
 	return
 }
 
 func (s *Swamp) loadSingleProxy(sock string) {
-	inChan <- sock
+	for {
+		select {
+		case inChan <- sock:
+			return
+		default:
+			time.Sleep(1 * time.Second)
+		}
+	}
 }
 
 // LoadMultiLineString loads a multiine string object with one (host:port) SOCKS proxy per line.
@@ -136,8 +147,7 @@ func (s *Swamp) LoadMultiLineString(socks string) int {
 	var count int
 	scan := bufio.NewScanner(strings.NewReader(socks))
 	for scan.Scan() {
-		if filtered, ok := s.filter(scan.Text()); ok {
-			go s.loadSingleProxy(filtered)
+		if s.LoadSingleProxy(socks) {
 			count++
 		}
 	}

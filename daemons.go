@@ -75,8 +75,6 @@ func (sm swampMap) clear() {
 }
 
 func (s *Swamp) mapBuilder() {
-	var filtered string
-	var ok bool
 
 	s.dbgPrint("map builder started")
 	defer s.dbgPrint("map builder paused")
@@ -85,10 +83,7 @@ func (s *Swamp) mapBuilder() {
 		for {
 			select {
 			case in := <-inChan:
-				if filtered, ok = s.filter(in); !ok {
-					continue
-				}
-				if p, ok := s.swampmap.add(filtered); !ok {
+				if p, ok := s.swampmap.add(in); !ok {
 					continue
 				} else {
 					s.Pending <- p
