@@ -48,7 +48,6 @@ func (s *Swamp) GetMaxWorkers() int {
 // IsRunning returns true if our background goroutines defined in daemons.go are currently operational
 func (s *Swamp) IsRunning() bool {
 	if s.runningdaemons.Load() == nil {
-		println("nil")
 		return false
 	}
 	return s.runningdaemons.Load().(int) > 0
