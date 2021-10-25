@@ -94,7 +94,7 @@ func (s *Swamp) mapBuilder() {
 					s.Pending <- p
 				}
 			default:
-				//
+				time.Sleep(250 * time.Millisecond)
 			}
 		}
 	}()
@@ -118,6 +118,7 @@ func (s *Swamp) recycling() int {
 		case s.Pending <- sock:
 			count++
 		default:
+			time.Sleep(250 * time.Millisecond)
 			continue
 		}
 	}
