@@ -9,12 +9,14 @@ import (
 )
 
 func (s *Swamp) svcUp() {
-	s.runningdaemons.Store(s.runningdaemons.Load().(int) + 1)
+	running := s.runningdaemons.Load().(int)
+	s.runningdaemons.Store(running + 1)
 }
 
 func (s *Swamp) svcDown() {
+	running := s.runningdaemons.Load().(int)
 	s.quit <- true
-	s.runningdaemons.Store(s.runningdaemons.Load().(int) - 1)
+	s.runningdaemons.Store(running - 1)
 }
 
 type swampMap struct {
@@ -76,16 +78,14 @@ func (s *Swamp) mapBuilder() {
 	var filtered string
 	var ok bool
 
-
-	defer s.dbgPrint("map builder paused")
-
 	s.dbgPrint("map builder started")
+	defer s.dbgPrint("map builder paused")
 
 	go func() {
 		for {
 			select {
 			case in := <-inChan:
-				if filtered, ok = filter(in); !ok {
+				if filtered, ok = s.filter(in); !ok {
 					continue
 				}
 				if p, ok := s.swampmap.add(filtered); !ok {
@@ -126,13 +126,20 @@ func (s *Swamp) recycling() int {
 }
 
 func (s *Swamp) jobSpawner() {
-
+	if s.pool.IsClosed() {
+		s.pool.Reboot()
+	}
 	s.dbgPrint("job spawner started")
-	defer s.dbgPrint("map builder paused")
+	defer s.dbgPrint("job spawner paused")
+
+	q := make(chan bool)
 
 	go func() {
 		for {
 			select {
+			case <-s.quit:
+				q <- true
+				return
 			case sock := <-s.Pending:
 				if err := s.pool.Submit(sock.validate); err != nil {
 					s.dbgPrint(ylw + err.Error() + rst)
@@ -146,5 +153,6 @@ func (s *Swamp) jobSpawner() {
 	}()
 
 	s.svcUp()
-	<-s.quit
+	<-q
+	s.pool.Release()
 }

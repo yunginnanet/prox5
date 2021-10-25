@@ -40,25 +40,9 @@ func (s *Swamp) Pause() error {
 	}
 
 	s.dbgPrint("pausing...")
-	var svcbuf = make(chan bool, 2)
 
-	for {
-		select {
-		case svcbuf <- true:
-			//
-		default:
-			break
-		}
-		select {
-		case <-svcbuf:
-			go s.svcDown()
-		default:
-			break
-		}
-		if !s.IsRunning() {
-			break
-		}
-	}
+	s.svcDown()
+	s.svcDown()
 
 	s.Status.Store(Paused)
 	return nil

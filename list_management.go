@@ -3,6 +3,7 @@ package Prox5
 import (
 	"bufio"
 	"fmt"
+	"io"
 	"os"
 	"strconv"
 	"strings"
@@ -94,7 +95,6 @@ func (s *Swamp) filter(in string) (filtered string, ok bool) {
 func (s *Swamp) LoadProxyTXT(seedFile string) int {
 	var count = &atomic.Value{}
 	count.Store(0)
-	var ok bool
 
 	s.dbgPrint("LoadProxyTXT start: " + seedFile)
 	defer func() {
@@ -107,22 +107,14 @@ func (s *Swamp) LoadProxyTXT(seedFile string) int {
 		return 0
 	}
 
-	scan := bufio.NewScanner(f)
-
-	for scan.Scan() {
-		var filtered string
-		if filtered, ok = s.filter(scan.Text()); !ok {
-			continue
-		}
-
-		count.Store(count.Load().(int) + 1)
-		go s.loadSingleProxy(filtered)
-	}
+	bs, err := io.ReadAll(f)
+	sockstr := string(bs)
 
 	if err := f.Close(); err != nil {
 		s.dbgPrint(red + err.Error() + rst)
 	}
 
+	count.Store(s.LoadMultiLineString(sockstr))
 	return count.Load().(int)
 }
 
@@ -144,11 +136,10 @@ func (s *Swamp) LoadMultiLineString(socks string) int {
 	var count int
 	scan := bufio.NewScanner(strings.NewReader(socks))
 	for scan.Scan() {
-		go s.loadSingleProxy(scan.Text())
-		count++
-	}
-	if count < 1 {
-		return 0
+		if filtered, ok := s.filter(scan.Text()); ok {
+			go s.loadSingleProxy(filtered)
+			count++
+		}
 	}
 	return count
 }
