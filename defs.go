@@ -206,10 +206,10 @@ func NewDefaultSwamp() *Swamp {
 
 		swampopt: defOpt(),
 
-		quit:   make(chan bool),
+		quit:      make(chan bool),
 		conductor: make(chan bool),
-		mu:     &sync.RWMutex{},
-		Status: atomic.Value{},
+		mu:        &sync.RWMutex{},
+		Status:    atomic.Value{},
 	}
 
 	s.Status.Store(New)

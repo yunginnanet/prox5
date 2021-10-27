@@ -47,12 +47,12 @@ func (s *Swamp) SetMaxWorkers(num int) {
 	s.pool.Tune(num)
 }
 
-// EnableRecycling disables recycling used proxies back into the pending channel for revalidation after dispensed.
+// EnableRecycling enables recycling used proxies back into the pending channel for revalidation after dispensed.
 func (s *Swamp) EnableRecycling() {
 	s.swampopt.recycle.Store(true)
 }
 
-// DisableRecycling enables recycling used proxies back into the pending channel for revalidation after dispensed.
+// DisableRecycling disables recycling used proxies back into the pending channel for revalidation after dispensed.
 func (s *Swamp) DisableRecycling() {
 	s.swampopt.recycle.Store(false)
 }

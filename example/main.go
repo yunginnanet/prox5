@@ -13,6 +13,7 @@ import (
 
 var swamp *Prox5.Swamp
 var quit chan bool
+var t *tty.TTY
 
 func init() {
 	quit = make(chan bool)
@@ -50,7 +51,8 @@ func get(ver string) {
 }
 
 func watchKeyPresses() {
-	t, err := tty.Open()
+	var err error
+	t, err = tty.Open()
 	if err != nil {
 		panic(err)
 	}
@@ -104,13 +106,16 @@ func watchKeyPresses() {
 		}
 	}
 
-	t.Close()
 	quit <- true
 	return
 }
 
 func main() {
 	go watchKeyPresses()
+
+	defer func(t *tty.TTY) {
+		_ = t.Close()
+	}(t)
 
 	go func() {
 		for {

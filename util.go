@@ -32,13 +32,3 @@ func randSleep() {
 	quiccmaffs.Seed(time.Now().UnixNano())
 	time.Sleep(time.Duration(quiccmaffs.Intn(500)) * time.Millisecond)
 }
-
-/*func allNil(obj ...interface{}) bool {
-	for _, o := range obj {
-		if o != nil {
-			return false
-		}
-	}
-	return true
-}
-*/
