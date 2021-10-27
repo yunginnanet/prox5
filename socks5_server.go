@@ -32,13 +32,12 @@ func (s socksCreds) Valid(username, password string) bool {
 // listen is standard Go listen string, e.g: "127.0.0.1:1080".
 // username and password are used for authenticatig to the SOCKS5 server.
 func (s *Swamp) StartSOCKS5Server(listen, username, password string) error {
-
 	s.socks5ServerAuth = socksCreds{username: username, password: password}
 
 	conf := &socks5.Config{
-		Dial:        s.MysteryDialer,
 		Credentials: s.socks5ServerAuth,
 		Logger:      s.socksServerLogger,
+		Dial:        s.MysteryDialer,
 	}
 
 	s.dbgPrint("listening for SOCKS5 connections on " + listen)

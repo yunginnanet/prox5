@@ -42,6 +42,11 @@ func (s *Swamp) SetValidationTimeout(timeout time.Duration) {
 	s.swampopt.validationTimeout.Store(timeout)
 }
 
+// SetServerTimeout sets the serverTimeout option.
+func (s *Swamp) SetServerTimeout(timeout time.Duration) {
+	s.swampopt.serverTimeout.Store(timeout)
+}
+
 // SetMaxWorkers set the maximum workers for proxy checking and clears the current proxy map and worker pool jobs.
 func (s *Swamp) SetMaxWorkers(num int) {
 	s.pool.Tune(num)

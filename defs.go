@@ -92,6 +92,7 @@ func defOpt() *swampOptions {
 	sm.recycle.Store(true)
 	sm.debug.Store(false)
 	sm.validationTimeout.Store(time.Duration(12) * time.Second)
+	sm.serverTimeout.Store(time.Duration(360) * time.Second)
 
 	sm.dialerBailout.Store(defBailout)
 	sm.stale.Store(defaultStaleTime)
@@ -142,6 +143,9 @@ type swampOptions struct {
 	// validationTimeout defines the timeout for proxy validation operations.
 	// This will apply for both the initial quick check (dial), and the second check (HTTP GET).
 	validationTimeout atomic.Value
+
+	// serverTimeout defines the timeout for outgoing connections made with the MysteryDialer.
+	serverTimeout atomic.Value
 
 	dialerBailout atomic.Value
 
