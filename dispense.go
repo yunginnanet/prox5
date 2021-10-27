@@ -84,7 +84,7 @@ func (s *Swamp) stillGood(sock *Proxy) bool {
 	}
 	defer atomic.StoreUint32(&sock.lock, stateUnlocked)
 
-	if sock.timesBad.Load().(int) > s.GetRemoveAfter() {
+	if sock.timesBad.Load().(int) > s.GetRemoveAfter() && s.GetRemoveAfter() != -1 {
 		s.dbgPrint(red + "deleting from map (too many failures): " + sock.Endpoint + rst)
 		if err := s.swampmap.delete(sock.Endpoint); err != nil {
 			s.dbgPrint(red + err.Error() + rst)

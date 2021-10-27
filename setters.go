@@ -57,8 +57,10 @@ func (s *Swamp) DisableRecycling() {
 	s.swampopt.recycle.Store(false)
 }
 
-// SetRemoveAfter sets the removeafter policy, the amount of times a recycled proxy is marked as bad until it is removed entirely.
-//    * Only applies when recycling is enabled *
+// SetRemoveAfter sets the removeafter policy, the amount of times a recycled proxy is marked as bad before it is removed entirely.
+//    * Default is 5
+//    * To disable deleting entirely, set this value to -1
+//    * Only applies when recycling is enabled
 func (s *Swamp) SetRemoveAfter(timesfailed int) {
 	s.swampopt.removeafter.Store(timesfailed)
 }
