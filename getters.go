@@ -10,6 +10,12 @@ func (sock *Proxy) GetProto() string {
 	return sock.Proto.Load().(string)
 }
 
+// GetStatistics returns all current statistics.
+// * This is a pointer, do not modify it!
+func (s *Swamp) GetStatistics() *Statistics {
+	return s.Stats
+}
+
 // RandomUserAgent retrieves a random user agent from our list in string form.
 func (s *Swamp) RandomUserAgent() string {
 	s.mu.RLock()
