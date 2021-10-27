@@ -6,13 +6,11 @@
 
 ![Demo](./Prox5.gif)
 
-This package is for managing and accessing thousands upon thousands of arbitrary SOCKS proxies.
+This package is for managing, validating, and accessing thousands upon thousands of arbitrary SOCKS proxies.
 
-It also has a SOCKS5 server that dials out from ***?????*** Every time you ***?????***.
+Notably it features a SOCKS5 server function that dials out from a different validated proxy for every connection.
 
-Pipe it a file filled with SOCKS proxies (host:port per line) and it will validate them continously while automatically
-weeding out the invalid ones.
-
-This project is in development.
+This project is in development. It works and has been used in "production", but mainly this readme and the documentation needs some love.
+Please break it and let me know what broke.
 
 **See [the docs](https://godoc.org/git.tcp.direct/kayos/Prox5) and the [example](example/main.go) for more details.**
