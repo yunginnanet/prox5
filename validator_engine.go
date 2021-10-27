@@ -66,7 +66,7 @@ func (s *Swamp) checkHTTP(sock *Proxy) (string, error) {
 		"socks%s://%s/?timeout=%ss",
 		sock.Proto.Load().(string),
 		sock.Endpoint,
-		s.GetTimeoutSecondsStr()),
+		s.GetValidationTimeoutStr()),
 	)
 
 	var transportDialer = dialSocks
