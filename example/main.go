@@ -20,7 +20,7 @@ func init() {
 	swamp.SetMaxWorkers(5)
 	swamp.EnableDebug()
 
-	count := swamp.LoadProxyTXT("socks.list")
+	count := swamp.LoadProxyTXT(os.Args[1])
 	if count < 1 {
 		println("file contained no valid SOCKS host:port combos")
 		os.Exit(1)

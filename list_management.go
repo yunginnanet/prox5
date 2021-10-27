@@ -52,8 +52,12 @@ func (s *Swamp) filter(in string) (filtered string, ok bool) {
 	split := strings.Split(in, ":")
 
 	if len(split) < 2 {
+		println("no colon")
 		return in, false
 	}
+
+	print(fmt.Sprintf("%s--->%s%s", in, split[0], split[1]))
+
 	if _, err := strconv.Atoi(split[1]); err != nil {
 		return in, false
 	}
@@ -61,6 +65,7 @@ func (s *Swamp) filter(in string) (filtered string, ok bool) {
 	switch len(split) {
 	case 2:
 		if _, ok := dns.IsDomainName(split[0]); ok {
+			println("domain detected")
 			return in, true
 		}
 		combo, err := ipa.ParseIPPort(in)
@@ -147,7 +152,7 @@ func (s *Swamp) LoadMultiLineString(socks string) int {
 	var count int
 	scan := bufio.NewScanner(strings.NewReader(socks))
 	for scan.Scan() {
-		if s.LoadSingleProxy(socks) {
+		if s.LoadSingleProxy(scan.Text()) {
 			count++
 		}
 	}
