@@ -47,7 +47,11 @@ func (s *Swamp) MysteryDialer(ctx context.Context, network, addr string) (net.Co
 		}
 
 		s.dbgPrint("dialer trying: " + sock.Endpoint + "...")
-		socksString = fmt.Sprintf("socks%s://%s?timeout=%ss", sock.GetProto(), sock.Endpoint, s.GetServerTimeoutStr())
+		tout := ""
+		if s.GetServerTimeoutStr() != "-1" {
+			tout = fmt.Sprintf("?timeout=%ss", s.GetServerTimeoutStr())
+		}
+		socksString = fmt.Sprintf("socks%s://%s%s", sock.GetProto(), sock.Endpoint, tout)
 		atomic.StoreUint32(&sock.lock, stateUnlocked)
 		dialSocks := socks.Dial(socksString)
 		if conn, err = dialSocks(network, addr); err != nil {

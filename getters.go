@@ -54,6 +54,9 @@ func (s *Swamp) GetServerTimeout() time.Duration {
 // GetServerTimeoutStr returns the current value of serverTimeout (in seconds string).
 func (s *Swamp) GetServerTimeoutStr() string {
 	timeout := s.swampopt.serverTimeout.Load().(time.Duration)
+	if timeout == time.Duration(0) {
+		return "-1"
+	}
 	return strconv.Itoa(int(timeout / time.Second))
 }
 

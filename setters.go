@@ -43,6 +43,8 @@ func (s *Swamp) SetValidationTimeout(timeout time.Duration) {
 }
 
 // SetServerTimeout sets the serverTimeout option.
+// * serverTimeout defines the timeout for outgoing connections made with the MysteryDialer.
+// * To disable timeout on outgoing MysteryDialer connections, set this to time.Duration(0).
 func (s *Swamp) SetServerTimeout(timeout time.Duration) {
 	s.swampopt.serverTimeout.Store(timeout)
 }
