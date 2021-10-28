@@ -4,7 +4,6 @@ import (
 	"errors"
 	"strconv"
 	"sync"
-	"sync/atomic"
 	"time"
 )
 
@@ -57,9 +56,6 @@ func (sm swampMap) delete(sock string) error {
 
 	if !sm.exists(sock) {
 		return errors.New("proxy does not exist in map")
-	}
-	for !atomic.CompareAndSwapUint32(&sm.plot[sock].lock, stateUnlocked, stateLocked) {
-		randSleep()
 	}
 
 	sm.plot[sock] = nil
