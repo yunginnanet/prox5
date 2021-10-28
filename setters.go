@@ -42,6 +42,13 @@ func (s *Swamp) SetValidationTimeout(timeout time.Duration) {
 	s.swampopt.validationTimeout.Store(timeout)
 }
 
+// SetServerTimeout sets the serverTimeout option.
+// * serverTimeout defines the timeout for outgoing connections made with the MysteryDialer.
+// * To disable timeout on outgoing MysteryDialer connections, set this to time.Duration(0).
+func (s *Swamp) SetServerTimeout(timeout time.Duration) {
+	s.swampopt.serverTimeout.Store(timeout)
+}
+
 // SetMaxWorkers set the maximum workers for proxy checking and clears the current proxy map and worker pool jobs.
 func (s *Swamp) SetMaxWorkers(num int) {
 	s.pool.Tune(num)

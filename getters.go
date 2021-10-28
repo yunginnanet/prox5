@@ -10,6 +10,12 @@ func (sock *Proxy) GetProto() string {
 	return sock.Proto.Load().(string)
 }
 
+// GetStatistics returns all current statistics.
+// * This is a pointer, do not modify it!
+func (s *Swamp) GetStatistics() *Statistics {
+	return s.Stats
+}
+
 // RandomUserAgent retrieves a random user agent from our list in string form.
 func (s *Swamp) RandomUserAgent() string {
 	s.mu.RLock()
@@ -34,9 +40,23 @@ func (s *Swamp) GetValidationTimeout() time.Duration {
 	return s.swampopt.validationTimeout.Load().(time.Duration)
 }
 
-// GetTimeoutSecondsStr returns the current value of validationTimeout (in seconds string).
-func (s *Swamp) GetTimeoutSecondsStr() string {
+// GetValidationTimeoutStr returns the current value of validationTimeout (in seconds string).
+func (s *Swamp) GetValidationTimeoutStr() string {
 	timeout := s.swampopt.validationTimeout.Load().(time.Duration)
+	return strconv.Itoa(int(timeout / time.Second))
+}
+
+// GetServerTimeout returns the current value of serverTimeout.
+func (s *Swamp) GetServerTimeout() time.Duration {
+	return s.swampopt.serverTimeout.Load().(time.Duration)
+}
+
+// GetServerTimeoutStr returns the current value of serverTimeout (in seconds string).
+func (s *Swamp) GetServerTimeoutStr() string {
+	timeout := s.swampopt.serverTimeout.Load().(time.Duration)
+	if timeout == time.Duration(0) {
+		return "-1"
+	}
 	return strconv.Itoa(int(timeout / time.Second))
 }
 
