@@ -4,6 +4,7 @@ go 1.17
 
 require (
 	git.tcp.direct/kayos/go-socks5 v1.0.1
+	github.com/akutz/memconn v0.1.0
 	github.com/mattn/go-tty v0.0.3
 	github.com/miekg/dns v1.1.43
 	github.com/panjf2000/ants/v2 v2.4.6

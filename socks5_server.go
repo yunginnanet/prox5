@@ -4,6 +4,7 @@ import (
 	"fmt"
 
 	"git.tcp.direct/kayos/go-socks5"
+	"github.com/akutz/memconn"
 )
 
 type socksLogger struct {
@@ -48,4 +49,26 @@ func (s *Swamp) StartSOCKS5Server(listen, username, password string) error {
 	}
 
 	return server.ListenAndServe("tcp", listen)
+}
+
+// StartMemoryServer starts our rotating proxy SOCKS5 server as an in-memory socket.
+func (s *Swamp) StartMemoryServer() error {
+
+	conf := &socks5.Config{
+		Logger: s.socksServerLogger,
+		Dial:   s.MysteryDialer,
+	}
+
+	s.dbgPrint("listening for SOCKS5 connections in memory")
+
+	server, err := socks5.New(conf)
+	if err != nil {
+		return err
+	}
+
+	listener, err := memconn.Listen("prox5", "0")
+	if err != nil {
+		return err
+	}
+	return server.Serve(listener)
 }
