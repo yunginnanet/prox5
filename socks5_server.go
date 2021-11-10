@@ -1,10 +1,14 @@
 package Prox5
 
 import (
+	"context"
+	"crypto/tls"
 	"fmt"
-
 	"git.tcp.direct/kayos/go-socks5"
 	"github.com/akutz/memconn"
+	"net"
+	"net/http"
+	"time"
 )
 
 type socksLogger struct {
@@ -52,7 +56,7 @@ func (s *Swamp) StartSOCKS5Server(listen, username, password string) error {
 }
 
 // StartMemoryServer starts our rotating proxy SOCKS5 server as an in-memory socket.
-func (s *Swamp) StartMemoryServer() error {
+func (s *Swamp) StartInMemorySocks5Server() error {
 
 	conf := &socks5.Config{
 		Logger: s.socksServerLogger,
@@ -66,9 +70,23 @@ func (s *Swamp) StartMemoryServer() error {
 		return err
 	}
 
-	listener, err := memconn.Listen("prox5", "0")
+	listener, err := memconn.Listen("memu", "Prox5")
 	if err != nil {
 		return err
 	}
 	return server.Serve(listener)
+}
+
+func (s *Swamp) GetInMemoryHTTPClient() *http.Client {
+	return &http.Client{
+		Transport: &http.Transport{
+			DialContext: func(
+				ctx context.Context, _, _ string) (net.Conn, error) {
+				return memconn.DialContext(ctx, "memu", "Prox5")
+			},
+			DisableKeepAlives:   true,
+			TLSClientConfig:     &tls.Config{InsecureSkipVerify: true},
+			TLSHandshakeTimeout: s.swampopt.validationTimeout.Load().(time.Duration),
+		},
+	}
 }
