@@ -30,5 +30,5 @@ func getRandomUint32() uint32 {
 
 func randSleep() {
 	quiccmaffs.Seed(time.Now().UnixNano())
-	time.Sleep(time.Duration(quiccmaffs.Intn(500)) * time.Millisecond)
+	time.Sleep(time.Duration(quiccmaffs.Intn(200)) * time.Millisecond)
 }

@@ -85,7 +85,7 @@ func (s *Swamp) mapBuilder() {
 					s.Pending <- p
 				}
 			default:
-				time.Sleep(250 * time.Millisecond)
+				time.Sleep(25 * time.Millisecond)
 			}
 		}
 	}()
@@ -109,7 +109,7 @@ func (s *Swamp) recycling() int {
 		case s.Pending <- sock:
 			count++
 		default:
-			time.Sleep(250 * time.Millisecond)
+			time.Sleep(25 * time.Millisecond)
 			continue
 		}
 	}
@@ -137,7 +137,7 @@ func (s *Swamp) jobSpawner() {
 					s.dbgPrint(ylw + err.Error() + rst)
 				}
 			default:
-				time.Sleep(1 * time.Second)
+				time.Sleep(25 * time.Millisecond)
 				count := s.recycling()
 				s.dbgPrint(ylw + "recycled " + strconv.Itoa(count) + " proxies from our map" + rst)
 			}

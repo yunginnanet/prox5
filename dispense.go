@@ -72,8 +72,8 @@ func (s *Swamp) GetAnySOCKS() *Proxy {
 			}
 			continue
 		default:
-			s.dbgPrint(red + "no valid proxies in channels, sleeping" + rst)
-			time.Sleep(10 * time.Second)
+			// s.dbgPrint(red + "no valid proxies in channels, sleeping" + rst)
+			time.Sleep(3 * time.Second)
 		}
 	}
 }
