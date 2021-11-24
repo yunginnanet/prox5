@@ -104,6 +104,9 @@ func (s *Swamp) recycling() int {
 	}
 	var count int
 
+	s.swampmap.mu.RLock()
+	defer s.swampmap.mu.RUnlock()
+
 	for _, sock := range s.swampmap.plot {
 		select {
 		case s.Pending <- sock:
@@ -113,6 +116,7 @@ func (s *Swamp) recycling() int {
 			continue
 		}
 	}
+
 
 	return count
 }
