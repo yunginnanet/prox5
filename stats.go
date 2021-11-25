@@ -50,6 +50,11 @@ func (stats *Statistics) http() {
 	stats.ValidHTTP++
 }
 
+// GetTotalValidated retrieves our grand total validated proxy count.
+func (p *Swamp) GetTotalValidated() int {
+	return p.Stats.Valid4a + p.Stats.Valid4 + p.Stats.Valid5 + p.Stats.ValidHTTP
+}
+
 // GetUptime returns the total lifetime duration of our pool.
 func (stats *Statistics) GetUptime() time.Duration {
 	return time.Since(stats.birthday)
