@@ -39,9 +39,7 @@ func (s *Swamp) MysteryDialer(ctx context.Context, network, addr string) (net.Co
 			}
 			randSleep()
 		}
-
 		var err error
-
 		if sock == nil {
 			continue
 		}
