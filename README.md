@@ -23,14 +23,14 @@ Prox5 will then store the endpoint's outward appearing IP address and mark it as
 
  
  - Retrieve validated 4/4a/5 proxies as simple strings for generic use
- - Use one of the dialer functions with any golang code that calls for the Dial or ContextDial interfaces
- - Spin up a SOCKS5 server that will then make rotating use of your validated proxies.
+ - Use one of the dialer functions with any golang code that calls for a net.Dialer
+ - Spin up a SOCKS5 server that will then make rotating use of your validated proxies
  
 
  
-The way you choose to use this lib is yours. The API is fairly extensive for you to be able to customize the runtime options without having to do any surgery.   
+The way you choose to use this lib is yours. The API is fairly extensive for you to be able to customize runtime configuration without having to do any surgery.
   
-  Things like the amount of validation workers that are concurrently operating, various timeouts, and proxy re-use policies. may be tuned in real-time. [please the docs.](https://pkg.go.dev/git.tcp.direct/kayos/Prox5)
+Things like the amount of validation workers that are concurrently operating, timeouts, and proxy re-use policies may be tuned in real-time. [please read the docs.](https://pkg.go.dev/git.tcp.direct/kayos/Prox5)
 
  ---
  
