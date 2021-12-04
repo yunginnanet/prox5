@@ -12,7 +12,7 @@ const (
 	rst = "\033[0m"
 )
 
-// randStrChoice returns a random element from the given string slice
+// randStrChoice returns a random element from the given string slice.
 func randStrChoice(choices []string) string {
 	strlen := len(choices)
 	n := uint32(0)
@@ -22,7 +22,7 @@ func randStrChoice(choices []string) string {
 	return choices[n]
 }
 
-// getRandomUint32 retrieves a cryptographically sound random 32 bit unsigned little endian integer
+// getRandomUint32 retrieves a random integer seeded by the current time.
 func getRandomUint32() uint32 {
 	quiccmaffs.Seed(time.Now().UnixNano())
 	return quiccmaffs.Uint32()
