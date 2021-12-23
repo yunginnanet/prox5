@@ -5,7 +5,7 @@ go 1.17
 require (
 	git.tcp.direct/kayos/go-socks5 v1.0.1
 	github.com/mattn/go-tty v0.0.3
-	github.com/miekg/dns v1.1.44
+	github.com/miekg/dns v1.1.45
 	github.com/panjf2000/ants/v2 v2.4.7
 	github.com/yunginnanet/Rate5 v0.4.3
 	golang.org/x/net v0.0.0-20210928044308-7d9f5e0b762b
