@@ -4,18 +4,17 @@ import (
 	"errors"
 	"strconv"
 	"sync"
+	"sync/atomic"
 	"time"
 )
 
 func (s *Swamp) svcUp() {
-	running := s.runningdaemons.Load().(int)
-	s.runningdaemons.Store(running + 1)
+	atomic.AddInt32(&s.runningdaemons, 1)
 }
 
 func (s *Swamp) svcDown() {
-	running := s.runningdaemons.Load().(int)
 	s.quit <- true
-	s.runningdaemons.Store(running - 1)
+	atomic.AddInt32(&s.runningdaemons, -1)
 }
 
 type swampMap struct {
@@ -38,12 +37,12 @@ func (sm swampMap) add(sock string) (*Proxy, bool) {
 		parent:   sm.parent,
 	}
 
-	sm.plot[sock].timesValidated.Store(0)
-	sm.plot[sock].timesBad.Store(0)
 	return sm.plot[sock], true
 }
 
 func (sm swampMap) exists(sock string) bool {
+	sm.mu.RLock()
+	defer sm.mu.RUnlock()
 	if _, ok := sm.plot[sock]; !ok {
 		return false
 	}
@@ -70,28 +69,38 @@ func (sm swampMap) clear() {
 	sm.plot = make(map[string]*Proxy)
 }
 
-func (s *Swamp) mapBuilder() {
+func (s *Swamp) build(stop chan struct{}) bool {
+	select {
+	case in := <-inChan:
+		p, ok := s.swampmap.add(in)
+		if !ok {
+			break
+		}
+		s.Pending <- p
+	case <-stop:
+		return false
+	default:
+		time.Sleep(250 * time.Millisecond)
+	}
+	return true
+}
 
+func (s *Swamp) mapBuilder() {
+	stop := make(chan struct{})
 	s.dbgPrint("map builder started")
 	defer s.dbgPrint("map builder paused")
 
 	go func() {
 		for {
-			select {
-			case in := <-inChan:
-				if p, ok := s.swampmap.add(in); !ok {
-					continue
-				} else {
-					s.Pending <- p
-				}
-			default:
-				time.Sleep(25 * time.Millisecond)
+			if !s.build(stop) {
+				return
 			}
 		}
 	}()
 	s.conductor <- true
 	s.svcUp()
 	<-s.quit
+	stop <- struct{}{}
 }
 
 func (s *Swamp) recycling() int {
@@ -111,44 +120,51 @@ func (s *Swamp) recycling() int {
 		select {
 		case s.Pending <- sock:
 			count++
+			time.Sleep(250 * time.Millisecond)
 		default:
-			time.Sleep(25 * time.Millisecond)
+			time.Sleep(1 * time.Second)
 			continue
 		}
 	}
 
-
 	return count
 }
 
+func (s *Swamp) employ(stop chan struct{}) bool {
+	select {
+	case <-s.quit:
+		stop <- struct{}{}
+		return false
+	case sock := <-s.Pending:
+		if err := s.pool.Submit(sock.validate); err != nil {
+			s.dbgPrint(ylw + err.Error() + rst)
+		}
+	default:
+		time.Sleep(25 * time.Millisecond)
+		count := s.recycling()
+		s.dbgPrint(ylw + "recycled " + strconv.Itoa(count) + " proxies from our map" + rst)
+	}
+	return true
+}
 func (s *Swamp) jobSpawner() {
 	if s.pool.IsClosed() {
 		s.pool.Reboot()
 	}
+
 	s.dbgPrint("job spawner started")
 	defer s.dbgPrint("job spawner paused")
 
-	q := make(chan bool)
+	stop := make(chan struct{})
 
 	go func() {
 		for {
-			select {
-			case <-s.quit:
-				q <- true
+			if !s.employ(stop) {
 				return
-			case sock := <-s.Pending:
-				if err := s.pool.Submit(sock.validate); err != nil {
-					s.dbgPrint(ylw + err.Error() + rst)
-				}
-			default:
-				time.Sleep(25 * time.Millisecond)
-				count := s.recycling()
-				s.dbgPrint(ylw + "recycled " + strconv.Itoa(count) + " proxies from our map" + rst)
 			}
 		}
 	}()
 
 	s.svcUp()
-	<-q
+	<-stop
 	s.pool.Release()
 }

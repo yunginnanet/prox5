@@ -3,7 +3,6 @@ package prox5
 import (
 	"context"
 	"errors"
-	"fmt"
 	"net"
 	"strconv"
 	"sync/atomic"
@@ -18,10 +17,10 @@ func (s *Swamp) DialContext(ctx context.Context, network, addr string) (net.Conn
 
 // MysteryDialer is a dialer function that will use a different proxy for every request.
 func (s *Swamp) MysteryDialer(ctx context.Context, network, addr string) (net.Conn, error) {
-	var sock *Proxy
-	var socksString string
-	var conn net.Conn
-	var count int
+	var (
+		socksString string
+		count       int
+	)
 	// pull down proxies from channel until we get a proxy good enough for our spoiled asses
 	for {
 		max := s.GetDialerBailout()
@@ -31,34 +30,34 @@ func (s *Swamp) MysteryDialer(ctx context.Context, network, addr string) (net.Co
 		if err := ctx.Err(); err != nil {
 			return nil, err
 		}
-
-		sock = s.GetAnySOCKS()
-		for !atomic.CompareAndSwapUint32(&sock.lock, stateUnlocked, stateLocked) {
-			if sock == nil {
-				break
+		var sock *Proxy
+		for {
+			sock = s.GetAnySOCKS(false)
+			if !atomic.CompareAndSwapUint32(&sock.lock, stateUnlocked, stateLocked) {
+				continue
 			}
-			randSleep()
+			break
 		}
-		var err error
-		if sock == nil {
-			continue
-		}
-
 		s.dbgPrint("dialer trying: " + sock.Endpoint + "...")
 		tout := ""
 		if s.GetServerTimeoutStr() != "-1" {
-			tout = fmt.Sprintf("?timeout=%ss", s.GetServerTimeoutStr())
+			tout = "?timeout=" + s.GetServerTimeoutStr() + "s"
 		}
-		socksString = fmt.Sprintf("socks%s://%s%s", sock.GetProto(), sock.Endpoint, tout)
+		socksString = "socks" + getProtoStr(sock.proto) + "://" + sock.Endpoint + tout
+		var ok bool
+		if sock, ok = s.dispenseMiddleware(sock); !ok {
+			s.dbgPrint(ylw + "failed middleware check, " + socksString + ", cycling..." + rst)
+			continue
+		}
 		atomic.StoreUint32(&sock.lock, stateUnlocked)
 		dialSocks := socks.Dial(socksString)
-		if conn, err = dialSocks(network, addr); err != nil {
+		conn, err := dialSocks(network, addr)
+		if err != nil {
 			count++
 			s.dbgPrint(ylw + "unable to reach [redacted] with " + socksString + ", cycling..." + rst)
 			continue
 		}
-		break
+		s.dbgPrint(grn + "MysteryDialer using socks: " + socksString + rst)
+		return conn, nil
 	}
-	s.dbgPrint(grn + "MysteryDialer using socks: " + socksString + rst)
-	return conn, nil
 }

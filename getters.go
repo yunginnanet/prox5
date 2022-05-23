@@ -2,58 +2,71 @@ package prox5
 
 import (
 	"strconv"
+	"sync/atomic"
 	"time"
+
+	"git.tcp.direct/kayos/common/entropy"
 )
 
-// GetProto safely retrieves the protocol value of the Proxy.
-func (sock *Proxy) GetProto() string {
-	return sock.Proto.Load().(string)
+// GetProto retrieves the known protocol value of the Proxy.
+func (sock *Proxy) GetProto() ProxyProtocol {
+	return sock.proto
 }
 
 // GetStatistics returns all current statistics.
 // * This is a pointer, do not modify it!
-func (s *Swamp) GetStatistics() *Statistics {
-	return s.Stats
+func (s *Swamp) GetStatistics() *statistics {
+	return s.stats
 }
 
 // RandomUserAgent retrieves a random user agent from our list in string form.
 func (s *Swamp) RandomUserAgent() string {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
-	return randStrChoice(s.swampopt.userAgents)
+	return entropy.RandomStrChoice(s.swampopt.userAgents)
 }
 
 // GetRandomEndpoint returns a random whatismyip style endpoint from our Swamp's options
 func (s *Swamp) GetRandomEndpoint() string {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
-	return randStrChoice(s.swampopt.checkEndpoints)
+	return entropy.RandomStrChoice(s.swampopt.checkEndpoints)
 }
 
 // GetStaleTime returns the duration of time after which a proxy will be considered "stale".
 func (s *Swamp) GetStaleTime() time.Duration {
-	return s.swampopt.stale.Load().(time.Duration)
+	s.swampopt.RLock()
+	defer s.swampopt.RLock()
+	return s.swampopt.stale
 }
 
 // GetValidationTimeout returns the current value of validationTimeout.
 func (s *Swamp) GetValidationTimeout() time.Duration {
-	return s.swampopt.validationTimeout.Load().(time.Duration)
+	s.swampopt.RLock()
+	defer s.swampopt.RLock()
+	return s.swampopt.validationTimeout
 }
 
 // GetValidationTimeoutStr returns the current value of validationTimeout (in seconds string).
 func (s *Swamp) GetValidationTimeoutStr() string {
-	timeout := s.swampopt.validationTimeout.Load().(time.Duration)
+	s.swampopt.RLock()
+	defer s.swampopt.RLock()
+	timeout := s.swampopt.validationTimeout
 	return strconv.Itoa(int(timeout / time.Second))
 }
 
 // GetServerTimeout returns the current value of serverTimeout.
 func (s *Swamp) GetServerTimeout() time.Duration {
-	return s.swampopt.serverTimeout.Load().(time.Duration)
+	s.swampopt.RLock()
+	defer s.swampopt.RLock()
+	return s.swampopt.serverTimeout
 }
 
 // GetServerTimeoutStr returns the current value of serverTimeout (in seconds string).
 func (s *Swamp) GetServerTimeoutStr() string {
-	timeout := s.swampopt.serverTimeout.Load().(time.Duration)
+	s.swampopt.RLock()
+	defer s.swampopt.RLock()
+	timeout := s.swampopt.serverTimeout
 	if timeout == time.Duration(0) {
 		return "-1"
 	}
@@ -67,15 +80,14 @@ func (s *Swamp) GetMaxWorkers() int {
 
 // IsRunning returns true if our background goroutines defined in daemons.go are currently operational
 func (s *Swamp) IsRunning() bool {
-	if s.runningdaemons.Load() == nil {
-		return false
-	}
-	return s.runningdaemons.Load().(int) > 0
+	return atomic.LoadInt32(&s.runningdaemons) > 0
 }
 
 // GetRecyclingStatus retrieves the current recycling status, see EnableRecycling.
 func (s *Swamp) GetRecyclingStatus() bool {
-	return s.swampopt.recycle.Load().(bool)
+	s.swampopt.RLock()
+	defer s.swampopt.RLock()
+	return s.swampopt.recycle
 }
 
 // GetWorkers retrieves pond worker statistics:
@@ -91,13 +103,22 @@ func (s *Swamp) GetWorkers() (maxWorkers, runningWorkers, idleWorkers int) {
 func (s *Swamp) GetRemoveAfter() int {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
-	if !s.swampopt.recycle.Load().(bool) {
+	if !s.swampopt.recycle {
 		return -1
 	}
-	return s.swampopt.removeafter.Load().(int)
+	return s.swampopt.removeafter
 }
 
 // GetDialerBailout retrieves the dialer bailout policy. See SetDialerBailout for more info.
 func (s *Swamp) GetDialerBailout() int {
-	return s.swampopt.dialerBailout.Load().(int)
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+	return s.swampopt.dialerBailout
+}
+
+// TODO: More docs
+func (s *Swamp) GetDispenseMiddleware() func(*Proxy) (*Proxy, bool) {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+	return s.dispenseMiddleware
 }

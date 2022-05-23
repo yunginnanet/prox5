@@ -3,6 +3,8 @@ package prox5
 import (
 	"sync/atomic"
 	"time"
+
+	"git.tcp.direct/kayos/common/entropy"
 )
 
 // Socks5Str gets a SOCKS5 proxy that we have fully verified (dialed and then retrieved our IP address from a what-is-my-ip endpoint.
@@ -14,7 +16,7 @@ func (s *Swamp) Socks5Str() string {
 			if !s.stillGood(sock) {
 				continue
 			}
-			s.Stats.dispense()
+			s.stats.dispense()
 			return sock.Endpoint
 		}
 	}
@@ -23,7 +25,7 @@ func (s *Swamp) Socks5Str() string {
 // Socks4Str gets a SOCKS4 proxy that we have fully verified.
 // Will block if one is not available!
 func (s *Swamp) Socks4Str() string {
-	defer s.Stats.dispense()
+	defer s.stats.dispense()
 	for {
 		select {
 		case sock := <-s.ValidSocks4:
@@ -38,7 +40,7 @@ func (s *Swamp) Socks4Str() string {
 // Socks4aStr gets a SOCKS4 proxy that we have fully verified.
 // Will block if one is not available!
 func (s *Swamp) Socks4aStr() string {
-	defer s.Stats.dispense()
+	defer s.stats.dispense()
 	for {
 		select {
 		case sock := <-s.ValidSocks4a:
@@ -50,41 +52,57 @@ func (s *Swamp) Socks4aStr() string {
 	}
 }
 
+// GetHTTPTunnel checks for an available HTTP CONNECT proxy in our pool.
+// For now, this function does not loop forever like the GetAnySOCKS does.
+// Alternatively it can be included within the for loop by passing true to GetAnySOCKS.
+// If there is an HTTP proxy available, ok will be true. If not, it will return false without delay.
+func (s *Swamp) GetHTTPTunnel() (p *Proxy, ok bool) {
+	select {
+	case httptunnel := <-s.ValidHTTP:
+		return httptunnel, true
+	default:
+		return nil, false
+	}
+}
+
 // GetAnySOCKS retrieves any version SOCKS proxy as a Proxy type
 // Will block if one is not available!
-func (s *Swamp) GetAnySOCKS() *Proxy {
-	defer s.Stats.dispense()
+// StateNew/Temporary: Pass a true boolean to this to also receive HTTP proxies.
+func (s *Swamp) GetAnySOCKS(AcceptHTTP bool) *Proxy {
+	defer s.stats.dispense()
 	for {
+		var sock *Proxy
 		select {
-		case sock := <-s.ValidSocks4:
-			if s.stillGood(sock) {
-				return sock
-			}
-			continue
-		case sock := <-s.ValidSocks4a:
-			if s.stillGood(sock) {
-				return sock
-			}
-			continue
-		case sock := <-s.ValidSocks5:
-			if s.stillGood(sock) {
-				return sock
-			}
-			continue
+		case sock = <-s.ValidSocks4:
+			break
+		case sock = <-s.ValidSocks4a:
+			break
+		case sock = <-s.ValidSocks5:
+			break
 		default:
-			// s.dbgPrint(red + "no valid proxies in channels, sleeping" + rst)
-			time.Sleep(3 * time.Second)
+			if !AcceptHTTP {
+				time.Sleep(500 * time.Millisecond)
+				continue
+			}
+			if httptun, htok := s.GetHTTPTunnel(); htok {
+				sock = httptun
+				break
+			}
 		}
+		if s.stillGood(sock) {
+			return sock
+		}
+		continue
 	}
 }
 
 func (s *Swamp) stillGood(sock *Proxy) bool {
 	for !atomic.CompareAndSwapUint32(&sock.lock, stateUnlocked, stateLocked) {
-		randSleep()
+		entropy.RandSleepMS(200)
 	}
 	defer atomic.StoreUint32(&sock.lock, stateUnlocked)
 
-	if sock.timesBad.Load().(int) > s.GetRemoveAfter() && s.GetRemoveAfter() != -1 {
+	if atomic.LoadInt64(&sock.timesBad) > int64(s.GetRemoveAfter()) && s.GetRemoveAfter() != -1 {
 		s.dbgPrint(red + "deleting from map (too many failures): " + sock.Endpoint + rst)
 		if err := s.swampmap.delete(sock.Endpoint); err != nil {
 			s.dbgPrint(red + err.Error() + rst)
@@ -96,13 +114,9 @@ func (s *Swamp) stillGood(sock *Proxy) bool {
 		return false
 	}
 
-	if s.swampopt.stale.Load().(time.Duration) == 0 {
-		return true
-	}
-	since := time.Since(sock.lastValidated.Load().(time.Time))
-	if since > s.swampopt.stale.Load().(time.Duration) {
+	if time.Since(sock.lastValidated) > s.swampopt.stale {
 		s.dbgPrint("proxy stale: " + sock.Endpoint)
-		go s.Stats.stale()
+		go s.stats.stale()
 		return false
 	}
 

@@ -1,42 +1,46 @@
 package prox5
 
-import "errors"
+import (
+	"errors"
+	"sync/atomic"
+)
 
 // SwampStatus represents the current state of our Swamp.
 type SwampStatus uint32
 
 const (
-	// Running means the proxy pool is currently taking in proxys and validating them, and is available to dispense proxies.
-	Running SwampStatus = iota
-	// Paused means the proxy pool has been with Swamp.Pause() and may be resumed with Swamp.Resume()
-	Paused
-	// New means the proxy pool has never been started.
-	New
+	// StateRunning means the proxy pool is currently taking in proxys and validating them, and is available to dispense proxies.
+	StateRunning SwampStatus = iota
+	// StatePaused means the proxy pool has been with Swamp.Pause() and may be resumed with Swamp.Resume()
+	StatePaused
+	// StateNew means the proxy pool has never been started.
+	StateNew
 )
 
 // Start starts our proxy pool operations. Trying to start a running Swamp will return an error.
 func (s *Swamp) Start() error {
-	if s.Status.Load().(SwampStatus) != New {
+	switch {
+	case s.IsRunning():
+		return errors.New("pool is already running")
+	case atomic.LoadUint32(&s.Status) != uint32(StateNew):
 		return errors.New("this swamp is not new, use resume if it is paused")
 	}
-
-	s.runningdaemons.Store(0)
-
+	atomic.StoreInt32(&s.runningdaemons, 0)
 	s.getThisDread()
-
 	return nil
 }
 
 /*
 Pause will cease the creation of any new proxy validation operations.
-   * You will be able to start the proxy pool again with Swamp.Resume(), it will have the same Statistics, options, and ratelimits.
+   * You will be able to start the proxy pool again with Swamp.Resume()
+       * when resumed it will retain the same statistics, options, and ratelimits.
+
    * During pause you are still able to dispense proxies.
    * Options may be changed and proxy lists may be loaded when paused.
-   * Pausing an already paused Swamp is a nonop.
 */
 func (s *Swamp) Pause() error {
 	if !s.IsRunning() {
-		return errors.New("not running")
+		return errors.New("swamp is not running")
 	}
 
 	s.dbgPrint("pausing...")
@@ -44,7 +48,7 @@ func (s *Swamp) Pause() error {
 	s.svcDown()
 	s.svcDown()
 
-	s.Status.Store(Paused)
+	atomic.StoreUint32(&s.Status, uint32(StatePaused))
 	return nil
 }
 
@@ -55,7 +59,7 @@ func (s *Swamp) getThisDread() {
 
 	for {
 		if s.IsRunning() {
-			s.Status.Store(Running)
+			atomic.StoreUint32(&s.Status, uint32(StateRunning))
 			break
 		}
 	}
@@ -63,9 +67,6 @@ func (s *Swamp) getThisDread() {
 
 // Resume will resume pause proxy pool operations, attempting to resume a running Swamp is returns an error.
 func (s *Swamp) Resume() error {
-	if s.IsRunning() {
-		return errors.New("not paused")
-	}
 
 	s.getThisDread()
 

@@ -65,7 +65,7 @@ func watchKeyPresses() {
 		}
 		switch string(r) {
 		case "d":
-			if swamp.DebugEnabled() {
+			if swamp.IsDebugEnabled() {
 				println("disabling debug")
 				swamp.DisableDebug()
 			} else {
@@ -119,7 +119,7 @@ func main() {
 
 	go func() {
 		for {
-			fmt.Printf("4: %d, 4a: %d, 5: %d \n", swamp.Stats.Valid4, swamp.Stats.Valid4a, swamp.Stats.Valid5)
+			fmt.Printf("4: %d, 4a: %d, 5: %d \n", swamp.stats.Valid4, swamp.stats.Valid4a, swamp.stats.Valid5)
 			time.Sleep(5 * time.Second)
 		}
 	}()

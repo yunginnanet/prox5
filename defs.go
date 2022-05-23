@@ -1,6 +1,7 @@
 package prox5
 
 import (
+	"context"
 	"fmt"
 	"sync"
 	"sync/atomic"
@@ -23,10 +24,10 @@ type Swamp struct {
 
 	socksServerLogger socksLogger
 
-	// Stats holds the Statistics for our swamp
-	Stats *Statistics
+	// stats holds the statistics for our swamp
+	stats *statistics
 
-	Status atomic.Value
+	Status uint32
 
 	// Pending is a constant stream of proxy strings to be verified
 	Pending chan *Proxy
@@ -37,6 +38,8 @@ type Swamp struct {
 
 	socks5ServerAuth socksCreds
 
+	dispenseMiddleware func(*Proxy) (*Proxy, bool)
+
 	quit chan bool
 
 	swampmap swampMap
@@ -46,9 +49,19 @@ type Swamp struct {
 	mu             *sync.RWMutex
 	pool           *ants.Pool
 	swampopt       *swampOptions
-	runningdaemons atomic.Value
+	ctx            context.Context
+	runningdaemons int32
 	conductor      chan bool
 }
+
+type ProxyProtocol uint8
+
+const (
+	ProtoSOCKS4 ProxyProtocol = iota
+	ProtoSOCKS4a
+	ProtoSOCKS5
+	ProtoHTTP
+)
 
 var (
 	defaultStaleTime = 1 * time.Hour
@@ -86,16 +99,20 @@ func defOpt() *swampOptions {
 
 		checkEndpoints: defaultChecks,
 		userAgents:     defaultUserAgents,
+		RWMutex:        &sync.RWMutex{},
 	}
 
-	sm.removeafter.Store(5)
-	sm.recycle.Store(true)
-	sm.debug.Store(false)
-	sm.validationTimeout.Store(time.Duration(12) * time.Second)
-	sm.serverTimeout.Store(time.Duration(360) * time.Second)
+	sm.Lock()
+	defer sm.Unlock()
 
-	sm.dialerBailout.Store(defBailout)
-	sm.stale.Store(defaultStaleTime)
+	sm.removeafter = 5
+	sm.recycle = true
+	sm.debug = false
+	sm.validationTimeout = time.Duration(12) * time.Second
+	sm.serverTimeout = time.Duration(180) * time.Second
+
+	sm.dialerBailout = defBailout
+	sm.stale = defaultStaleTime
 	sm.maxWorkers = defWorkers
 
 	return sm
@@ -126,13 +143,13 @@ func getScvm(moss net.Conn) *scvm {
 type swampOptions struct {
 	// stale is the amount of time since verification that qualifies a proxy going stale.
 	// if a stale proxy is drawn during the use of our getter functions, it will be skipped.
-	stale atomic.Value
+	stale time.Duration
 
 	// userAgents contains a list of userAgents to be randomly drawn from for proxied requests, this should be supplied via SetUserAgents
 	userAgents []string
 
 	// debug when enabled will print results as they come in
-	debug atomic.Value
+	debug bool
 
 	// checkEndpoints includes web services that respond with (just) the WAN IP of the connection for validation purposes
 	checkEndpoints []string
@@ -142,21 +159,23 @@ type swampOptions struct {
 
 	// validationTimeout defines the timeout for proxy validation operations.
 	// This will apply for both the initial quick check (dial), and the second check (HTTP GET).
-	validationTimeout atomic.Value
+	validationTimeout time.Duration
 
 	// serverTimeout defines the timeout for outgoing connections made with the MysteryDialer.
-	serverTimeout atomic.Value
+	serverTimeout time.Duration
 
-	dialerBailout atomic.Value
+	dialerBailout int
 
 	// recycle determines whether or not we recycle proxies pack into the pending channel after we dispense them
-	recycle atomic.Value
+	recycle bool
 	// remove proxy from recycling after being marked bad this many times
-	removeafter atomic.Value
+	removeafter int
 
 	// TODO: make getters and setters for these
 	useProxConfig rl.Policy
 	badProxConfig rl.Policy
+
+	*sync.RWMutex
 }
 
 const (
@@ -170,14 +189,14 @@ type Proxy struct {
 	Endpoint string
 	// ProxiedIP is the address that we end up having when making proxied requests through this proxy
 	ProxiedIP string
-	// Proto is the version/Protocol (currently SOCKS* only) of the proxy
-	Proto atomic.Value
+	// proto is the version/Protocol (currently SOCKS* only) of the proxy
+	proto ProxyProtocol
 	// lastValidated is the time this proxy was last verified working
-	lastValidated atomic.Value
+	lastValidated time.Time
 	// timesValidated is the amount of times the proxy has been validated.
-	timesValidated atomic.Value
+	timesValidated int64
 	// timesBad is the amount of times the proxy has been marked as bad.
-	timesBad atomic.Value
+	timesBad int64
 
 	parent   *Swamp
 	lock     uint32
@@ -194,29 +213,29 @@ func (sock *Proxy) UniqueKey() string {
 // After calling this you can use the various "setters" to change the options before calling Swamp.Start().
 func NewDefaultSwamp() *Swamp {
 	s := &Swamp{
-		ValidSocks5:  make(chan *Proxy, 1000000),
-		ValidSocks4:  make(chan *Proxy, 1000000),
-		ValidSocks4a: make(chan *Proxy, 1000000),
-		Pending:      make(chan *Proxy, 1000000),
-
-		Stats: &Statistics{
-			Valid4:    0,
-			Valid4a:   0,
-			Valid5:    0,
-			Dispensed: 0,
-			birthday:  time.Now(),
-			mu:        &sync.Mutex{},
-		},
+		stats: &statistics{birthday: time.Now()},
 
 		swampopt: defOpt(),
 
 		quit:      make(chan bool),
 		conductor: make(chan bool),
 		mu:        &sync.RWMutex{},
-		Status:    atomic.Value{},
+		Status:    uint32(StateNew),
+	}
+	stats := []int64{s.stats.Valid4, s.stats.Valid4a, s.stats.Valid5, s.stats.ValidHTTP, s.stats.Dispensed}
+	for _, st := range stats {
+		atomic.StoreInt64(&st, 0)
+	}
+	chans := []*chan *Proxy{&s.ValidSocks5, &s.ValidSocks4, &s.ValidSocks4a, &s.ValidHTTP, &s.Pending}
+	for _, c := range chans {
+		*c = make(chan *Proxy, 250)
 	}
 
-	s.Status.Store(New)
+	atomic.StoreUint32(&s.Status, uint32(StateNew))
+
+	s.dispenseMiddleware = func(p *Proxy) (*Proxy, bool) {
+		return p, true
+	}
 
 	s.swampmap = swampMap{
 		plot:   make(map[string]*Proxy),
@@ -226,7 +245,7 @@ func NewDefaultSwamp() *Swamp {
 
 	s.socksServerLogger = socksLogger{parent: s}
 
-	s.runningdaemons.Store(0)
+	atomic.StoreInt32(&s.runningdaemons, 0)
 
 	s.useProx = rl.NewCustomLimiter(s.swampopt.useProxConfig)
 	s.badProx = rl.NewCustomLimiter(s.swampopt.badProxConfig)
