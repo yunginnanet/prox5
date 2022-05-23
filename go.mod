@@ -1,4 +1,4 @@
-module git.tcp.direct/kayos/Prox5
+module git.tcp.direct/kayos/prox5
 
 go 1.17
 

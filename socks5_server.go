@@ -1,4 +1,4 @@
-package Prox5
+package prox5
 
 import (
 	"fmt"

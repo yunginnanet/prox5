@@ -1,4 +1,4 @@
-package Prox5
+package prox5
 
 import (
 	"sync"
@@ -57,9 +57,9 @@ func (s *Swamp) dbgPrint(str string) {
 		case debugChan <- str:
 			return
 		default:
-			println("Prox5 overflow: " + str)
+			println("prox5 overflow: " + str)
 			return
 		}
 	}
-	println("Prox5: " + str)
+	println("prox5: " + str)
 }

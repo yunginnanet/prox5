@@ -1,4 +1,4 @@
-package Prox5
+package prox5
 
 import (
 	"sync/atomic"
@@ -96,7 +96,11 @@ func (s *Swamp) stillGood(sock *Proxy) bool {
 		return false
 	}
 
-	if time.Since(sock.lastValidated.Load().(time.Time)) > s.swampopt.stale.Load().(time.Duration) {
+	if s.swampopt.stale.Load().(time.Duration) == 0 {
+		return true
+	}
+	since := time.Since(sock.lastValidated.Load().(time.Time))
+	if since > s.swampopt.stale.Load().(time.Duration) {
 		s.dbgPrint("proxy stale: " + sock.Endpoint)
 		go s.Stats.stale()
 		return false

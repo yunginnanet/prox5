@@ -8,16 +8,16 @@ import (
 
 	"github.com/mattn/go-tty"
 
-	"git.tcp.direct/kayos/Prox5"
+	"git.tcp.direct/kayos/prox5"
 )
 
-var swamp *Prox5.Swamp
+var swamp *prox5.Swamp
 var quit chan bool
 var t *tty.TTY
 
 func init() {
 	quit = make(chan bool)
-	swamp = Prox5.NewDefaultSwamp()
+	swamp = prox5.NewDefaultSwamp()
 	swamp.SetMaxWorkers(5)
 	swamp.EnableDebug()
 
