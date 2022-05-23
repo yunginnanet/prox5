@@ -1,6 +1,6 @@
 # Prox5
 
-[![GoDoc](https://godoc.org/git.tcp.direct/kayos/Prox5?status.svg)](https://pkg.go.dev/git.tcp.direct/kayos/Prox5) [![Go Report Card](https://goreportcard.com/badge/github.com/yunginnanet/Prox5)](https://goreportcard.com/report/github.com/yunginnanet/Prox5) [![IRC](https://img.shields.io/badge/ircd.chat-%23tcpdirect-blue.svg)](ircs://ircd.chat:6697/#tcpdirect)
+[![GoDoc](https://godoc.org/git.tcp.direct/kayos/prox5?status.svg)](https://pkg.go.dev/git.tcp.direct/kayos/prox5) [![Go Report Card](https://goreportcard.com/badge/github.com/yunginnanet/prox5)](https://goreportcard.com/report/github.com/yunginnanet/prox5) [![IRC](https://img.shields.io/badge/ircd.chat-%23tcpdirect-blue.svg)](ircs://ircd.chat:6697/#tcpdirect)
 
 ### SOCKS5/4/4a validating proxy pool + server
 
