@@ -1,8 +1,7 @@
 package prox5
 
 import (
-	quiccmaffs "math/rand"
-	"time"
+	"git.tcp.direct/kayos/common/entropy"
 )
 
 const (
@@ -14,21 +13,9 @@ const (
 
 // randStrChoice returns a random element from the given string slice.
 func randStrChoice(choices []string) string {
-	strlen := len(choices)
-	n := uint32(0)
-	if strlen > 0 {
-		n = getRandomUint32() % uint32(strlen)
-	}
-	return choices[n]
-}
-
-// getRandomUint32 retrieves a random integer seeded by the current time.
-func getRandomUint32() uint32 {
-	quiccmaffs.Seed(time.Now().UnixNano())
-	return quiccmaffs.Uint32()
+	return entropy.RandomStrChoice(choices)
 }
 
 func randSleep() {
-	quiccmaffs.Seed(time.Now().UnixNano())
-	time.Sleep(time.Duration(quiccmaffs.Intn(200)) * time.Millisecond)
+	entropy.RandSleepMS(200)
 }

@@ -1,6 +1,9 @@
 package prox5
 
-import "errors"
+import (
+	"context"
+	"errors"
+)
 
 // SwampStatus represents the current state of our Swamp.
 type SwampStatus uint32
@@ -17,13 +20,9 @@ const (
 // Start starts our proxy pool operations. Trying to start a running Swamp will return an error.
 func (s *Swamp) Start() error {
 	if s.Status.Load().(SwampStatus) != New {
-		return errors.New("this swamp is not new, use resume if it is paused")
+		return s.Resume()
 	}
-
-	s.runningdaemons.Store(0)
-
-	s.getThisDread()
-
+	s.startDaemons()
 	return nil
 }
 
@@ -41,16 +40,16 @@ func (s *Swamp) Pause() error {
 
 	s.dbgPrint("pausing...")
 
-	s.svcDown()
-	s.svcDown()
+	s.quit()
 
 	s.Status.Store(Paused)
 	return nil
 }
 
-func (s *Swamp) getThisDread() {
+func (s *Swamp) startDaemons() {
 	go s.mapBuilder()
 	<-s.conductor
+	s.svcUp()
 	go s.jobSpawner()
 
 	for {
@@ -64,10 +63,9 @@ func (s *Swamp) getThisDread() {
 // Resume will resume pause proxy pool operations, attempting to resume a running Swamp is returns an error.
 func (s *Swamp) Resume() error {
 	if s.IsRunning() {
-		return errors.New("not paused")
+		return errors.New("already running")
 	}
-
-	s.getThisDread()
-
+	s.ctx, s.quit = context.WithCancel(context.Background())
+	s.startDaemons()
 	return nil
 }

@@ -1,4 +1,3 @@
-/example/proxies.txt
-/example/socks.list
-/example/socksold.list
 .idea/
+*.txt
+*.list

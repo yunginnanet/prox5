@@ -1,6 +1,7 @@
 package prox5
 
 import (
+	"context"
 	"fmt"
 	"sync"
 	"sync/atomic"
@@ -37,16 +38,17 @@ type Swamp struct {
 
 	socks5ServerAuth socksCreds
 
-	quit chan bool
+	ctx  context.Context
+	quit context.CancelFunc
 
 	swampmap swampMap
 
-	reaper sync.Pool
+	// reaper sync.Pool
 
 	mu             *sync.RWMutex
 	pool           *ants.Pool
 	swampopt       *swampOptions
-	runningdaemons atomic.Value
+	runningdaemons int32
 	conductor      chan bool
 }
 
@@ -210,11 +212,12 @@ func NewDefaultSwamp() *Swamp {
 
 		swampopt: defOpt(),
 
-		quit:      make(chan bool),
 		conductor: make(chan bool),
 		mu:        &sync.RWMutex{},
 		Status:    atomic.Value{},
 	}
+
+	s.ctx, s.quit = context.WithCancel(context.Background())
 
 	s.Status.Store(New)
 
@@ -226,7 +229,7 @@ func NewDefaultSwamp() *Swamp {
 
 	s.socksServerLogger = socksLogger{parent: s}
 
-	s.runningdaemons.Store(0)
+	atomic.StoreInt32(&s.runningdaemons, 0)
 
 	s.useProx = rl.NewCustomLimiter(s.swampopt.useProxConfig)
 	s.badProx = rl.NewCustomLimiter(s.swampopt.badProxConfig)

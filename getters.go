@@ -2,6 +2,7 @@ package prox5
 
 import (
 	"strconv"
+	"sync/atomic"
 	"time"
 )
 
@@ -67,10 +68,7 @@ func (s *Swamp) GetMaxWorkers() int {
 
 // IsRunning returns true if our background goroutines defined in daemons.go are currently operational
 func (s *Swamp) IsRunning() bool {
-	if s.runningdaemons.Load() == nil {
-		return false
-	}
-	return s.runningdaemons.Load().(int) > 0
+	return atomic.LoadInt32(&s.runningdaemons) == 2
 }
 
 // GetRecyclingStatus retrieves the current recycling status, see EnableRecycling.

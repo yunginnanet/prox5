@@ -4,18 +4,16 @@ import (
 	"errors"
 	"strconv"
 	"sync"
+	"sync/atomic"
 	"time"
 )
 
 func (s *Swamp) svcUp() {
-	running := s.runningdaemons.Load().(int)
-	s.runningdaemons.Store(running + 1)
+	atomic.AddInt32(&s.runningdaemons, 1)
 }
 
 func (s *Swamp) svcDown() {
-	running := s.runningdaemons.Load().(int)
-	s.quit <- true
-	s.runningdaemons.Store(running - 1)
+	atomic.AddInt32(&s.runningdaemons, -1)
 }
 
 type swampMap struct {
@@ -66,32 +64,35 @@ func (sm swampMap) delete(sock string) error {
 func (sm swampMap) clear() {
 	sm.mu.Lock()
 	defer sm.mu.Unlock()
-
-	sm.plot = make(map[string]*Proxy)
+	for key := range sm.plot {
+		delete(sm.plot, key)
+	}
 }
 
 func (s *Swamp) mapBuilder() {
+	if s.pool.IsClosed() {
+		s.pool.Reboot()
+	}
 
 	s.dbgPrint("map builder started")
-	defer s.dbgPrint("map builder paused")
 
 	go func() {
+		defer s.dbgPrint("map builder paused")
 		for {
 			select {
+			case <-s.ctx.Done():
+				s.svcDown()
+				return
 			case in := <-inChan:
 				if p, ok := s.swampmap.add(in); !ok {
 					continue
 				} else {
 					s.Pending <- p
 				}
-			default:
-				time.Sleep(25 * time.Millisecond)
 			}
 		}
 	}()
 	s.conductor <- true
-	s.svcUp()
-	<-s.quit
 }
 
 func (s *Swamp) recycling() int {
@@ -102,6 +103,7 @@ func (s *Swamp) recycling() int {
 	if len(s.swampmap.plot) < 1 {
 		return 0
 	}
+
 	var count int
 
 	s.swampmap.mu.RLock()
@@ -109,14 +111,12 @@ func (s *Swamp) recycling() int {
 
 	for _, sock := range s.swampmap.plot {
 		select {
+		case <-s.ctx.Done():
+			return 0
 		case s.Pending <- sock:
 			count++
-		default:
-			time.Sleep(25 * time.Millisecond)
-			continue
 		}
 	}
-
 
 	return count
 }
@@ -125,6 +125,7 @@ func (s *Swamp) jobSpawner() {
 	if s.pool.IsClosed() {
 		s.pool.Reboot()
 	}
+
 	s.dbgPrint("job spawner started")
 	defer s.dbgPrint("job spawner paused")
 
@@ -133,8 +134,9 @@ func (s *Swamp) jobSpawner() {
 	go func() {
 		for {
 			select {
-			case <-s.quit:
+			case <-s.ctx.Done():
 				q <- true
+				s.svcDown()
 				return
 			case sock := <-s.Pending:
 				if err := s.pool.Submit(sock.validate); err != nil {
