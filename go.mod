@@ -6,7 +6,7 @@ require (
 	git.tcp.direct/kayos/common v0.5.4
 	git.tcp.direct/kayos/go-socks5 v1.0.1
 	github.com/mattn/go-tty v0.0.4
-	github.com/miekg/dns v1.1.49
+	github.com/miekg/dns v1.1.50
 	github.com/panjf2000/ants/v2 v2.5.0
 	github.com/yunginnanet/Rate5 v0.4.4
 	golang.org/x/net v0.0.0-20220526153639-5463443f8c37
