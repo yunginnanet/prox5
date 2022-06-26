@@ -11,13 +11,13 @@ import (
 	"git.tcp.direct/kayos/prox5"
 )
 
-var swamp *prox5.Swamp
+var swamp *prox5.ProxyEngine
 var quit chan bool
 var t *tty.TTY
 
 func init() {
 	quit = make(chan bool)
-	swamp = prox5.NewDefaultSwamp()
+	swamp = prox5.NewProxyEngine()
 	swamp.SetMaxWorkers(5)
 	swamp.EnableDebug()
 
@@ -65,7 +65,7 @@ func watchKeyPresses() {
 		}
 		switch string(r) {
 		case "d":
-			if swamp.IsDebugEnabled() {
+			if swamp.DebugEnabled() {
 				println("disabling debug")
 				swamp.DisableDebug()
 			} else {
@@ -119,7 +119,8 @@ func main() {
 
 	go func() {
 		for {
-			fmt.Printf("4: %d, 4a: %d, 5: %d \n", swamp.stats.Valid4, swamp.stats.Valid4a, swamp.stats.Valid5)
+			stats := swamp.GetStatistics()
+			fmt.Printf("4: %d, 4a: %d, 5: %d \n", stats.Valid4, stats.Valid4a, stats.Valid5)
 			time.Sleep(5 * time.Second)
 		}
 	}()

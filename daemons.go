@@ -8,18 +8,18 @@ import (
 	"time"
 )
 
-func (s *Swamp) svcUp() {
-	atomic.AddInt32(&s.runningdaemons, 1)
+func (pe *ProxyEngine) svcUp() {
+	atomic.AddInt32(&pe.runningdaemons, 1)
 }
 
-func (s *Swamp) svcDown() {
-	atomic.AddInt32(&s.runningdaemons, -1)
+func (pe *ProxyEngine) svcDown() {
+	atomic.AddInt32(&pe.runningdaemons, -1)
 }
 
 type swampMap struct {
 	plot   map[string]*Proxy
 	mu     *sync.RWMutex
-	parent *Swamp
+	parent *ProxyEngine
 }
 
 func (sm swampMap) add(sock string) (*Proxy, bool) {
@@ -36,8 +36,8 @@ func (sm swampMap) add(sock string) (*Proxy, bool) {
 		parent:   sm.parent,
 	}
 
-	sm.plot[sock].timesValidated.Store(0)
-	sm.plot[sock].timesBad.Store(0)
+	atomic.StoreInt64(&sm.plot[sock].timesValidated, 0)
+	atomic.StoreInt64(&sm.plot[sock].timesBad, 0)
 	return sm.plot[sock], true
 }
 
@@ -69,51 +69,51 @@ func (sm swampMap) clear() {
 	}
 }
 
-func (s *Swamp) mapBuilder() {
-	if s.pool.IsClosed() {
-		s.pool.Reboot()
+func (pe *ProxyEngine) mapBuilder() {
+	if pe.pool.IsClosed() {
+		pe.pool.Reboot()
 	}
 
-	s.dbgPrint("map builder started")
+	pe.dbgPrint("map builder started")
 
 	go func() {
-		defer s.dbgPrint("map builder paused")
+		defer pe.dbgPrint("map builder paused")
 		for {
 			select {
-			case <-s.ctx.Done():
-				s.svcDown()
+			case <-pe.ctx.Done():
+				pe.svcDown()
 				return
 			case in := <-inChan:
-				if p, ok := s.swampmap.add(in); !ok {
+				if p, ok := pe.swampmap.add(in); !ok {
 					continue
 				} else {
-					s.Pending <- p
+					pe.Pending <- p
 				}
 			}
 		}
 	}()
-	s.conductor <- true
+	pe.conductor <- true
 }
 
-func (s *Swamp) recycling() int {
-	if !s.GetRecyclingStatus() {
+func (pe *ProxyEngine) recycling() int {
+	if !pe.GetRecyclingStatus() {
 		return 0
 	}
 
-	if len(s.swampmap.plot) < 1 {
+	if len(pe.swampmap.plot) < 1 {
 		return 0
 	}
 
 	var count int
 
-	s.swampmap.mu.RLock()
-	defer s.swampmap.mu.RUnlock()
+	pe.swampmap.mu.RLock()
+	defer pe.swampmap.mu.RUnlock()
 
-	for _, sock := range s.swampmap.plot {
+	for _, sock := range pe.swampmap.plot {
 		select {
-		case <-s.ctx.Done():
+		case <-pe.ctx.Done():
 			return 0
-		case s.Pending <- sock:
+		case pe.Pending <- sock:
 			count++
 		}
 	}
@@ -121,36 +121,36 @@ func (s *Swamp) recycling() int {
 	return count
 }
 
-func (s *Swamp) jobSpawner() {
-	if s.pool.IsClosed() {
-		s.pool.Reboot()
+func (pe *ProxyEngine) jobSpawner() {
+	if pe.pool.IsClosed() {
+		pe.pool.Reboot()
 	}
 
-	s.dbgPrint("job spawner started")
-	defer s.dbgPrint("job spawner paused")
+	pe.dbgPrint("job spawner started")
+	defer pe.dbgPrint("job spawner paused")
 
 	q := make(chan bool)
 
 	go func() {
 		for {
 			select {
-			case <-s.ctx.Done():
+			case <-pe.ctx.Done():
 				q <- true
-				s.svcDown()
+				pe.svcDown()
 				return
-			case sock := <-s.Pending:
-				if err := s.pool.Submit(sock.validate); err != nil {
-					s.dbgPrint(ylw + err.Error() + rst)
+			case sock := <-pe.Pending:
+				if err := pe.pool.Submit(sock.validate); err != nil {
+					pe.dbgPrint(err.Error())
 				}
 			default:
 				time.Sleep(25 * time.Millisecond)
-				count := s.recycling()
-				s.dbgPrint(ylw + "recycled " + strconv.Itoa(count) + " proxies from our map" + rst)
+				count := pe.recycling()
+				pe.dbgPrint("recycled " + strconv.Itoa(count) + " proxies from our map")
 			}
 		}
 	}()
 
-	s.svcUp()
+	pe.svcUp()
 	<-q
-	s.pool.Release()
+	pe.pool.Release()
 }

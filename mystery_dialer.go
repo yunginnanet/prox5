@@ -11,19 +11,19 @@ import (
 )
 
 // DialContext is a simple stub adapter for compatibility with certain packages.
-func (s *Swamp) DialContext(ctx context.Context, network, addr string) (net.Conn, error) {
-	return s.MysteryDialer(ctx, network, addr)
+func (pe *ProxyEngine) DialContext(ctx context.Context, network, addr string) (net.Conn, error) {
+	return pe.MysteryDialer(ctx, network, addr)
 }
 
 // MysteryDialer is a dialer function that will use a different proxy for every request.
-func (s *Swamp) MysteryDialer(ctx context.Context, network, addr string) (net.Conn, error) {
+func (pe *ProxyEngine) MysteryDialer(ctx context.Context, network, addr string) (net.Conn, error) {
 	var (
 		socksString string
 		count       int
 	)
 	// pull down proxies from channel until we get a proxy good enough for our spoiled asses
 	for {
-		max := s.GetDialerBailout()
+		max := pe.GetDialerBailout()
 		if count > max {
 			return nil, errors.New("giving up after " + strconv.Itoa(max) + " tries")
 		}
@@ -32,21 +32,21 @@ func (s *Swamp) MysteryDialer(ctx context.Context, network, addr string) (net.Co
 		}
 		var sock *Proxy
 		for {
-			sock = s.GetAnySOCKS(false)
+			sock = pe.GetAnySOCKS(false)
 			if !atomic.CompareAndSwapUint32(&sock.lock, stateUnlocked, stateLocked) {
 				continue
 			}
 			break
 		}
-		s.dbgPrint("dialer trying: " + sock.Endpoint + "...")
+		pe.dbgPrint("dialer trying: " + sock.Endpoint + "...")
 		tout := ""
-		if s.GetServerTimeoutStr() != "-1" {
-			tout = "?timeout=" + s.GetServerTimeoutStr() + "s"
+		if pe.GetServerTimeoutStr() != "-1" {
+			tout = "?timeout=" + pe.GetServerTimeoutStr() + "s"
 		}
 		socksString = "socks" + getProtoStr(sock.proto) + "://" + sock.Endpoint + tout
 		var ok bool
-		if sock, ok = s.dispenseMiddleware(sock); !ok {
-			s.dbgPrint(ylw + "failed middleware check, " + socksString + ", cycling..." + rst)
+		if sock, ok = pe.dispenseMiddleware(sock); !ok {
+			pe.dbgPrint("failed middleware check, " + socksString + ", cycling...")
 			continue
 		}
 		atomic.StoreUint32(&sock.lock, stateUnlocked)
@@ -54,10 +54,10 @@ func (s *Swamp) MysteryDialer(ctx context.Context, network, addr string) (net.Co
 		conn, err := dialSocks(network, addr)
 		if err != nil {
 			count++
-			s.dbgPrint(ylw + "unable to reach [redacted] with " + socksString + ", cycling..." + rst)
+			pe.dbgPrint("unable to reach [redacted] with " + socksString + ", cycling...")
 			continue
 		}
-		s.dbgPrint(grn + "MysteryDialer using socks: " + socksString + rst)
+		pe.dbgPrint("MysteryDialer using socks: " + socksString)
 		return conn, nil
 	}
 }

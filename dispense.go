@@ -9,14 +9,14 @@ import (
 
 // Socks5Str gets a SOCKS5 proxy that we have fully verified (dialed and then retrieved our IP address from a what-is-my-ip endpoint.
 // Will block if one is not available!
-func (s *Swamp) Socks5Str() string {
+func (pe *ProxyEngine) Socks5Str() string {
 	for {
 		select {
-		case sock := <-s.ValidSocks5:
-			if !s.stillGood(sock) {
+		case sock := <-pe.Valids.SOCKS5:
+			if !pe.stillGood(sock) {
 				continue
 			}
-			s.stats.dispense()
+			pe.stats.dispense()
 			return sock.Endpoint
 		}
 	}
@@ -24,12 +24,12 @@ func (s *Swamp) Socks5Str() string {
 
 // Socks4Str gets a SOCKS4 proxy that we have fully verified.
 // Will block if one is not available!
-func (s *Swamp) Socks4Str() string {
-	defer s.stats.dispense()
+func (pe *ProxyEngine) Socks4Str() string {
+	defer pe.stats.dispense()
 	for {
 		select {
-		case sock := <-s.ValidSocks4:
-			if !s.stillGood(sock) {
+		case sock := <-pe.Valids.SOCKS4:
+			if !pe.stillGood(sock) {
 				continue
 			}
 			return sock.Endpoint
@@ -39,12 +39,12 @@ func (s *Swamp) Socks4Str() string {
 
 // Socks4aStr gets a SOCKS4 proxy that we have fully verified.
 // Will block if one is not available!
-func (s *Swamp) Socks4aStr() string {
-	defer s.stats.dispense()
+func (pe *ProxyEngine) Socks4aStr() string {
+	defer pe.stats.dispense()
 	for {
 		select {
-		case sock := <-s.ValidSocks4a:
-			if !s.stillGood(sock) {
+		case sock := <-pe.Valids.SOCKS4a:
+			if !pe.stillGood(sock) {
 				continue
 			}
 			return sock.Endpoint
@@ -56,9 +56,9 @@ func (s *Swamp) Socks4aStr() string {
 // For now, this function does not loop forever like the GetAnySOCKS does.
 // Alternatively it can be included within the for loop by passing true to GetAnySOCKS.
 // If there is an HTTP proxy available, ok will be true. If not, it will return false without delay.
-func (s *Swamp) GetHTTPTunnel() (p *Proxy, ok bool) {
+func (pe *ProxyEngine) GetHTTPTunnel() (p *Proxy, ok bool) {
 	select {
-	case httptunnel := <-s.ValidHTTP:
+	case httptunnel := <-pe.Valids.HTTP:
 		return httptunnel, true
 	default:
 		return nil, false
@@ -68,55 +68,55 @@ func (s *Swamp) GetHTTPTunnel() (p *Proxy, ok bool) {
 // GetAnySOCKS retrieves any version SOCKS proxy as a Proxy type
 // Will block if one is not available!
 // StateNew/Temporary: Pass a true boolean to this to also receive HTTP proxies.
-func (s *Swamp) GetAnySOCKS(AcceptHTTP bool) *Proxy {
-	defer s.stats.dispense()
+func (pe *ProxyEngine) GetAnySOCKS(AcceptHTTP bool) *Proxy {
+	defer pe.stats.dispense()
 	for {
 		var sock *Proxy
 		select {
-		case sock = <-s.ValidSocks4:
+		case sock = <-pe.Valids.SOCKS4:
 			break
-		case sock = <-s.ValidSocks4a:
+		case sock = <-pe.Valids.SOCKS4a:
 			break
-		case sock = <-s.ValidSocks5:
+		case sock = <-pe.Valids.SOCKS5:
 			break
 		default:
 			if !AcceptHTTP {
 				time.Sleep(500 * time.Millisecond)
 				continue
 			}
-			if httptun, htok := s.GetHTTPTunnel(); htok {
+			if httptun, htok := pe.GetHTTPTunnel(); htok {
 				sock = httptun
 				break
 			}
 		}
-		if s.stillGood(sock) {
+		if pe.stillGood(sock) {
 			return sock
 		}
 		continue
 	}
 }
 
-func (s *Swamp) stillGood(sock *Proxy) bool {
+func (pe *ProxyEngine) stillGood(sock *Proxy) bool {
 	for !atomic.CompareAndSwapUint32(&sock.lock, stateUnlocked, stateLocked) {
 		entropy.RandSleepMS(200)
 	}
 	defer atomic.StoreUint32(&sock.lock, stateUnlocked)
 
-	if atomic.LoadInt64(&sock.timesBad) > int64(s.GetRemoveAfter()) && s.GetRemoveAfter() != -1 {
-		s.dbgPrint(red + "deleting from map (too many failures): " + sock.Endpoint + rst)
-		if err := s.swampmap.delete(sock.Endpoint); err != nil {
-			s.dbgPrint(red + err.Error() + rst)
+	if atomic.LoadInt64(&sock.timesBad) > int64(pe.GetRemoveAfter()) && pe.GetRemoveAfter() != -1 {
+		pe.dbgPrint("deleting from map (too many failures): " + sock.Endpoint)
+		if err := pe.swampmap.delete(sock.Endpoint); err != nil {
+			pe.dbgPrint(err.Error())
 		}
 	}
 
-	if s.badProx.Peek(sock) {
-		s.dbgPrint(ylw + "badProx dial ratelimited: " + sock.Endpoint + rst)
+	if pe.badProx.Peek(sock) {
+		pe.dbgPrint("badProx dial ratelimited: " + sock.Endpoint)
 		return false
 	}
 
-	if time.Since(sock.lastValidated) > s.swampopt.stale {
-		s.dbgPrint("proxy stale: " + sock.Endpoint)
-		go s.stats.stale()
+	if time.Since(sock.lastValidated) > pe.swampopt.stale {
+		pe.dbgPrint("proxy stale: " + sock.Endpoint)
+		go pe.stats.stale()
 		return false
 	}
 

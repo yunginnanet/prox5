@@ -33,49 +33,48 @@ func (b basicPrinter) Printf(format string, items ...any) {
 // DebugChannel will return a channel which will receive debug messages once debug is enabled.
 // This will alter the flow of debug messages, they will no longer print to console, they will be pushed into this channel.
 // Make sure you pull from the channel eventually to avoid build up of blocked goroutines.
-func (s *Swamp) DebugChannel() chan string {
+func (pe *ProxyEngine) DebugChannel() chan string {
 	debugChan = make(chan string, 1000000)
 	useDebugChannel = true
 	return debugChan
 }
 
 // DebugEnabled returns the current state of our debug switch.
-func (s *Swamp) DebugEnabled() bool {
-	return s.swampopt.debug.Load().(bool)
+func (pe *ProxyEngine) DebugEnabled() bool {
+	return pe.swampopt.debug
 }
 
 // DisableDebugChannel redirects debug messages back to the console.
 // DisableProxyChannel does not disable debug, use DisableDebug().
-func (s *Swamp) DisableDebugChannel() {
+func (pe *ProxyEngine) DisableDebugChannel() {
 	debugMutex.Lock()
 	defer debugMutex.Unlock()
 	useDebugChannel = false
 }
 
 // EnableDebug enables printing of verbose messages during operation
-func (s *Swamp) EnableDebug() {
-	s.swampopt.debug.Store(true)
+func (pe *ProxyEngine) EnableDebug() {
+	pe.swampopt.debug = true
 }
 
 // DisableDebug enables printing of verbose messages during operation.
 // WARNING: if you are using a DebugChannel, you must read all of the messages in the channel's cache or this will block.
-func (s *Swamp) DisableDebug() {
-	s.swampopt.debug.Store(false)
+func (pe *ProxyEngine) DisableDebug() {
+	pe.swampopt.debug = false
 }
 
-func (s *Swamp) dbgPrint(str string) {
-	if !s.swampopt.debug.Load().(bool) {
+func (pe *ProxyEngine) dbgPrint(str string) {
+	if !pe.swampopt.debug {
 		return
 	}
-
-	if useDebugChannel {
-		select {
-		case debugChan <- str:
-			return
-		default:
-			println("prox5 debug overflow: " + str)
-			return
-		}
+	if !useDebugChannel {
+		pe.Debug.Print(str)
+		return
 	}
-
+	select {
+	case debugChan <- str:
+		return
+	default:
+		pe.Debug.Print("overflow: " + str)
+	}
 }

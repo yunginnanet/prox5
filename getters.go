@@ -15,58 +15,58 @@ func (sock *Proxy) GetProto() ProxyProtocol {
 
 // GetStatistics returns all current statistics.
 // * This is a pointer, do not modify it!
-func (s *Swamp) GetStatistics() *statistics {
-	return s.stats
+func (pe *ProxyEngine) GetStatistics() *statistics {
+	return pe.stats
 }
 
 // RandomUserAgent retrieves a random user agent from our list in string form.
-func (s *Swamp) RandomUserAgent() string {
-	s.mu.RLock()
-	defer s.mu.RUnlock()
-	return entropy.RandomStrChoice(s.swampopt.userAgents)
+func (pe *ProxyEngine) RandomUserAgent() string {
+	pe.mu.RLock()
+	defer pe.mu.RUnlock()
+	return entropy.RandomStrChoice(pe.swampopt.userAgents)
 }
 
-// GetRandomEndpoint returns a random whatismyip style endpoint from our Swamp's options
-func (s *Swamp) GetRandomEndpoint() string {
-	s.mu.RLock()
-	defer s.mu.RUnlock()
-	return entropy.RandomStrChoice(s.swampopt.checkEndpoints)
+// GetRandomEndpoint returns a random whatismyip style endpoint from our ProxyEngine's options
+func (pe *ProxyEngine) GetRandomEndpoint() string {
+	pe.mu.RLock()
+	defer pe.mu.RUnlock()
+	return entropy.RandomStrChoice(pe.swampopt.checkEndpoints)
 }
 
 // GetStaleTime returns the duration of time after which a proxy will be considered "stale".
-func (s *Swamp) GetStaleTime() time.Duration {
-	s.swampopt.RLock()
-	defer s.swampopt.RLock()
-	return s.swampopt.stale
+func (pe *ProxyEngine) GetStaleTime() time.Duration {
+	pe.swampopt.RLock()
+	defer pe.swampopt.RLock()
+	return pe.swampopt.stale
 }
 
 // GetValidationTimeout returns the current value of validationTimeout.
-func (s *Swamp) GetValidationTimeout() time.Duration {
-	s.swampopt.RLock()
-	defer s.swampopt.RLock()
-	return s.swampopt.validationTimeout
+func (pe *ProxyEngine) GetValidationTimeout() time.Duration {
+	pe.swampopt.RLock()
+	defer pe.swampopt.RLock()
+	return pe.swampopt.validationTimeout
 }
 
 // GetValidationTimeoutStr returns the current value of validationTimeout (in seconds string).
-func (s *Swamp) GetValidationTimeoutStr() string {
-	s.swampopt.RLock()
-	defer s.swampopt.RLock()
-	timeout := s.swampopt.validationTimeout
+func (pe *ProxyEngine) GetValidationTimeoutStr() string {
+	pe.swampopt.RLock()
+	defer pe.swampopt.RLock()
+	timeout := pe.swampopt.validationTimeout
 	return strconv.Itoa(int(timeout / time.Second))
 }
 
 // GetServerTimeout returns the current value of serverTimeout.
-func (s *Swamp) GetServerTimeout() time.Duration {
-	s.swampopt.RLock()
-	defer s.swampopt.RLock()
-	return s.swampopt.serverTimeout
+func (pe *ProxyEngine) GetServerTimeout() time.Duration {
+	pe.swampopt.RLock()
+	defer pe.swampopt.RLock()
+	return pe.swampopt.serverTimeout
 }
 
 // GetServerTimeoutStr returns the current value of serverTimeout (in seconds string).
-func (s *Swamp) GetServerTimeoutStr() string {
-	s.swampopt.RLock()
-	defer s.swampopt.RLock()
-	timeout := s.swampopt.serverTimeout
+func (pe *ProxyEngine) GetServerTimeoutStr() string {
+	pe.swampopt.RLock()
+	defer pe.swampopt.RLock()
+	timeout := pe.swampopt.serverTimeout
 	if timeout == time.Duration(0) {
 		return "-1"
 	}
@@ -74,51 +74,51 @@ func (s *Swamp) GetServerTimeoutStr() string {
 }
 
 // GetMaxWorkers returns maximum amount of workers that validate proxies concurrently. Note this is read-only during runtime.
-func (s *Swamp) GetMaxWorkers() int {
-	return s.pool.Cap()
+func (pe *ProxyEngine) GetMaxWorkers() int {
+	return pe.pool.Cap()
 }
 
 // IsRunning returns true if our background goroutines defined in daemons.go are currently operational
-func (s *Swamp) IsRunning() bool {
-	return atomic.LoadInt32(&s.runningdaemons) == 2
+func (pe *ProxyEngine) IsRunning() bool {
+	return atomic.LoadInt32(&pe.runningdaemons) == 2
 }
 
 // GetRecyclingStatus retrieves the current recycling status, see EnableRecycling.
-func (s *Swamp) GetRecyclingStatus() bool {
-	s.swampopt.RLock()
-	defer s.swampopt.RLock()
-	return s.swampopt.recycle
+func (pe *ProxyEngine) GetRecyclingStatus() bool {
+	pe.swampopt.RLock()
+	defer pe.swampopt.RLock()
+	return pe.swampopt.recycle
 }
 
 // GetWorkers retrieves pond worker statistics:
 //    * return MaxWorkers, RunningWorkers, IdleWorkers
-func (s *Swamp) GetWorkers() (maxWorkers, runningWorkers, idleWorkers int) {
-	s.mu.RLock()
-	defer s.mu.RUnlock()
-	return s.pool.Cap(), s.pool.Running(), s.pool.Free()
+func (pe *ProxyEngine) GetWorkers() (maxWorkers, runningWorkers, idleWorkers int) {
+	pe.mu.RLock()
+	defer pe.mu.RUnlock()
+	return pe.pool.Cap(), pe.pool.Running(), pe.pool.Free()
 }
 
 // GetRemoveAfter retrieves the removeafter policy, the amount of times a recycled proxy is marked as bad until it is removed entirely.
 //    *  returns -1 if recycling is disabled.
-func (s *Swamp) GetRemoveAfter() int {
-	s.mu.RLock()
-	defer s.mu.RUnlock()
-	if !s.swampopt.recycle {
+func (pe *ProxyEngine) GetRemoveAfter() int {
+	pe.mu.RLock()
+	defer pe.mu.RUnlock()
+	if !pe.swampopt.recycle {
 		return -1
 	}
-	return s.swampopt.removeafter
+	return pe.swampopt.removeafter
 }
 
 // GetDialerBailout retrieves the dialer bailout policy. See SetDialerBailout for more info.
-func (s *Swamp) GetDialerBailout() int {
-	s.mu.RLock()
-	defer s.mu.RUnlock()
-	return s.swampopt.dialerBailout
+func (pe *ProxyEngine) GetDialerBailout() int {
+	pe.mu.RLock()
+	defer pe.mu.RUnlock()
+	return pe.swampopt.dialerBailout
 }
 
 // TODO: More docs
-func (s *Swamp) GetDispenseMiddleware() func(*Proxy) (*Proxy, bool) {
-	s.mu.RLock()
-	defer s.mu.RUnlock()
-	return s.dispenseMiddleware
+func (pe *ProxyEngine) GetDispenseMiddleware() func(*Proxy) (*Proxy, bool) {
+	pe.mu.RLock()
+	defer pe.mu.RUnlock()
+	return pe.dispenseMiddleware
 }

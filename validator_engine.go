@@ -16,13 +16,13 @@ import (
 	"h12.io/socks"
 )
 
-func (s *Swamp) prepHTTP() (*http.Client, *http.Transport, *http.Request, error) {
-	req, err := http.NewRequest("GET", s.GetRandomEndpoint(), bytes.NewBuffer([]byte("")))
+func (pe *ProxyEngine) prepHTTP() (*http.Client, *http.Transport, *http.Request, error) {
+	req, err := http.NewRequest("GET", pe.GetRandomEndpoint(), bytes.NewBuffer([]byte("")))
 	if err != nil {
 		return nil, nil, nil, err
 	}
 	headers := make(map[string]string)
-	headers["User-Agent"] = s.RandomUserAgent()
+	headers["User-Agent"] = pe.RandomUserAgent()
 	headers["Accept"] = "text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,image/apng,*/*;q=0.8"
 	headers["Accept-Language"] = "en-US,en;q=0.5"
 	headers["'Accept-Encoding'"] = "gzip, deflate, br"
@@ -34,7 +34,7 @@ func (s *Swamp) prepHTTP() (*http.Client, *http.Transport, *http.Request, error)
 	var transporter = &http.Transport{
 		DisableKeepAlives:   true,
 		TLSClientConfig:     &tls.Config{InsecureSkipVerify: true},
-		TLSHandshakeTimeout: s.swampopt.validationTimeout,
+		TLSHandshakeTimeout: pe.swampopt.validationTimeout,
 	}
 
 	return client, transporter, req, err
@@ -49,19 +49,19 @@ func (sock *Proxy) good() {
 	sock.lastValidated = time.Now()
 }
 
-func (s *Swamp) bakeHTTP(sock *Proxy) (client *http.Client, req *http.Request, err error) {
+func (pe *ProxyEngine) bakeHTTP(sock *Proxy) (client *http.Client, req *http.Request, err error) {
 	dialSocks := socks.Dial(fmt.Sprintf(
 		"socks%s://%s/?timeout=%ss",
 		getProtoStr(sock.proto),
 		sock.Endpoint,
-		s.GetValidationTimeoutStr()),
+		pe.GetValidationTimeoutStr()),
 	)
 	var (
 		purl      *url.URL
 		transport *http.Transport
 	)
 
-	if client, transport, req, err = s.prepHTTP(); err != nil {
+	if client, transport, req, err = pe.prepHTTP(); err != nil {
 		return
 	}
 
@@ -77,14 +77,14 @@ func (s *Swamp) bakeHTTP(sock *Proxy) (client *http.Client, req *http.Request, e
 	return
 }
 
-func (s *Swamp) checkHTTP(sock *Proxy) (string, error) {
+func (pe *ProxyEngine) checkHTTP(sock *Proxy) (string, error) {
 	var (
 		client *http.Client
 		req    *http.Request
 		err    error
 	)
 
-	client, req, err = s.bakeHTTP(sock)
+	client, req, err = pe.bakeHTTP(sock)
 	if err != nil {
 		return "", err
 	}
@@ -105,31 +105,31 @@ func (s *Swamp) checkHTTP(sock *Proxy) (string, error) {
 	return string(rbody), err
 }
 
-func (s *Swamp) anothaOne() {
-	s.stats.Checked++
+func (pe *ProxyEngine) anothaOne() {
+	pe.stats.Checked++
 }
 
-func (s *Swamp) singleProxyCheck(sock *Proxy) error {
-	defer s.anothaOne()
+func (pe *ProxyEngine) singleProxyCheck(sock *Proxy) error {
+	defer pe.anothaOne()
 	split := strings.Split(sock.Endpoint, "@")
 	endpoint := split[0]
 	if len(split) == 2 {
 		endpoint = split[1]
 	}
 	if _, err := net.DialTimeout("tcp", endpoint,
-		s.swampopt.validationTimeout); err != nil {
-		s.badProx.Check(sock)
+		pe.swampopt.validationTimeout); err != nil {
+		pe.badProx.Check(sock)
 		return err
 	}
 
-	resp, err := s.checkHTTP(sock)
+	resp, err := pe.checkHTTP(sock)
 	if err != nil {
-		s.badProx.Check(sock)
+		pe.badProx.Check(sock)
 		return err
 	}
 
 	if newip := net.ParseIP(resp); newip == nil {
-		s.badProx.Check(sock)
+		pe.badProx.Check(sock)
 		return errors.New("bad response from http request: " + resp)
 	}
 
@@ -153,13 +153,13 @@ func (sock *Proxy) validate() {
 
 	s := sock.parent
 	if s.useProx.Check(sock) {
-		// s.dbgPrint(ylw + "useProx ratelimited: " + sock.Endpoint + rst)
+		// s.dbgPrint("useProx ratelimited: " + sock.Endpoint )
 		return
 	}
 
 	// determined as bad, won't try again until it expires from that cache
 	if s.badProx.Peek(sock) {
-		s.dbgPrint(ylw + "badProx ratelimited: " + sock.Endpoint + rst)
+		s.dbgPrint("badProx ratelimited: " + sock.Endpoint)
 		return
 	}
 
@@ -182,10 +182,10 @@ func (sock *Proxy) validate() {
 
 	switch sock.proto {
 	case ProtoSOCKS4, ProtoSOCKS4a, ProtoSOCKS5, ProtoHTTP:
-		s.dbgPrint(grn + "verified " + sock.Endpoint + " as SOCKS" + getProtoStr(sock.proto) + rst)
+		s.dbgPrint("verified " + sock.Endpoint + " as SOCKS" + getProtoStr(sock.proto))
 		break
 	default:
-		s.dbgPrint(red + "failed to verify: " + sock.Endpoint + rst)
+		s.dbgPrint("failed to verify: " + sock.Endpoint)
 		sock.bad()
 		s.badProx.Check(sock)
 		return
@@ -195,20 +195,20 @@ func (sock *Proxy) validate() {
 	s.tally(sock)
 }
 
-func (s *Swamp) tally(sock *Proxy) {
+func (pe *ProxyEngine) tally(sock *Proxy) {
 	switch sock.proto {
 	case ProtoSOCKS4:
-		s.stats.v4()
-		s.ValidSocks4 <- sock
+		pe.stats.v4()
+		pe.Valids.SOCKS4 <- sock
 	case ProtoSOCKS4a:
-		s.stats.v4a()
-		s.ValidSocks4a <- sock
+		pe.stats.v4a()
+		pe.Valids.SOCKS4a <- sock
 	case ProtoSOCKS5:
-		s.stats.v5()
-		s.ValidSocks5 <- sock
+		pe.stats.v5()
+		pe.Valids.SOCKS5 <- sock
 	case ProtoHTTP:
-		s.stats.http()
-		s.ValidHTTP <- sock
+		pe.stats.http()
+		pe.Valids.HTTP <- sock
 	default:
 		return
 	}

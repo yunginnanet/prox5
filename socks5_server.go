@@ -7,7 +7,7 @@ import (
 )
 
 type socksLogger struct {
-	parent *Swamp
+	parent *ProxyEngine
 }
 
 // Printf is used to handle socks server logging.
@@ -31,16 +31,16 @@ func (s socksCreds) Valid(username, password string) bool {
 // StartSOCKS5Server starts our rotating proxy SOCKS5 server.
 // listen is standard Go listen string, e.g: "127.0.0.1:1080".
 // username and password are used for authenticatig to the SOCKS5 server.
-func (s *Swamp) StartSOCKS5Server(listen, username, password string) error {
-	s.socks5ServerAuth = socksCreds{username: username, password: password}
+func (pe *ProxyEngine) StartSOCKS5Server(listen, username, password string) error {
+	pe.socks5ServerAuth = socksCreds{username: username, password: password}
 
 	conf := &socks5.Config{
-		Credentials: s.socks5ServerAuth,
-		Logger:      s.socksServerLogger,
-		Dial:        s.MysteryDialer,
+		Credentials: pe.socks5ServerAuth,
+		Logger:      pe.socksServerLogger,
+		Dial:        pe.MysteryDialer,
 	}
 
-	s.dbgPrint("listening for SOCKS5 connections on " + listen)
+	pe.dbgPrint("listening for SOCKS5 connections on " + listen)
 
 	server, err := socks5.New(conf)
 	if err != nil {

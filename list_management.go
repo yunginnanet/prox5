@@ -45,7 +45,7 @@ func checkV6(in string) (filtered string, ok bool) {
 	return fmt.Sprintf("%s:%s@%s", split6[0], split6[1], combo.String()), true
 }
 
-func (s *Swamp) filter(in string) (filtered string, ok bool) {
+func (pe *ProxyEngine) filter(in string) (filtered string, ok bool) {
 	if !strings.Contains(in, ":") {
 		return in, false
 	}
@@ -94,45 +94,45 @@ func (s *Swamp) filter(in string) (filtered string, ok bool) {
 // * yeet.com:1080:user:pass
 // * [fe80::2ef0:5dff:fe7f:c299]:1080
 // * [fe80::2ef0:5dff:fe7f:c299]:1080:user:pass
-func (s *Swamp) LoadProxyTXT(seedFile string) int {
+func (pe *ProxyEngine) LoadProxyTXT(seedFile string) int {
 	var count = &atomic.Value{}
 	count.Store(0)
 
 	f, err := os.Open(seedFile)
 	if err != nil {
-		s.dbgPrint(red + err.Error() + rst)
+		pe.dbgPrint(err.Error())
 		return 0
 	}
 
-	s.dbgPrint("LoadProxyTXT start: " + seedFile)
+	pe.dbgPrint("LoadProxyTXT start: " + seedFile)
 	defer func() {
-		s.dbgPrint("LoadProxyTXT finished: " + strconv.Itoa(count.Load().(int)))
+		pe.dbgPrint("LoadProxyTXT finished: " + strconv.Itoa(count.Load().(int)))
 		if err := f.Close(); err != nil {
-			s.dbgPrint(red + err.Error() + rst)
+			pe.dbgPrint(err.Error())
 		}
 	}()
 
 	bs, err := io.ReadAll(f)
 	if err != nil {
-		s.dbgPrint(red + err.Error() + rst)
+		pe.dbgPrint(err.Error())
 		return 0
 	}
 	sockstr := string(bs)
 
-	count.Store(s.LoadMultiLineString(sockstr))
+	count.Store(pe.LoadMultiLineString(sockstr))
 	return count.Load().(int)
 }
 
 // LoadSingleProxy loads a SOCKS proxy into our map. Uses the format: 127.0.0.1:1080 (host:port).
-func (s *Swamp) LoadSingleProxy(sock string) (ok bool) {
-	if sock, ok = s.filter(sock); !ok {
+func (pe *ProxyEngine) LoadSingleProxy(sock string) (ok bool) {
+	if sock, ok = pe.filter(sock); !ok {
 		return
 	}
-	go s.loadSingleProxy(sock)
+	go pe.loadSingleProxy(sock)
 	return
 }
 
-func (s *Swamp) loadSingleProxy(sock string) {
+func (pe *ProxyEngine) loadSingleProxy(sock string) {
 	for {
 		select {
 		case inChan <- sock:
@@ -144,11 +144,11 @@ func (s *Swamp) loadSingleProxy(sock string) {
 }
 
 // LoadMultiLineString loads a multiine string object with one (host:port) SOCKS proxy per line.
-func (s *Swamp) LoadMultiLineString(socks string) int {
+func (pe *ProxyEngine) LoadMultiLineString(socks string) int {
 	var count int
 	scan := bufio.NewScanner(strings.NewReader(socks))
 	for scan.Scan() {
-		if s.LoadSingleProxy(scan.Text()) {
+		if pe.LoadSingleProxy(scan.Text()) {
 			count++
 		}
 	}
@@ -157,6 +157,6 @@ func (s *Swamp) LoadMultiLineString(socks string) int {
 
 // ClearSOCKSList clears the map of proxies that we have on record.
 // Other operations (proxies that are still in buffered channels) will continue.
-func (s *Swamp) ClearSOCKSList() {
-	s.swampmap.clear()
+func (pe *ProxyEngine) ClearSOCKSList() {
+	pe.swampmap.clear()
 }
