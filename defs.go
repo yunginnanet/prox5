@@ -40,16 +40,16 @@ type Swamp struct {
 
 	dispenseMiddleware func(*Proxy) (*Proxy, bool)
 
-	quit chan bool
+	ctx  context.Context
+	quit context.CancelFunc
 
 	swampmap swampMap
 
-	reaper sync.Pool
+	// reaper sync.Pool
 
 	mu             *sync.RWMutex
 	pool           *ants.Pool
 	swampopt       *swampOptions
-	ctx            context.Context
 	runningdaemons int32
 	conductor      chan bool
 }
@@ -217,7 +217,6 @@ func NewDefaultSwamp() *Swamp {
 
 		swampopt: defOpt(),
 
-		quit:      make(chan bool),
 		conductor: make(chan bool),
 		mu:        &sync.RWMutex{},
 		Status:    uint32(StateNew),
@@ -231,11 +230,13 @@ func NewDefaultSwamp() *Swamp {
 		*c = make(chan *Proxy, 250)
 	}
 
-	atomic.StoreUint32(&s.Status, uint32(StateNew))
-
 	s.dispenseMiddleware = func(p *Proxy) (*Proxy, bool) {
 		return p, true
 	}
+
+	s.ctx, s.quit = context.WithCancel(context.Background())
+
+	s.Status.Store(New)
 
 	s.swampmap = swampMap{
 		plot:   make(map[string]*Proxy),

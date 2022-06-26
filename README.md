@@ -11,15 +11,25 @@ Notably it features interface compatible dialer functions that dial out from dif
 
 ---
 
-### Initial validation sequence  
-  
+### Initial Validation Sequence
+
 - TCP Dial to the endpoint
 - HTTPS GET request to a list of IP echo endpoints
-  
-Prox5 will then store the endpoint's outward appearing IP address and mark it as valid for use.  
-  
 
-### Accessing validated proxies
+Prox5 will then store the endpoint's outward appearing IP address and mark it as valid for use.
+
+### The Secret Sauce
+
+What makes Prox5 special is largely the Mystery Dialer. This dialer satisfies the net.Dialer interface. Upon using the dialer to connect to and endpoint, Prox5:
+
+- Loads up a previously verified proxy
+- Attempts to make connection with the dial endpoint using said proxy
+- Upon failure, prox5:
+  - repeats this process *mid-dial*
+  - does not drop connection to the client
+- Once a proxy has been successfully used to connect to the target endpoint, prox5 passes the same net.Conn onto the client
+
+### Accessing Validated Proxies
 
  
  - Retrieve validated 4/4a/5 proxies as simple strings for generic use

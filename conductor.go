@@ -1,8 +1,8 @@
 package prox5
 
 import (
+	"context"
 	"errors"
-	"sync/atomic"
 )
 
 // SwampStatus represents the current state of our Swamp.
@@ -19,14 +19,10 @@ const (
 
 // Start starts our proxy pool operations. Trying to start a running Swamp will return an error.
 func (s *Swamp) Start() error {
-	switch {
-	case s.IsRunning():
-		return errors.New("pool is already running")
-	case atomic.LoadUint32(&s.Status) != uint32(StateNew):
-		return errors.New("this swamp is not new, use resume if it is paused")
+	if s.Status.Load().(SwampStatus) != New {
+		return s.Resume()
 	}
-	atomic.StoreInt32(&s.runningdaemons, 0)
-	s.getThisDread()
+	s.startDaemons()
 	return nil
 }
 
@@ -45,16 +41,16 @@ func (s *Swamp) Pause() error {
 
 	s.dbgPrint("pausing...")
 
-	s.svcDown()
-	s.svcDown()
+	s.quit()
 
 	atomic.StoreUint32(&s.Status, uint32(StatePaused))
 	return nil
 }
 
-func (s *Swamp) getThisDread() {
+func (s *Swamp) startDaemons() {
 	go s.mapBuilder()
 	<-s.conductor
+	s.svcUp()
 	go s.jobSpawner()
 
 	for {
@@ -67,8 +63,10 @@ func (s *Swamp) getThisDread() {
 
 // Resume will resume pause proxy pool operations, attempting to resume a running Swamp is returns an error.
 func (s *Swamp) Resume() error {
-
-	s.getThisDread()
-
+	if s.IsRunning() {
+		return errors.New("already running")
+	}
+	s.ctx, s.quit = context.WithCancel(context.Background())
+	s.startDaemons()
 	return nil
 }
