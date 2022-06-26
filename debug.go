@@ -1,8 +1,13 @@
 package prox5
 
 import (
+	"fmt"
 	"sync"
 )
+
+func init() {
+	debugMutex = &sync.RWMutex{}
+}
 
 var (
 	useDebugChannel = false
@@ -10,33 +15,33 @@ var (
 	debugMutex      *sync.RWMutex
 )
 
-func init() {
-	debugMutex = &sync.RWMutex{}
+type DebugPrinter interface {
+	Print(str string)
+	Printf(format string, items ...any)
 }
 
-const (
-	grn = "\033[32m"
-	red = "\033[31m"
-	ylw = "\033[33m"
-	rst = "\033[0m"
-)
+type basicPrinter struct{}
+
+func (b basicPrinter) Print(str string) {
+	println("prox5: " + str)
+}
+
+func (b basicPrinter) Printf(format string, items ...any) {
+	println(fmt.Sprintf("prox5: "+format, items))
+}
 
 // DebugChannel will return a channel which will receive debug messages once debug is enabled.
 // This will alter the flow of debug messages, they will no longer print to console, they will be pushed into this channel.
 // Make sure you pull from the channel eventually to avoid build up of blocked goroutines.
-//
-// Note that this will replace any existing debug channel with a fresh one.
 func (s *Swamp) DebugChannel() chan string {
-	debugChan = make(chan string, 2048)
+	debugChan = make(chan string, 1000000)
 	useDebugChannel = true
 	return debugChan
 }
 
-// IsDebugEnabled returns the current state of our debug switch.
-func (s *Swamp) IsDebugEnabled() bool {
-	debugMutex.RLock()
-	defer debugMutex.RUnlock()
-	return s.swampopt.debug
+// DebugEnabled returns the current state of our debug switch.
+func (s *Swamp) DebugEnabled() bool {
+	return s.swampopt.debug.Load().(bool)
 }
 
 // DisableDebugChannel redirects debug messages back to the console.
@@ -49,34 +54,28 @@ func (s *Swamp) DisableDebugChannel() {
 
 // EnableDebug enables printing of verbose messages during operation
 func (s *Swamp) EnableDebug() {
-	debugMutex.Lock()
-	defer debugMutex.Unlock()
-	s.swampopt.debug = true
+	s.swampopt.debug.Store(true)
 }
 
 // DisableDebug enables printing of verbose messages during operation.
 // WARNING: if you are using a DebugChannel, you must read all of the messages in the channel's cache or this will block.
 func (s *Swamp) DisableDebug() {
-	debugMutex.Lock()
-	defer debugMutex.Unlock()
-	s.swampopt.debug = false
+	s.swampopt.debug.Store(false)
 }
 
 func (s *Swamp) dbgPrint(str string) {
-	debugMutex.RLock()
-	if s.swampopt.debug == false {
+	if !s.swampopt.debug.Load().(bool) {
 		return
 	}
-	debugMutex.RUnlock()
 
 	if useDebugChannel {
 		select {
 		case debugChan <- str:
 			return
 		default:
-			println("Prox5 overflow: " + str)
+			println("prox5 debug overflow: " + str)
 			return
 		}
 	}
-	println("Prox5: " + str)
+
 }
