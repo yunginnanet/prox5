@@ -1,7 +1,6 @@
 package prox5
 
 import (
-	"sync"
 	"time"
 
 	rl "github.com/yunginnanet/Rate5"
@@ -26,7 +25,8 @@ const (
 type ProxyProtocol uint8
 
 const (
-	ProtoSOCKS4 ProxyProtocol = iota
+	protoNULL ProxyProtocol = iota
+	ProtoSOCKS4
 	ProtoSOCKS4a
 	ProtoSOCKS5
 	ProtoHTTP
@@ -47,9 +47,8 @@ type Proxy struct {
 	// timesBad is the amount of times the proxy has been marked as bad.
 	timesBad int64
 
-	parent   *ProxyEngine
-	lock     uint32
-	hardlock *sync.Mutex
+	parent *ProxyEngine
+	lock   uint32
 }
 
 // UniqueKey is an implementation of the Identity interface from Rate5.

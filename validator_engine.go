@@ -30,7 +30,7 @@ func (pe *ProxyEngine) prepHTTP() (*http.Client, *http.Transport, *http.Request,
 	for header, value := range headers {
 		req.Header.Set(header, value)
 	}
-	var client *http.Client
+	var client = &http.Client{}
 	var transporter = &http.Transport{
 		DisableKeepAlives:   true,
 		TLSClientConfig:     &tls.Config{InsecureSkipVerify: true},
@@ -94,14 +94,8 @@ func (pe *ProxyEngine) checkHTTP(sock *Proxy) (string, error) {
 		return "", err
 	}
 
-	defer func(Body io.ReadCloser) {
-		err := Body.Close()
-		if err != nil {
-			panic(err)
-		}
-	}(resp.Body)
-
 	rbody, err := io.ReadAll(resp.Body)
+	_ = resp.Body.Close()
 	return string(rbody), err
 }
 
@@ -144,7 +138,10 @@ var protoMap = map[ProxyProtocol]string{
 }
 
 func getProtoStr(protocol ProxyProtocol) string {
-	return protoMap[protocol]
+	if str, ok := protoMap[protocol]; ok {
+		return str
+	}
+	panic(protoMap[protocol])
 }
 
 func (sock *Proxy) validate() {

@@ -7,7 +7,6 @@ import (
 	"os"
 	"strconv"
 	"strings"
-	"sync/atomic"
 	"time"
 
 	"github.com/miekg/dns"
@@ -94,19 +93,14 @@ func (pe *ProxyEngine) filter(in string) (filtered string, ok bool) {
 // * yeet.com:1080:user:pass
 // * [fe80::2ef0:5dff:fe7f:c299]:1080
 // * [fe80::2ef0:5dff:fe7f:c299]:1080:user:pass
-func (pe *ProxyEngine) LoadProxyTXT(seedFile string) int {
-	var count = &atomic.Value{}
-	count.Store(0)
-
+func (pe *ProxyEngine) LoadProxyTXT(seedFile string) (count int) {
 	f, err := os.Open(seedFile)
 	if err != nil {
 		pe.dbgPrint(err.Error())
 		return 0
 	}
 
-	pe.dbgPrint("LoadProxyTXT start: " + seedFile)
 	defer func() {
-		pe.dbgPrint("LoadProxyTXT finished: " + strconv.Itoa(count.Load().(int)))
 		if err := f.Close(); err != nil {
 			pe.dbgPrint(err.Error())
 		}
@@ -119,8 +113,7 @@ func (pe *ProxyEngine) LoadProxyTXT(seedFile string) int {
 	}
 	sockstr := string(bs)
 
-	count.Store(pe.LoadMultiLineString(sockstr))
-	return count.Load().(int)
+	return pe.LoadMultiLineString(sockstr)
 }
 
 // LoadSingleProxy loads a SOCKS proxy into our map. Uses the format: 127.0.0.1:1080 (host:port).

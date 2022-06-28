@@ -31,13 +31,15 @@ func (sm swampMap) add(sock string) (*Proxy, bool) {
 	}
 
 	sm.plot[sock] = &Proxy{
-		Endpoint: sock,
-		lock:     stateUnlocked,
-		parent:   sm.parent,
+		Endpoint:       sock,
+		proto:          protoNULL,
+		lastValidated:  time.UnixMilli(0),
+		timesValidated: 0,
+		timesBad:       0,
+		parent:         sm.parent,
+		lock:           stateUnlocked,
 	}
 
-	atomic.StoreInt64(&sm.plot[sock].timesValidated, 0)
-	atomic.StoreInt64(&sm.plot[sock].timesBad, 0)
 	return sm.plot[sock], true
 }
 

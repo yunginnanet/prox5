@@ -2,7 +2,6 @@ package prox5
 
 import (
 	"context"
-	"fmt"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -148,6 +147,7 @@ type config struct {
 func NewProxyEngine() *ProxyEngine {
 	pe := &ProxyEngine{
 		stats: &statistics{birthday: time.Now()},
+		Debug: basicPrinter{},
 
 		swampopt: defOpt(),
 
@@ -206,7 +206,8 @@ func newSwampMap(pe *ProxyEngine) swampMap {
 }
 
 func (pe *ProxyEngine) pondPanic(p interface{}) {
-	pe.dbgPrint("Worker panic: " + fmt.Sprintf("%v", p))
+	panic(p)
+	// pe.dbgPrint("Worker panic: " + fmt.Sprintf("%v", p))
 }
 
 // defaultUserAgents is a small list of user agents to use during validation.
