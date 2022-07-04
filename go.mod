@@ -3,7 +3,7 @@ module git.tcp.direct/kayos/prox5
 go 1.18
 
 require (
-	git.tcp.direct/kayos/common v0.5.4
+	git.tcp.direct/kayos/common v0.5.5
 	git.tcp.direct/kayos/go-socks5 v1.0.1
 	github.com/mattn/go-tty v0.0.4
 	github.com/miekg/dns v1.1.50
@@ -21,7 +21,7 @@ require (
 	go4.org/unsafe/assume-no-moving-gc v0.0.0-20211027215541-db492cf91b37 // indirect
 	golang.org/x/mod v0.4.2 // indirect
 	golang.org/x/sys v0.0.0-20220520151302-bc2c85ada10a // indirect
-	golang.org/x/tools v0.1.6-0.20210726203631-07bc1bf47fb2 // indirect
+	golang.org/x/tools v0.1.7 // indirect
 	golang.org/x/xerrors v0.0.0-20200804184101-5ec99f83aff1 // indirect
 	nullprogram.com/x/rng v1.1.0 // indirect
 )
