@@ -8,7 +8,7 @@ require (
 	github.com/mattn/go-tty v0.0.4
 	github.com/miekg/dns v1.1.50
 	github.com/panjf2000/ants/v2 v2.5.0
-	github.com/yunginnanet/Rate5 v1.0.0
+	github.com/yunginnanet/Rate5 v1.0.1
 	golang.org/x/net v0.0.0-20220630215102-69896b714898
 	h12.io/socks v1.0.3
 	inet.af/netaddr v0.0.0-20220617031823-097006376321
