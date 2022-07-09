@@ -11,12 +11,12 @@ import (
 )
 
 // DialContext is a simple stub adapter to implement a net.Dialer.
-func (s *Swamp) DialContext(ctx context.Context, network, addr string) (net.Conn, error) {
+func (s *ProxyEngine) DialContext(ctx context.Context, network, addr string) (net.Conn, error) {
 	return s.MysteryDialer(ctx, network, addr)
 }
 
 // DialContext is a simple stub adapter to implement a net.Dialer.
-func (s *Swamp) Dial(network, addr string) (net.Conn, error) {
+func (s *ProxyEngine) Dial(network, addr string) (net.Conn, error) {
 	return s.DialContext(context.Background(), network, addr)
 }
 
