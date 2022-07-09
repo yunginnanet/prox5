@@ -10,9 +10,14 @@ import (
 	"h12.io/socks"
 )
 
-// DialContext is a simple stub adapter for compatibility with certain packages.
-func (pe *ProxyEngine) DialContext(ctx context.Context, network, addr string) (net.Conn, error) {
-	return pe.MysteryDialer(ctx, network, addr)
+// DialContext is a simple stub adapter to implement a net.Dialer.
+func (s *Swamp) DialContext(ctx context.Context, network, addr string) (net.Conn, error) {
+	return s.MysteryDialer(ctx, network, addr)
+}
+
+// DialContext is a simple stub adapter to implement a net.Dialer.
+func (s *Swamp) Dial(network, addr string) (net.Conn, error) {
+	return s.DialContext(context.Background(), network, addr)
 }
 
 // MysteryDialer is a dialer function that will use a different proxy for every request.
