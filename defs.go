@@ -94,7 +94,7 @@ func defOpt() *swampOptions {
 	sm.recycle.Store(true)
 	sm.debug.Store(false)
 	sm.validationTimeout.Store(time.Duration(12) * time.Second)
-	sm.serverTimeout.Store(time.Duration(360) * time.Second)
+	sm.serverTimeout.Store(time.Duration(60) * time.Second)
 
 	sm.dialerBailout.Store(defBailout)
 	sm.stale.Store(defaultStaleTime)
