@@ -3,15 +3,15 @@ module p5example
 go 1.18
 
 require (
-	git.tcp.direct/kayos/prox5 v0.5.2
+	git.tcp.direct/kayos/prox5 v0.6.0
 	github.com/haxii/socks5 v1.0.0
 	github.com/mattn/go-tty v0.0.4
 )
 
 require (
-	git.tcp.direct/kayos/common v0.5.5 // indirect
+	git.tcp.direct/kayos/common v0.7.0 // indirect
 	git.tcp.direct/kayos/go-socks5 v1.0.1 // indirect
-	github.com/mattn/go-isatty v0.0.10 // indirect
+	github.com/mattn/go-isatty v0.0.14 // indirect
 	github.com/miekg/dns v1.1.50 // indirect
 	github.com/panjf2000/ants/v2 v2.5.0 // indirect
 	github.com/patrickmn/go-cache v2.1.0+incompatible // indirect
