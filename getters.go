@@ -1,6 +1,7 @@
 package prox5
 
 import (
+	"fmt"
 	"strconv"
 	"sync/atomic"
 	"time"
@@ -9,6 +10,15 @@ import (
 // GetProto safely retrieves the protocol value of the Proxy.
 func (sock *Proxy) GetProto() string {
 	return sock.Proto.Load().(string)
+}
+
+// GetProto safely retrieves the protocol value of the Proxy.
+func (sock *Proxy) String() string {
+	tout := ""
+	if sock.parent.GetServerTimeoutStr() != "-1" {
+		tout = fmt.Sprintf("?timeout=%ss", sock.parent.GetServerTimeoutStr())
+	}
+	return fmt.Sprintf("socks%s://%s%s", sock.GetProto(), sock.Endpoint, tout)
 }
 
 // GetStatistics returns all current statistics.

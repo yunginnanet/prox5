@@ -7,24 +7,30 @@ import (
 	"net"
 	"strconv"
 	"sync/atomic"
+	"time"
 
 	"h12.io/socks"
 )
 
-// DialContext is a simple stub adapter to implement a net.Dialer.
+// DialContext is a simple stub adapter to implement a net.Dialer with context.
 func (s *Swamp) DialContext(ctx context.Context, network, addr string) (net.Conn, error) {
 	return s.MysteryDialer(ctx, network, addr)
 }
 
-// DialContext is a simple stub adapter to implement a net.Dialer.
+// Dial is a simple stub adapter to implement a net.Dialer.
 func (s *Swamp) Dial(network, addr string) (net.Conn, error) {
 	return s.DialContext(context.Background(), network, addr)
+}
+
+// DialTimeout is a simple stub adapter to implement a net.Dialer with a timeout.
+func (s *Swamp) DialTimeout(network, addr string, timeout time.Duration) (net.Conn, error) {
+	ctx, _ := context.WithDeadline(context.Background(), time.Now().Add(timeout))
+	return s.MysteryDialer(ctx, network, addr)
 }
 
 // MysteryDialer is a dialer function that will use a different proxy for every request.
 func (s *Swamp) MysteryDialer(ctx context.Context, network, addr string) (net.Conn, error) {
 	var sock *Proxy
-	var socksString string
 	var conn net.Conn
 	var count int
 	// pull down proxies from channel until we get a proxy good enough for our spoiled asses
@@ -34,7 +40,7 @@ func (s *Swamp) MysteryDialer(ctx context.Context, network, addr string) (net.Co
 			return nil, errors.New("giving up after " + strconv.Itoa(max) + " tries")
 		}
 		if err := ctx.Err(); err != nil {
-			return nil, err
+			return nil, fmt.Errorf("context error: %v", err)
 		}
 
 		sock = s.GetAnySOCKS()
@@ -44,26 +50,21 @@ func (s *Swamp) MysteryDialer(ctx context.Context, network, addr string) (net.Co
 			}
 			randSleep()
 		}
-		var err error
 		if sock == nil {
 			continue
 		}
 
 		s.dbgPrint("dialer trying: " + sock.Endpoint + "...")
-		tout := ""
-		if s.GetServerTimeoutStr() != "-1" {
-			tout = fmt.Sprintf("?timeout=%ss", s.GetServerTimeoutStr())
-		}
-		socksString = fmt.Sprintf("socks%s://%s%s", sock.GetProto(), sock.Endpoint, tout)
 		atomic.StoreUint32(&sock.lock, stateUnlocked)
-		dialSocks := socks.Dial(socksString)
+		dialSocks := socks.Dial(sock.String())
+		var err error
 		if conn, err = dialSocks(network, addr); err != nil {
 			count++
-			s.dbgPrint(ylw + "unable to reach [redacted] with " + socksString + ", cycling..." + rst)
+			s.dbgPrint(ylw + "unable to reach [redacted] with " + sock.String() + ", cycling..." + rst)
 			continue
 		}
 		break
 	}
-	s.dbgPrint(grn + "MysteryDialer using socks: " + socksString + rst)
+	s.dbgPrint(grn + "MysteryDialer using socks: " + sock.String() + rst)
 	return conn, nil
 }
