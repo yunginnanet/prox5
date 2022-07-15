@@ -24,7 +24,8 @@ func (s *Swamp) Dial(network, addr string) (net.Conn, error) {
 
 // DialTimeout is a simple stub adapter to implement a net.Dialer with a timeout.
 func (s *Swamp) DialTimeout(network, addr string, timeout time.Duration) (net.Conn, error) {
-	ctx, _ := context.WithDeadline(context.Background(), time.Now().Add(timeout))
+	ctx, cancel := context.WithDeadline(context.Background(), time.Now().Add(timeout))
+	defer cancel()
 	return s.MysteryDialer(ctx, network, addr)
 }
 
