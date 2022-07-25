@@ -3,6 +3,7 @@ package prox5
 import (
 	"errors"
 	"strconv"
+	"strings"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -76,10 +77,10 @@ func (pe *ProxyEngine) mapBuilder() {
 		pe.pool.Reboot()
 	}
 
-	pe.dbgPrint("map builder started")
+	pe.dbgPrint(simpleString("map builder started"))
 
 	go func() {
-		defer pe.dbgPrint("map builder paused")
+		defer pe.dbgPrint(simpleString("map builder paused"))
 		for {
 			select {
 			case <-pe.ctx.Done():
@@ -128,8 +129,8 @@ func (pe *ProxyEngine) jobSpawner() {
 		pe.pool.Reboot()
 	}
 
-	pe.dbgPrint("job spawner started")
-	defer pe.dbgPrint("job spawner paused")
+	pe.dbgPrint(simpleString("job spawner started"))
+	defer pe.dbgPrint(simpleString("job spawner paused"))
 
 	q := make(chan bool)
 
@@ -142,12 +143,16 @@ func (pe *ProxyEngine) jobSpawner() {
 				return
 			case sock := <-pe.Pending:
 				if err := pe.pool.Submit(sock.validate); err != nil {
-					pe.dbgPrint(err.Error())
+					pe.dbgPrint(simpleString(err.Error()))
 				}
 			default:
 				time.Sleep(25 * time.Millisecond)
 				count := pe.recycling()
-				pe.dbgPrint("recycled " + strconv.Itoa(count) + " proxies from our map")
+				buf := copABuffer.Get().(*strings.Builder)
+				buf.WriteString("recycled ")
+				buf.WriteString(strconv.Itoa(count))
+				buf.WriteString(" proxies from our map")
+				pe.dbgPrint(buf)
 			}
 		}
 	}()

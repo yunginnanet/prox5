@@ -1,6 +1,7 @@
 package prox5
 
 import (
+	"strings"
 	"sync/atomic"
 	"time"
 
@@ -103,19 +104,28 @@ func (pe *ProxyEngine) stillGood(sock *Proxy) bool {
 	defer atomic.StoreUint32(&sock.lock, stateUnlocked)
 
 	if atomic.LoadInt64(&sock.timesBad) > int64(pe.GetRemoveAfter()) && pe.GetRemoveAfter() != -1 {
-		pe.dbgPrint("deleting from map (too many failures): " + sock.Endpoint)
+		buf := copABuffer.Get().(*strings.Builder)
+		buf.WriteString("deleting from map (too many failures): ")
+		buf.WriteString(sock.Endpoint)
+		pe.dbgPrint(buf)
 		if err := pe.swampmap.delete(sock.Endpoint); err != nil {
-			pe.dbgPrint(err.Error())
+			pe.dbgPrint(simpleString(err.Error()))
 		}
 	}
 
 	if pe.badProx.Peek(sock) {
-		pe.dbgPrint("badProx dial ratelimited: " + sock.Endpoint)
+		buf := copABuffer.Get().(*strings.Builder)
+		buf.WriteString("badProx dial ratelimited: ")
+		buf.WriteString(sock.Endpoint)
+		pe.dbgPrint(buf)
 		return false
 	}
 
 	if time.Since(sock.lastValidated) > pe.swampopt.stale {
-		pe.dbgPrint("proxy stale: " + sock.Endpoint)
+		buf := copABuffer.Get().(*strings.Builder)
+		buf.WriteString("proxy stale: ")
+		buf.WriteString(sock.Endpoint)
+		pe.dbgPrint(buf)
 		go pe.stats.stale()
 		return false
 	}

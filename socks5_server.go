@@ -2,8 +2,8 @@ package prox5
 
 import (
 	"fmt"
-
 	"git.tcp.direct/kayos/go-socks5"
+	"strings"
 )
 
 type socksLogger struct {
@@ -12,7 +12,9 @@ type socksLogger struct {
 
 // Printf is used to handle socks server logging.
 func (s socksLogger) Printf(format string, a ...interface{}) {
-	s.parent.dbgPrint(fmt.Sprintf(format, a...))
+	buf := copABuffer.Get().(*strings.Builder)
+	buf.WriteString(fmt.Sprintf(format, a...))
+	s.parent.dbgPrint(buf)
 }
 
 type socksCreds struct {
@@ -40,7 +42,10 @@ func (pe *ProxyEngine) StartSOCKS5Server(listen, username, password string) erro
 		Dial:        pe.MysteryDialer,
 	}
 
-	pe.dbgPrint("listening for SOCKS5 connections on " + listen)
+	buf := copABuffer.Get().(*strings.Builder)
+	buf.WriteString("listening for SOCKS5 connections on ")
+	buf.WriteString(listen)
+	pe.dbgPrint(buf)
 
 	server, err := socks5.New(conf)
 	if err != nil {

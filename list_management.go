@@ -96,19 +96,19 @@ func (pe *ProxyEngine) filter(in string) (filtered string, ok bool) {
 func (pe *ProxyEngine) LoadProxyTXT(seedFile string) (count int) {
 	f, err := os.Open(seedFile)
 	if err != nil {
-		pe.dbgPrint(err.Error())
+		pe.dbgPrint(simpleString(err.Error()))
 		return 0
 	}
 
 	defer func() {
 		if err := f.Close(); err != nil {
-			pe.dbgPrint(err.Error())
+			pe.dbgPrint(simpleString(err.Error()))
 		}
 	}()
 
 	bs, err := io.ReadAll(f)
 	if err != nil {
-		pe.dbgPrint(err.Error())
+		pe.dbgPrint(simpleString(err.Error()))
 		return 0
 	}
 	sockstr := string(bs)

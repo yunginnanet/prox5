@@ -6,20 +6,47 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/mattn/go-tty"
-
 	"git.tcp.direct/kayos/prox5"
+	"github.com/haxii/socks5"
+	"github.com/mattn/go-tty"
 )
 
-var swamp *prox5.ProxyEngine
-var quit chan bool
-var t *tty.TTY
+var (
+	swamp *prox5.ProxyEngine
+	quit  chan bool
+	t     *tty.TTY
+)
+
+type socksLogger struct{}
+
+var socklog = socksLogger{}
+
+// Printf is used to handle socks server logging.
+func (s socksLogger) Printf(format string, a ...interface{}) {
+	println(fmt.Sprintf(format, a))
+}
+
+func StartUpstreamProxy(listen string) {
+	conf := &socks5.Config{Dial: swamp.DialContext, Logger: socklog}
+	server, err := socks5.New(conf)
+	if err != nil {
+		println(err.Error())
+		return
+	}
+
+	socklog.Printf("starting proxy server on %s", listen)
+	if err := server.ListenAndServe("tcp", listen); err != nil {
+		println(err.Error())
+		return
+	}
+}
 
 func init() {
 	quit = make(chan bool)
 	swamp = prox5.NewProxyEngine()
 	swamp.SetMaxWorkers(5)
 	swamp.EnableDebug()
+	go StartUpstreamProxy("127.0.0.1:1555")
 
 	count := swamp.LoadProxyTXT(os.Args[1])
 	if count < 1 {

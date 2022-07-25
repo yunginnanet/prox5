@@ -2,22 +2,43 @@ package prox5
 
 import (
 	"context"
-	"errors"
+	"fmt"
 	"net"
-	"strconv"
+	"strings"
+	"sync"
 	"sync/atomic"
+	"time"
 
 	"h12.io/socks"
 )
 
-// DialContext is a simple stub adapter to implement a net.Dialer.
-func (s *ProxyEngine) DialContext(ctx context.Context, network, addr string) (net.Conn, error) {
-	return s.MysteryDialer(ctx, network, addr)
+var copABuffer = &sync.Pool{New: func() interface{} { return &strings.Builder{} }}
+
+func discardBuffer(buf *strings.Builder) {
+	buf.Reset()
+	copABuffer.Put(buf)
 }
 
 // DialContext is a simple stub adapter to implement a net.Dialer.
-func (s *ProxyEngine) Dial(network, addr string) (net.Conn, error) {
-	return s.DialContext(context.Background(), network, addr)
+func (pe *ProxyEngine) DialContext(ctx context.Context, network, addr string) (net.Conn, error) {
+	return pe.MysteryDialer(ctx, network, addr)
+}
+
+// Dial is a simple stub adapter to implement a net.Dialer.
+func (pe *ProxyEngine) Dial(network, addr string) (net.Conn, error) {
+	return pe.MysteryDialer(context.Background(), network, addr)
+}
+
+// DialTimeout is a simple stub adapter to implement a net.Dialer with a timeout.
+func (pe *ProxyEngine) DialTimeout(network, addr string, timeout time.Duration) (net.Conn, error) {
+	ctx, cancel := context.WithDeadline(context.Background(), time.Now().Add(timeout))
+	go func() {
+		select {
+		case <-ctx.Done():
+			cancel()
+		}
+	}()
+	return pe.MysteryDialer(ctx, network, addr)
 }
 
 // MysteryDialer is a dialer function that will use a different proxy for every request.
@@ -27,31 +48,60 @@ func (pe *ProxyEngine) MysteryDialer(ctx context.Context, network, addr string) 
 		count       int
 	)
 	// pull down proxies from channel until we get a proxy good enough for our spoiled asses
+
 	for {
 		max := pe.GetDialerBailout()
 		if count > max {
-			return nil, errors.New("giving up after " + strconv.Itoa(max) + " tries")
+			return nil, fmt.Errorf("giving up after %d tries", max)
 		}
 		if err := ctx.Err(); err != nil {
-			return nil, err
+			return nil, fmt.Errorf("context error: %v", err)
 		}
 		var sock *Proxy
+	popSockAndLockIt:
 		for {
 			sock = pe.GetAnySOCKS(false)
-			if !atomic.CompareAndSwapUint32(&sock.lock, stateUnlocked, stateLocked) {
-				continue
+			socksString = sock.String()
+			select {
+			case <-ctx.Done():
+				return nil, fmt.Errorf("context done: %v", ctx.Err())
+			default:
+				buf := copABuffer.Get().(*strings.Builder)
+				if atomic.CompareAndSwapUint32(&sock.lock, stateUnlocked, stateLocked) {
+					buf.WriteString("got lock for ")
+					buf.WriteString(socksString)
+					break popSockAndLockIt
+				}
+				select {
+				case pe.Pending <- sock:
+					buf.WriteString("can't get lock, putting back ")
+					buf.WriteString(socksString)
+					pe.dbgPrint(buf)
+					continue
+				default:
+					buf.WriteString("can't get lock, can't put back ")
+					buf.WriteString(socksString)
+					continue
+				}
 			}
-			break
 		}
-		pe.dbgPrint("dialer trying: " + sock.Endpoint + "...")
-		tout := ""
+		buf := copABuffer.Get().(*strings.Builder)
+		buf.WriteString("try dial with: ")
+		buf.WriteString(sock.Endpoint)
+		pe.dbgPrint(buf)
 		if pe.GetServerTimeoutStr() != "-1" {
-			tout = "?timeout=" + pe.GetServerTimeoutStr() + "s"
+			tout := copABuffer.Get().(*strings.Builder)
+			tout.WriteString("?timeout=")
+			tout.WriteString(pe.GetServerTimeoutStr())
+			tout.WriteRune('s')
 		}
-		socksString = "socks" + getProtoStr(sock.proto) + "://" + sock.Endpoint + tout
 		var ok bool
 		if sock, ok = pe.dispenseMiddleware(sock); !ok {
-			pe.dbgPrint("failed middleware check, " + socksString + ", cycling...")
+			buf := copABuffer.Get().(*strings.Builder)
+			buf.WriteString("failed middleware check, ")
+			buf.WriteString(sock.String())
+			buf.WriteString(", cycling...")
+			pe.dbgPrint(buf)
 			continue
 		}
 		atomic.StoreUint32(&sock.lock, stateUnlocked)
@@ -59,10 +109,17 @@ func (pe *ProxyEngine) MysteryDialer(ctx context.Context, network, addr string) 
 		conn, err := dialSocks(network, addr)
 		if err != nil {
 			count++
-			pe.dbgPrint("unable to reach [redacted] with " + socksString + ", cycling...")
+			buf := copABuffer.Get().(*strings.Builder)
+			buf.WriteString("unable to reach [redacted] with ")
+			buf.WriteString(socksString)
+			buf.WriteString(", cycling...")
+			pe.dbgPrint(buf)
 			continue
 		}
-		pe.dbgPrint("MysteryDialer using socks: " + socksString)
+		buf = copABuffer.Get().(*strings.Builder)
+		buf.WriteString("MysteryDialer using socks: ")
+		buf.WriteString(socksString)
+		pe.dbgPrint(buf)
 		return conn, nil
 	}
 }

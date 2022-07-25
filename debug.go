@@ -2,6 +2,7 @@ package prox5
 
 import (
 	"fmt"
+	"strings"
 	"sync"
 )
 
@@ -63,18 +64,29 @@ func (pe *ProxyEngine) DisableDebug() {
 	pe.swampopt.debug = false
 }
 
-func (pe *ProxyEngine) dbgPrint(str string) {
+func simpleString(s string) *strings.Builder {
+	buf := copABuffer.Get().(*strings.Builder)
+	buf.WriteString(s)
+	return buf
+}
+
+func (pe *ProxyEngine) dbgPrint(builder *strings.Builder) {
+	defer discardBuffer(builder)
 	if !pe.swampopt.debug {
 		return
 	}
 	if !useDebugChannel {
-		pe.Debug.Print(str)
+		pe.Debug.Print(builder.String())
 		return
 	}
 	select {
-	case debugChan <- str:
+	case debugChan <- builder.String():
 		return
 	default:
-		pe.Debug.Print("overflow: " + str)
+		buf := copABuffer.Get().(*strings.Builder)
+		buf.WriteString("overflow: ")
+		buf.WriteString(builder.String())
+		pe.Debug.Print(buf.String())
+		discardBuffer(buf)
 	}
 }

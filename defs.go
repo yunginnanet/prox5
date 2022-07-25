@@ -2,6 +2,7 @@ package prox5
 
 import (
 	"context"
+	"strings"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -190,7 +191,10 @@ func NewProxyEngine() *ProxyEngine {
 	}))
 
 	if err != nil {
-		pe.dbgPrint("CRITICAL: " + err.Error())
+		buf := copABuffer.Get().(*strings.Builder)
+		buf.WriteString("CRITICAL: ")
+		buf.WriteString(err.Error())
+		pe.dbgPrint(buf)
 		panic(err)
 	}
 

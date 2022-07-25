@@ -3,6 +3,7 @@ package prox5
 import (
 	"context"
 	"errors"
+	"strings"
 	"sync/atomic"
 )
 
@@ -39,7 +40,9 @@ func (pe *ProxyEngine) Pause() error {
 		return errors.New("not running")
 	}
 
-	pe.dbgPrint("pausing...")
+	buf := copABuffer.Get().(*strings.Builder)
+	buf.WriteString("pausing...")
+	pe.dbgPrint(buf)
 
 	pe.quit()
 

@@ -156,7 +156,10 @@ func (sock *Proxy) validate() {
 
 	// determined as bad, won't try again until it expires from that cache
 	if s.badProx.Peek(sock) {
-		s.dbgPrint("badProx ratelimited: " + sock.Endpoint)
+		buf := copABuffer.Get().(*strings.Builder)
+		buf.WriteString("badProx ratelimited: ")
+		buf.WriteString(sock.Endpoint)
+		s.dbgPrint(buf)
 		return
 	}
 
@@ -179,10 +182,18 @@ func (sock *Proxy) validate() {
 
 	switch sock.proto {
 	case ProtoSOCKS4, ProtoSOCKS4a, ProtoSOCKS5, ProtoHTTP:
-		s.dbgPrint("verified " + sock.Endpoint + " as SOCKS" + getProtoStr(sock.proto))
+		buf := copABuffer.Get().(*strings.Builder)
+		buf.WriteString("verified ")
+		buf.WriteString(sock.Endpoint)
+		buf.WriteString(" as SOCKS")
+		buf.WriteString(getProtoStr(sock.proto))
+		s.dbgPrint(buf)
 		break
 	default:
-		s.dbgPrint("failed to verify: " + sock.Endpoint)
+		buf := copABuffer.Get().(*strings.Builder)
+		buf.WriteString("failed to verify: ")
+		buf.WriteString(sock.Endpoint)
+		s.dbgPrint(buf)
 		sock.bad()
 		s.badProx.Check(sock)
 		return
