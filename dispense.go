@@ -69,7 +69,7 @@ func (pe *ProxyEngine) GetHTTPTunnel() (p *Proxy, ok bool) {
 // GetAnySOCKS retrieves any version SOCKS proxy as a Proxy type
 // Will block if one is not available!
 // StateNew/Temporary: Pass a true boolean to this to also receive HTTP proxies.
-func (pe *ProxyEngine) GetAnySOCKS(AcceptHTTP bool) *Proxy {
+func (pe *ProxyEngine) GetAnySOCKS(acceptHTTP bool) *Proxy {
 	defer pe.stats.dispense()
 	for {
 		var sock *Proxy
@@ -81,8 +81,7 @@ func (pe *ProxyEngine) GetAnySOCKS(AcceptHTTP bool) *Proxy {
 		case sock = <-pe.Valids.SOCKS5:
 			break
 		default:
-			if !AcceptHTTP {
-				time.Sleep(500 * time.Millisecond)
+			if !acceptHTTP {
 				continue
 			}
 			if httptun, htok := pe.GetHTTPTunnel(); htok {

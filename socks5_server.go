@@ -2,8 +2,9 @@ package prox5
 
 import (
 	"fmt"
-	"git.tcp.direct/kayos/go-socks5"
 	"strings"
+
+	"git.tcp.direct/kayos/go-socks5"
 )
 
 type socksLogger struct {

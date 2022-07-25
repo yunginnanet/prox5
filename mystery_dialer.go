@@ -32,13 +32,44 @@ func (pe *ProxyEngine) Dial(network, addr string) (net.Conn, error) {
 // DialTimeout is a simple stub adapter to implement a net.Dialer with a timeout.
 func (pe *ProxyEngine) DialTimeout(network, addr string, timeout time.Duration) (net.Conn, error) {
 	ctx, cancel := context.WithDeadline(context.Background(), time.Now().Add(timeout))
-	go func() {
-		select {
-		case <-ctx.Done():
-			cancel()
-		}
+	go func() { // this is a goroutine that calls cancel() upon the deadline expiring to avoid context leaks
+		<-ctx.Done()
+		cancel()
 	}()
 	return pe.MysteryDialer(ctx, network, addr)
+}
+
+func (pe *ProxyEngine) addTimeout(socksString string) string {
+	tout := copABuffer.Get().(*strings.Builder)
+	tout.WriteString(socksString)
+	tout.WriteString("?timeout=")
+	tout.WriteString(pe.GetServerTimeoutStr())
+	tout.WriteRune('s')
+	socksString = tout.String()
+	discardBuffer(tout)
+	return socksString
+}
+
+func (pe *ProxyEngine) popSockAndLockIt(ctx context.Context) (*Proxy, error) {
+	sock := pe.GetAnySOCKS(false)
+	socksString := sock.String()
+	select {
+	case <-ctx.Done():
+		return nil, fmt.Errorf("context done: %w", ctx.Err())
+	default:
+		if atomic.CompareAndSwapUint32(&sock.lock, stateUnlocked, stateLocked) {
+			pe.msgGotLock(socksString)
+			return sock, nil
+		}
+		select {
+		case pe.Pending <- sock:
+			pe.msgCantGetLock(socksString, true)
+			return nil, nil
+		default:
+			pe.msgCantGetLock(socksString, false)
+			return nil, nil
+		}
+	}
 }
 
 // MysteryDialer is a dialer function that will use a different proxy for every request.
@@ -55,71 +86,37 @@ func (pe *ProxyEngine) MysteryDialer(ctx context.Context, network, addr string) 
 			return nil, fmt.Errorf("giving up after %d tries", max)
 		}
 		if err := ctx.Err(); err != nil {
-			return nil, fmt.Errorf("context error: %v", err)
+			return nil, fmt.Errorf("context error: %w", err)
 		}
 		var sock *Proxy
-	popSockAndLockIt:
 		for {
-			sock = pe.GetAnySOCKS(false)
-			socksString = sock.String()
-			select {
-			case <-ctx.Done():
-				return nil, fmt.Errorf("context done: %v", ctx.Err())
-			default:
-				buf := copABuffer.Get().(*strings.Builder)
-				if atomic.CompareAndSwapUint32(&sock.lock, stateUnlocked, stateLocked) {
-					buf.WriteString("got lock for ")
-					buf.WriteString(socksString)
-					break popSockAndLockIt
-				}
-				select {
-				case pe.Pending <- sock:
-					buf.WriteString("can't get lock, putting back ")
-					buf.WriteString(socksString)
-					pe.dbgPrint(buf)
-					continue
-				default:
-					buf.WriteString("can't get lock, can't put back ")
-					buf.WriteString(socksString)
-					continue
-				}
+			var err error
+			sock, err = pe.popSockAndLockIt(ctx)
+			if err != nil {
+				return nil, err
+			}
+			if sock != nil {
+				break
 			}
 		}
-		buf := copABuffer.Get().(*strings.Builder)
-		buf.WriteString("try dial with: ")
-		buf.WriteString(sock.Endpoint)
-		pe.dbgPrint(buf)
 		if pe.GetServerTimeoutStr() != "-1" {
-			tout := copABuffer.Get().(*strings.Builder)
-			tout.WriteString("?timeout=")
-			tout.WriteString(pe.GetServerTimeoutStr())
-			tout.WriteRune('s')
+			socksString = pe.addTimeout(socksString)
 		}
 		var ok bool
 		if sock, ok = pe.dispenseMiddleware(sock); !ok {
-			buf := copABuffer.Get().(*strings.Builder)
-			buf.WriteString("failed middleware check, ")
-			buf.WriteString(sock.String())
-			buf.WriteString(", cycling...")
-			pe.dbgPrint(buf)
+			pe.msgFailedMiddleware(socksString)
 			continue
 		}
+		pe.msgTry(socksString)
 		atomic.StoreUint32(&sock.lock, stateUnlocked)
 		dialSocks := socks.Dial(socksString)
 		conn, err := dialSocks(network, addr)
 		if err != nil {
 			count++
-			buf := copABuffer.Get().(*strings.Builder)
-			buf.WriteString("unable to reach [redacted] with ")
-			buf.WriteString(socksString)
-			buf.WriteString(", cycling...")
-			pe.dbgPrint(buf)
+			pe.msgUnableToReach(socksString)
 			continue
 		}
-		buf = copABuffer.Get().(*strings.Builder)
-		buf.WriteString("MysteryDialer using socks: ")
-		buf.WriteString(socksString)
-		pe.dbgPrint(buf)
+		pe.msgUsingProxy(socksString)
 		return conn, nil
 	}
 }

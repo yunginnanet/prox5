@@ -158,8 +158,8 @@ func NewProxyEngine() *ProxyEngine {
 	}
 
 	stats := []int64{pe.stats.Valid4, pe.stats.Valid4a, pe.stats.Valid5, pe.stats.ValidHTTP, pe.stats.Dispensed}
-	for _, st := range stats {
-		atomic.StoreInt64(&st, 0)
+	for i := range stats {
+		atomic.StoreInt64(&stats[i], 0)
 	}
 
 	chans := []*chan *Proxy{&pe.Valids.SOCKS5, &pe.Valids.SOCKS4, &pe.Valids.SOCKS4a, &pe.Valids.HTTP, &pe.Pending}

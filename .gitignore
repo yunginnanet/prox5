@@ -1,3 +1,5 @@
 .idea/
 *.txt
 *.list
+*.swp
+*.save

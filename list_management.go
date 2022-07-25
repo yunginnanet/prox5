@@ -44,7 +44,7 @@ func checkV6(in string) (filtered string, ok bool) {
 	return fmt.Sprintf("%s:%s@%s", split6[0], split6[1], combo.String()), true
 }
 
-func (pe *ProxyEngine) filter(in string) (filtered string, ok bool) {
+func (pe *ProxyEngine) filter(in string) (filtered string, ok bool) { //nolint:cyclop
 	if !strings.Contains(in, ":") {
 		return in, false
 	}
@@ -86,7 +86,7 @@ func (pe *ProxyEngine) filter(in string) (filtered string, ok bool) {
 }
 
 // LoadProxyTXT loads proxies from a given seed file and feeds them to the mapBuilder to be later queued automatically for validation.
-// Expects the following formats:
+// Expects one of the following formats for each line:
 // * 127.0.0.1:1080
 // * 127.0.0.1:1080:user:pass
 // * yeet.com:1080
@@ -116,7 +116,14 @@ func (pe *ProxyEngine) LoadProxyTXT(seedFile string) (count int) {
 	return pe.LoadMultiLineString(sockstr)
 }
 
-// LoadSingleProxy loads a SOCKS proxy into our map. Uses the format: 127.0.0.1:1080 (host:port).
+// LoadSingleProxy loads a SOCKS proxy into our map.
+// Expects one of the following formats:
+// * 127.0.0.1:1080
+// * 127.0.0.1:1080:user:pass
+// * yeet.com:1080
+// * yeet.com:1080:user:pass
+// * [fe80::2ef0:5dff:fe7f:c299]:1080
+// * [fe80::2ef0:5dff:fe7f:c299]:1080:user:pass
 func (pe *ProxyEngine) LoadSingleProxy(sock string) (ok bool) {
 	if sock, ok = pe.filter(sock); !ok {
 		return
@@ -136,7 +143,14 @@ func (pe *ProxyEngine) loadSingleProxy(sock string) {
 	}
 }
 
-// LoadMultiLineString loads a multiine string object with one (host:port) SOCKS proxy per line.
+// LoadMultiLineString loads a multiine string object with proxy per line.
+// Expects one of the following formats for each line:
+// * 127.0.0.1:1080
+// * 127.0.0.1:1080:user:pass
+// * yeet.com:1080
+// * yeet.com:1080:user:pass
+// * [fe80::2ef0:5dff:fe7f:c299]:1080
+// * [fe80::2ef0:5dff:fe7f:c299]:1080:user:pass
 func (pe *ProxyEngine) LoadMultiLineString(socks string) int {
 	var count int
 	scan := bufio.NewScanner(strings.NewReader(socks))

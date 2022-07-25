@@ -90,3 +90,72 @@ func (pe *ProxyEngine) dbgPrint(builder *strings.Builder) {
 		discardBuffer(buf)
 	}
 }
+
+func (pe *ProxyEngine) msgUnableToReach(socksString string) {
+	buf := copABuffer.Get().(*strings.Builder)
+	buf.WriteString("unable to reach [redacted] with ")
+	buf.WriteString(socksString)
+	buf.WriteString(", cycling...")
+	pe.dbgPrint(buf)
+}
+
+func (pe *ProxyEngine) msgUsingProxy(socksString string) {
+	buf := copABuffer.Get().(*strings.Builder)
+	buf.WriteString("MysteryDialer using socks: ")
+	buf.WriteString(socksString)
+	pe.dbgPrint(buf)
+}
+
+func (pe *ProxyEngine) msgFailedMiddleware(socksString string) {
+	buf := copABuffer.Get().(*strings.Builder)
+	buf.WriteString("failed middleware check, ")
+	buf.WriteString(socksString)
+	buf.WriteString(", cycling...")
+	pe.dbgPrint(buf)
+}
+
+func (pe *ProxyEngine) msgTry(socksString string) {
+	buf := copABuffer.Get().(*strings.Builder)
+	buf.WriteString("try dial with: ")
+	buf.WriteString(socksString)
+	pe.dbgPrint(buf)
+}
+
+func (pe *ProxyEngine) msgCantGetLock(socksString string, putback bool) {
+	buf := copABuffer.Get().(*strings.Builder)
+	buf.WriteString("can't get lock for ")
+	buf.WriteString(socksString)
+	if putback {
+		buf.WriteString(", putting back in queue")
+	}
+	pe.dbgPrint(buf)
+}
+
+func (pe *ProxyEngine) msgGotLock(socksString string) {
+	buf := copABuffer.Get().(*strings.Builder)
+	buf.WriteString("got lock for ")
+	buf.WriteString(socksString)
+	pe.dbgPrint(buf)
+}
+
+func (pe *ProxyEngine) msgChecked(sock *Proxy, success bool) {
+	buf := copABuffer.Get().(*strings.Builder)
+	if success {
+		buf.WriteString("verified ")
+		buf.WriteString(sock.Endpoint)
+		buf.WriteString(" as SOCKS")
+		buf.WriteString(getProtoStr(sock.proto))
+		pe.dbgPrint(buf)
+		return
+	}
+	buf.WriteString("failed to verify: ")
+	buf.WriteString(sock.Endpoint)
+	pe.dbgPrint(buf)
+}
+
+func (pe *ProxyEngine) msgBadProxRate(sock *Proxy) {
+	buf := copABuffer.Get().(*strings.Builder)
+	buf.WriteString("badProx ratelimited: ")
+	buf.WriteString(sock.Endpoint)
+	pe.dbgPrint(buf)
+}

@@ -141,7 +141,8 @@ func (pe *ProxyEngine) GetDialerBailout() int {
 	return pe.swampopt.dialerBailout
 }
 
-// TODO: More docs
+// TODO: Document middleware concept
+
 func (pe *ProxyEngine) GetDispenseMiddleware() func(*Proxy) (*Proxy, bool) {
 	pe.mu.RLock()
 	defer pe.mu.RUnlock()

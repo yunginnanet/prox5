@@ -26,14 +26,14 @@ func (pe *ProxyEngine) prepHTTP() (*http.Client, *http.Transport, *http.Request,
 	headers["Accept"] = "text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,image/apng,*/*;q=0.8"
 	headers["Accept-Language"] = "en-US,en;q=0.5"
 	headers["'Accept-Encoding'"] = "gzip, deflate, br"
-	headers["Connection"] = "keep-alive"
+	// headers["Connection"] = "keep-alive"
 	for header, value := range headers {
 		req.Header.Set(header, value)
 	}
 	var client = &http.Client{}
 	var transporter = &http.Transport{
 		DisableKeepAlives:   true,
-		TLSClientConfig:     &tls.Config{InsecureSkipVerify: true},
+		TLSClientConfig:     &tls.Config{InsecureSkipVerify: true}, //nolint:gosec
 		TLSHandshakeTimeout: pe.swampopt.validationTimeout,
 	}
 
@@ -66,7 +66,7 @@ func (pe *ProxyEngine) bakeHTTP(sock *Proxy) (client *http.Client, req *http.Req
 	}
 
 	if sock.proto != ProtoHTTP {
-		transport.Dial = dialSocks
+		transport.Dial = dialSocks //nolint:staticcheck
 		client.Transport = transport
 		return
 	}
@@ -148,18 +148,15 @@ func (sock *Proxy) validate() {
 	atomic.StoreUint32(&sock.lock, stateLocked)
 	defer atomic.StoreUint32(&sock.lock, stateUnlocked)
 
-	s := sock.parent
-	if s.useProx.Check(sock) {
+	pe := sock.parent
+	if pe.useProx.Check(sock) {
 		// s.dbgPrint("useProx ratelimited: " + sock.Endpoint )
 		return
 	}
 
 	// determined as bad, won't try again until it expires from that cache
-	if s.badProx.Peek(sock) {
-		buf := copABuffer.Get().(*strings.Builder)
-		buf.WriteString("badProx ratelimited: ")
-		buf.WriteString(sock.Endpoint)
-		s.dbgPrint(buf)
+	if pe.badProx.Peek(sock) {
+		pe.msgBadProxRate(sock)
 		return
 	}
 
@@ -168,11 +165,11 @@ func (sock *Proxy) validate() {
 	// try to use the proxy with all 3 SOCKS versions
 	for proto := range protoMap {
 		select {
-		case <-s.ctx.Done():
+		case <-pe.ctx.Done():
 			return
 		default:
 			sock.proto = proto
-			if err := s.singleProxyCheck(sock); err != nil {
+			if err := pe.singleProxyCheck(sock); err != nil {
 				// if the proxy is no good, we continue on to the next.
 				continue
 			}
@@ -182,25 +179,16 @@ func (sock *Proxy) validate() {
 
 	switch sock.proto {
 	case ProtoSOCKS4, ProtoSOCKS4a, ProtoSOCKS5, ProtoHTTP:
-		buf := copABuffer.Get().(*strings.Builder)
-		buf.WriteString("verified ")
-		buf.WriteString(sock.Endpoint)
-		buf.WriteString(" as SOCKS")
-		buf.WriteString(getProtoStr(sock.proto))
-		s.dbgPrint(buf)
-		break
+		pe.msgChecked(sock, true)
 	default:
-		buf := copABuffer.Get().(*strings.Builder)
-		buf.WriteString("failed to verify: ")
-		buf.WriteString(sock.Endpoint)
-		s.dbgPrint(buf)
+		pe.msgChecked(sock, false)
 		sock.bad()
-		s.badProx.Check(sock)
+		pe.badProx.Check(sock)
 		return
 	}
 
 	sock.good()
-	s.tally(sock)
+	pe.tally(sock)
 }
 
 func (pe *ProxyEngine) tally(sock *Proxy) {
