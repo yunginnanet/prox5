@@ -3,7 +3,6 @@ package prox5
 import (
 	"context"
 	"errors"
-	"strings"
 	"sync/atomic"
 )
 
@@ -30,19 +29,17 @@ func (pe *ProxyEngine) Start() error {
 
 /*
 Pause will cease the creation of any new proxy validation operations.
-   * You will be able to start the proxy pool again with Swamp.Resume(), it will have the same Statistics, options, and ratelimits.
-   * During pause you are still able to dispense proxies.
-   * Options may be changed and proxy lists may be loaded when paused.
-   * Pausing an already paused ProxyEngine is a nonop.
+  - You will be able to start the proxy pool again with Swamp.Resume(), it will have the same Statistics, options, and ratelimits.
+  - During pause you are still able to dispense proxies.
+  - Options may be changed and proxy lists may be loaded when paused.
+  - Pausing an already paused ProxyEngine is a nonop.
 */
 func (pe *ProxyEngine) Pause() error {
 	if !pe.IsRunning() {
 		return errors.New("not running")
 	}
 
-	buf := copABuffer.Get().(*strings.Builder)
-	buf.WriteString("pausing...")
-	pe.dbgPrint(buf)
+	pe.dbgPrint(simpleString("pausing proxy pool"))
 
 	pe.quit()
 

@@ -6,9 +6,10 @@ import (
 	"strconv"
 	"time"
 
-	"git.tcp.direct/kayos/prox5"
 	"github.com/haxii/socks5"
 	"github.com/mattn/go-tty"
+
+	"git.tcp.direct/kayos/prox5"
 )
 
 var (
@@ -23,7 +24,7 @@ var socklog = socksLogger{}
 
 // Printf is used to handle socks server logging.
 func (s socksLogger) Printf(format string, a ...interface{}) {
-	println(fmt.Sprintf(format, a))
+	println(fmt.Sprintf(format, a...))
 }
 
 func StartUpstreamProxy(listen string) {

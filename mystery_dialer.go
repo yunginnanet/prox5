@@ -5,19 +5,13 @@ import (
 	"fmt"
 	"net"
 	"strings"
-	"sync"
 	"sync/atomic"
 	"time"
 
-	"h12.io/socks"
+	"git.tcp.direct/kayos/socks"
+
+	"git.tcp.direct/kayos/prox5/internal/pools"
 )
-
-var copABuffer = &sync.Pool{New: func() interface{} { return &strings.Builder{} }}
-
-func discardBuffer(buf *strings.Builder) {
-	buf.Reset()
-	copABuffer.Put(buf)
-}
 
 // DialContext is a simple stub adapter to implement a net.Dialer.
 func (pe *ProxyEngine) DialContext(ctx context.Context, network, addr string) (net.Conn, error) {
@@ -40,13 +34,13 @@ func (pe *ProxyEngine) DialTimeout(network, addr string, timeout time.Duration) 
 }
 
 func (pe *ProxyEngine) addTimeout(socksString string) string {
-	tout := copABuffer.Get().(*strings.Builder)
+	tout := pools.CopABuffer.Get().(*strings.Builder)
 	tout.WriteString(socksString)
 	tout.WriteString("?timeout=")
 	tout.WriteString(pe.GetServerTimeoutStr())
 	tout.WriteRune('s')
 	socksString = tout.String()
-	discardBuffer(tout)
+	pools.DiscardBuffer(tout)
 	return socksString
 }
 
@@ -74,12 +68,8 @@ func (pe *ProxyEngine) popSockAndLockIt(ctx context.Context) (*Proxy, error) {
 
 // MysteryDialer is a dialer function that will use a different proxy for every request.
 func (pe *ProxyEngine) MysteryDialer(ctx context.Context, network, addr string) (net.Conn, error) {
-	var (
-		socksString string
-		count       int
-	)
 	// pull down proxies from channel until we get a proxy good enough for our spoiled asses
-
+	var count = 0
 	for {
 		max := pe.GetDialerBailout()
 		if count > max {
@@ -99,11 +89,10 @@ func (pe *ProxyEngine) MysteryDialer(ctx context.Context, network, addr string) 
 				break
 			}
 		}
-		if pe.GetServerTimeoutStr() != "-1" {
-			socksString = pe.addTimeout(socksString)
-		}
+		socksString := sock.String()
 		var ok bool
 		if sock, ok = pe.dispenseMiddleware(sock); !ok {
+			atomic.StoreUint32(&sock.lock, stateUnlocked)
 			pe.msgFailedMiddleware(socksString)
 			continue
 		}
@@ -113,7 +102,7 @@ func (pe *ProxyEngine) MysteryDialer(ctx context.Context, network, addr string) 
 		conn, err := dialSocks(network, addr)
 		if err != nil {
 			count++
-			pe.msgUnableToReach(socksString)
+			pe.msgUnableToReach(socksString, addr, err)
 			continue
 		}
 		pe.msgUsingProxy(socksString)

@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"crypto/tls"
 	"errors"
-	"fmt"
 	"io"
 	"net"
 	"net/http"
@@ -13,7 +12,10 @@ import (
 	"sync/atomic"
 	"time"
 
-	"h12.io/socks"
+	"git.tcp.direct/kayos/socks"
+	"golang.org/x/net/proxy"
+
+	"git.tcp.direct/kayos/prox5/internal/pools"
 )
 
 func (pe *ProxyEngine) prepHTTP() (*http.Client, *http.Transport, *http.Request, error) {
@@ -34,7 +36,7 @@ func (pe *ProxyEngine) prepHTTP() (*http.Client, *http.Transport, *http.Request,
 	var transporter = &http.Transport{
 		DisableKeepAlives:   true,
 		TLSClientConfig:     &tls.Config{InsecureSkipVerify: true}, //nolint:gosec
-		TLSHandshakeTimeout: pe.swampopt.validationTimeout,
+		TLSHandshakeTimeout: pe.GetValidationTimeout(),
 	}
 
 	return client, transporter, req, err
@@ -49,13 +51,19 @@ func (sock *Proxy) good() {
 	sock.lastValidated = time.Now()
 }
 
-func (pe *ProxyEngine) bakeHTTP(sock *Proxy) (client *http.Client, req *http.Request, err error) {
-	dialSocks := socks.Dial(fmt.Sprintf(
-		"socks%s://%s/?timeout=%ss",
-		getProtoStr(sock.proto),
-		sock.Endpoint,
-		pe.GetValidationTimeoutStr()),
-	)
+func (pe *ProxyEngine) bakeHTTP(hmd *HandMeDown) (client *http.Client, req *http.Request, err error) {
+	builder := pools.CopABuffer.Get().(*strings.Builder)
+	builder.WriteString("socks")
+	builder.WriteString(getProtoStr(hmd.sock.proto))
+	builder.WriteString("://")
+	builder.WriteString(hmd.sock.Endpoint)
+	builder.WriteString("/?timeout=")
+	builder.WriteString(pe.GetValidationTimeoutStr())
+	builder.WriteString("s")
+
+	dialSocks := socks.DialWithConn(builder.String(), hmd.conn)
+	pools.DiscardBuffer(builder)
+
 	var (
 		purl      *url.URL
 		transport *http.Transport
@@ -65,26 +73,26 @@ func (pe *ProxyEngine) bakeHTTP(sock *Proxy) (client *http.Client, req *http.Req
 		return
 	}
 
-	if sock.proto != ProtoHTTP {
-		transport.Dial = dialSocks //nolint:staticcheck
+	if hmd.sock.proto != ProtoHTTP {
+		transport.Dial = dialSocks
 		client.Transport = transport
 		return
 	}
-	if purl, err = url.Parse("http://" + sock.Endpoint); err != nil {
+	if purl, err = url.Parse("http://" + hmd.sock.Endpoint); err != nil {
 		return
 	}
 	transport.Proxy = http.ProxyURL(purl)
 	return
 }
 
-func (pe *ProxyEngine) checkHTTP(sock *Proxy) (string, error) {
+func (pe *ProxyEngine) validate(hmd *HandMeDown) (string, error) {
 	var (
 		client *http.Client
 		req    *http.Request
 		err    error
 	)
 
-	client, req, err = pe.bakeHTTP(sock)
+	client, req, err = pe.bakeHTTP(hmd)
 	if err != nil {
 		return "", err
 	}
@@ -103,6 +111,22 @@ func (pe *ProxyEngine) anothaOne() {
 	pe.stats.Checked++
 }
 
+type HandMeDown struct {
+	sock  *Proxy
+	conn  net.Conn
+	under proxy.Dialer
+}
+
+func (hmd *HandMeDown) Dial(network, addr string) (c net.Conn, err error) {
+	if hmd.conn.LocalAddr().Network() != network {
+		return hmd.under.Dial(network, addr)
+	}
+	if hmd.conn.RemoteAddr().String() != addr {
+		return hmd.under.Dial(network, addr)
+	}
+	return hmd.conn, nil
+}
+
 func (pe *ProxyEngine) singleProxyCheck(sock *Proxy) error {
 	defer pe.anothaOne()
 	split := strings.Split(sock.Endpoint, "@")
@@ -110,13 +134,14 @@ func (pe *ProxyEngine) singleProxyCheck(sock *Proxy) error {
 	if len(split) == 2 {
 		endpoint = split[1]
 	}
-	if _, err := net.DialTimeout("tcp", endpoint,
-		pe.swampopt.validationTimeout); err != nil {
-		pe.badProx.Check(sock)
+	conn, err := net.DialTimeout("tcp", endpoint, pe.GetValidationTimeout())
+	if err != nil {
 		return err
 	}
 
-	resp, err := pe.checkHTTP(sock)
+	hmd := &HandMeDown{sock: sock, conn: conn, under: proxy.Direct}
+
+	resp, err := pe.validate(hmd)
 	if err != nil {
 		pe.badProx.Check(sock)
 		return err
@@ -133,8 +158,9 @@ func (pe *ProxyEngine) singleProxyCheck(sock *Proxy) error {
 }
 
 var protoMap = map[ProxyProtocol]string{
-	ProtoSOCKS4: "4a", ProtoSOCKS4a: "4",
+	ProtoSOCKS4: "4", ProtoSOCKS4a: "4a",
 	ProtoSOCKS5: "5", ProtoHTTP: "http",
+	ProtoSOCKS5h: "5h",
 }
 
 func getProtoStr(protocol ProxyProtocol) string {

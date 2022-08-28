@@ -7,6 +7,8 @@ import (
 	"time"
 
 	"git.tcp.direct/kayos/common/entropy"
+
+	"git.tcp.direct/kayos/prox5/internal/pools"
 )
 
 // GetProto retrieves the known protocol value of the Proxy.
@@ -18,14 +20,14 @@ func (sock *Proxy) GetProto() ProxyProtocol {
 func (sock *Proxy) String() string {
 	tout := ""
 	if sock.parent.GetServerTimeoutStr() != "-1" {
-		tbuf := copABuffer.Get().(*strings.Builder)
+		tbuf := pools.CopABuffer.Get().(*strings.Builder)
 		tbuf.WriteString("?timeout=")
 		tbuf.WriteString(sock.parent.GetServerTimeoutStr())
 		tbuf.WriteString("s")
 		tout = tbuf.String()
-		discardBuffer(tbuf)
+		pools.DiscardBuffer(tbuf)
 	}
-	buf := copABuffer.Get().(*strings.Builder)
+	buf := pools.CopABuffer.Get().(*strings.Builder)
 	buf.WriteString("socks")
 	buf.WriteString(getProtoStr(sock.GetProto()))
 	buf.WriteString("://")
@@ -34,7 +36,7 @@ func (sock *Proxy) String() string {
 		buf.WriteString(tout)
 	}
 	out := buf.String()
-	discardBuffer(buf)
+	pools.DiscardBuffer(buf)
 	return out
 }
 
@@ -116,7 +118,7 @@ func (pe *ProxyEngine) GetRecyclingStatus() bool {
 }
 
 // GetWorkers retrieves pond worker statistics:
-//    * return MaxWorkers, RunningWorkers, IdleWorkers
+//   - return MaxWorkers, RunningWorkers, IdleWorkers
 func (pe *ProxyEngine) GetWorkers() (maxWorkers, runningWorkers, idleWorkers int) {
 	pe.mu.RLock()
 	defer pe.mu.RUnlock()
@@ -124,7 +126,7 @@ func (pe *ProxyEngine) GetWorkers() (maxWorkers, runningWorkers, idleWorkers int
 }
 
 // GetRemoveAfter retrieves the removeafter policy, the amount of times a recycled proxy is marked as bad until it is removed entirely.
-//    *  returns -1 if recycling is disabled.
+//   - returns -1 if recycling is disabled.
 func (pe *ProxyEngine) GetRemoveAfter() int {
 	pe.mu.RLock()
 	defer pe.mu.RUnlock()
@@ -147,4 +149,10 @@ func (pe *ProxyEngine) GetDispenseMiddleware() func(*Proxy) (*Proxy, bool) {
 	pe.mu.RLock()
 	defer pe.mu.RUnlock()
 	return pe.dispenseMiddleware
+}
+
+func (pe *ProxyEngine) GetShuffleStatus() bool {
+	pe.mu.RLock()
+	defer pe.mu.RUnlock()
+	return pe.swampopt.shuffle
 }

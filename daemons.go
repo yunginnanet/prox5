@@ -7,6 +7,8 @@ import (
 	"sync"
 	"sync/atomic"
 	"time"
+
+	"git.tcp.direct/kayos/prox5/internal/pools"
 )
 
 func (pe *ProxyEngine) svcUp() {
@@ -148,7 +150,7 @@ func (pe *ProxyEngine) jobSpawner() {
 			default:
 				time.Sleep(25 * time.Millisecond)
 				count := pe.recycling()
-				buf := copABuffer.Get().(*strings.Builder)
+				buf := pools.CopABuffer.Get().(*strings.Builder)
 				buf.WriteString("recycled ")
 				buf.WriteString(strconv.Itoa(count))
 				buf.WriteString(" proxies from our map")

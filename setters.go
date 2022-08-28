@@ -2,6 +2,8 @@ package prox5
 
 import (
 	"time"
+
+	"git.tcp.direct/kayos/prox5/logger"
 )
 
 // AddUserAgents appends to the list of useragents we randomly choose from during proxied requests
@@ -75,9 +77,9 @@ func (pe *ProxyEngine) DisableRecycling() {
 }
 
 // SetRemoveAfter sets the removeafter policy, the amount of times a recycled proxy is marked as bad before it is removed entirely.
-//    * Default is 5
-//    * To disable deleting entirely, set this value to -1
-//    * Only applies when recycling is enabled
+//   - Default is 10
+//   - To disable deleting entirely, set this value to -1
+//   - Only applies when recycling is enabled
 func (pe *ProxyEngine) SetRemoveAfter(timesfailed int) {
 	pe.swampopt.Lock()
 	defer pe.swampopt.Unlock()
@@ -85,7 +87,7 @@ func (pe *ProxyEngine) SetRemoveAfter(timesfailed int) {
 }
 
 // SetDialerBailout sets the amount of times the MysteryDialer will dial out and fail before it bails out.
-//	  * The dialer will attempt to redial a destination with a different proxy a specified amount of times before it gives up
+//   - The dialer will attempt to redial a destination with a different proxy a specified amount of times before it gives up
 func (pe *ProxyEngine) SetDialerBailout(dialattempts int) {
 	pe.swampopt.Lock()
 	defer pe.swampopt.Unlock()
@@ -99,4 +101,19 @@ func (pe *ProxyEngine) SetDispenseMiddleware(f func(*Proxy) (*Proxy, bool)) {
 	pe.mu.Lock()
 	defer pe.mu.Unlock()
 	pe.dispenseMiddleware = f
+}
+
+// SetDebugLogger sets the debug logger for the ProxyEngine. See the Logger interface for implementation details.
+func (pe *ProxyEngine) SetDebugLogger(l logger.Logger) {
+	debugHardLock.Lock()
+	pe.mu.Lock()
+	pe.DebugLogger = l
+	pe.mu.Unlock()
+	debugHardLock.Unlock()
+}
+
+func (pe *ProxyEngine) SetShuffle(shuffle bool) {
+	pe.mu.Lock()
+	defer pe.mu.Unlock()
+	pe.swampopt.shuffle = shuffle
 }

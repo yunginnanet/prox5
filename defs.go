@@ -9,6 +9,9 @@ import (
 
 	"github.com/panjf2000/ants/v2"
 	rl "github.com/yunginnanet/Rate5"
+
+	"git.tcp.direct/kayos/prox5/internal/pools"
+	"git.tcp.direct/kayos/prox5/logger"
 )
 
 type ProxyChannels struct {
@@ -24,10 +27,8 @@ type ProxyChannels struct {
 
 // ProxyEngine represents a proxy pool
 type ProxyEngine struct {
-	Valids ProxyChannels
-
-	socksServerLogger socksLogger
-	Debug             DebugPrinter
+	Valids      ProxyChannels
+	DebugLogger logger.Logger
 
 	// stats holds the statistics for our swamp
 	stats *statistics
@@ -40,8 +41,6 @@ type ProxyEngine struct {
 	// see: https://pkg.go.dev/github.com/yunginnanet/Rate5
 	useProx *rl.Limiter
 	badProx *rl.Limiter
-
-	socks5ServerAuth socksCreds
 
 	dispenseMiddleware func(*Proxy) (*Proxy, bool)
 
@@ -60,9 +59,10 @@ type ProxyEngine struct {
 }
 
 var (
-	defaultStaleTime = 1 * time.Hour
-	defWorkers       = 100
-	defBailout       = 5
+	defaultStaleTime   = 1 * time.Hour
+	defaultWorkerCount = 50
+	defaultBailout     = 15
+	defaultRemoveAfter = 25
 	// Note: I've chosen to use https here exclusively assuring all validated proxies are SSL capable.
 	defaultChecks = []string{
 		"https://wtfismyip.com/text",
@@ -79,27 +79,22 @@ var (
 // Returns a pointer to our default options (modified and accessed later through concurrent safe getters and setters)
 func defOpt() *config {
 	sm := &config{
-		useProxConfig: defUseProx,
-		badProxConfig: defBadProx,
+		useProxConfig: defaultUseProxyRatelimiter,
+		badProxConfig: defaultBadProxyRateLimiter,
 
 		checkEndpoints: defaultChecks,
 		userAgents:     defaultUserAgents,
 		RWMutex:        &sync.RWMutex{},
+		removeafter:    defaultRemoveAfter,
+		recycle:        true,
+		debug:          true,
+		dialerBailout:  defaultBailout,
+		stale:          defaultStaleTime,
+		maxWorkers:     defaultWorkerCount,
+		redact:         true,
 	}
-
-	sm.Lock()
-	defer sm.Unlock()
-
-	sm.removeafter = 5
-	sm.recycle = true
-	sm.debug = false
 	sm.validationTimeout = time.Duration(12) * time.Second
 	sm.serverTimeout = time.Duration(180) * time.Second
-
-	sm.dialerBailout = defBailout
-	sm.stale = defaultStaleTime
-	sm.maxWorkers = defWorkers
-
 	return sm
 }
 
@@ -109,32 +104,29 @@ type config struct {
 	// stale is the amount of time since verification that qualifies a proxy going stale.
 	// if a stale proxy is drawn during the use of our getter functions, it will be skipped.
 	stale time.Duration
-
 	// userAgents contains a list of userAgents to be randomly drawn from for proxied requests, this should be supplied via SetUserAgents
 	userAgents []string
-
 	// debug when enabled will print results as they come in
 	debug bool
-
 	// checkEndpoints includes web services that respond with (just) the WAN IP of the connection for validation purposes
 	checkEndpoints []string
-
 	// maxWorkers determines the maximum amount of workers used for checking proxies
 	maxWorkers int
-
 	// validationTimeout defines the timeout for proxy validation operations.
 	// This will apply for both the initial quick check (dial), and the second check (HTTP GET).
 	validationTimeout time.Duration
-
 	// serverTimeout defines the timeout for outgoing connections made with the MysteryDialer.
 	serverTimeout time.Duration
-
+	// dialerBailout defines the amount of times a dial atttempt can fail before giving up and returning an error.
 	dialerBailout int
-
+	// redact when enabled will redact the target string from the debug output
+	redact bool
 	// recycle determines whether or not we recycle proxies pack into the pending channel after we dispense them
 	recycle bool
 	// remove proxy from recycling after being marked bad this many times
 	removeafter int
+	// shuffle determines whether or not we shuffle proxies before we validate and dispense them.
+	shuffle bool
 
 	// TODO: make getters and setters for these
 	useProxConfig rl.Policy
@@ -147,8 +139,8 @@ type config struct {
 // After calling this you may use the various "setters" to change the options before calling ProxyEngine.Start().
 func NewProxyEngine() *ProxyEngine {
 	pe := &ProxyEngine{
-		stats: &statistics{birthday: time.Now()},
-		Debug: basicPrinter{},
+		stats:       &statistics{birthday: time.Now()},
+		DebugLogger: basicPrinter{},
 
 		swampopt: defOpt(),
 
@@ -170,15 +162,10 @@ func NewProxyEngine() *ProxyEngine {
 	pe.dispenseMiddleware = func(p *Proxy) (*Proxy, bool) {
 		return p, true
 	}
-
 	pe.ctx, pe.quit = context.WithCancel(context.Background())
-
-	atomic.StoreUint32(&pe.Status, uint32(StateNew))
-
 	pe.swampmap = newSwampMap(pe)
 
-	pe.socksServerLogger = socksLogger{parent: pe}
-
+	atomic.StoreUint32(&pe.Status, uint32(StateNew))
 	atomic.StoreInt32(&pe.runningdaemons, 0)
 
 	pe.useProx = rl.NewCustomLimiter(pe.swampopt.useProxConfig)
@@ -191,7 +178,7 @@ func NewProxyEngine() *ProxyEngine {
 	}))
 
 	if err != nil {
-		buf := copABuffer.Get().(*strings.Builder)
+		buf := pools.CopABuffer.Get().(*strings.Builder)
 		buf.WriteString("CRITICAL: ")
 		buf.WriteString(err.Error())
 		pe.dbgPrint(buf)

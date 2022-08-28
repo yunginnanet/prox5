@@ -7,14 +7,14 @@ import (
 )
 
 // https://pkg.go.dev/github.com/yunginnanet/Rate5#Policy
-var defUseProx = rl.Policy{
-	Window: 60,
-	Burst:  2,
+var defaultUseProxyRatelimiter = rl.Policy{
+	Window: 55,
+	Burst:  55,
 }
 
-var defBadProx = rl.Policy{
-	Window: 60,
-	Burst:  3,
+var defaultBadProxyRateLimiter = rl.Policy{
+	Window: 55,
+	Burst:  25,
 }
 
 const (
@@ -29,6 +29,7 @@ const (
 	ProtoSOCKS4
 	ProtoSOCKS4a
 	ProtoSOCKS5
+	ProtoSOCKS5h
 	ProtoHTTP
 )
 

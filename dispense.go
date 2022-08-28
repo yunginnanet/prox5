@@ -6,6 +6,8 @@ import (
 	"time"
 
 	"git.tcp.direct/kayos/common/entropy"
+
+	"git.tcp.direct/kayos/prox5/internal/pools"
 )
 
 // Socks5Str gets a SOCKS5 proxy that we have fully verified (dialed and then retrieved our IP address from a what-is-my-ip endpoint.
@@ -103,7 +105,7 @@ func (pe *ProxyEngine) stillGood(sock *Proxy) bool {
 	defer atomic.StoreUint32(&sock.lock, stateUnlocked)
 
 	if atomic.LoadInt64(&sock.timesBad) > int64(pe.GetRemoveAfter()) && pe.GetRemoveAfter() != -1 {
-		buf := copABuffer.Get().(*strings.Builder)
+		buf := pools.CopABuffer.Get().(*strings.Builder)
 		buf.WriteString("deleting from map (too many failures): ")
 		buf.WriteString(sock.Endpoint)
 		pe.dbgPrint(buf)
@@ -113,7 +115,7 @@ func (pe *ProxyEngine) stillGood(sock *Proxy) bool {
 	}
 
 	if pe.badProx.Peek(sock) {
-		buf := copABuffer.Get().(*strings.Builder)
+		buf := pools.CopABuffer.Get().(*strings.Builder)
 		buf.WriteString("badProx dial ratelimited: ")
 		buf.WriteString(sock.Endpoint)
 		pe.dbgPrint(buf)
@@ -121,7 +123,7 @@ func (pe *ProxyEngine) stillGood(sock *Proxy) bool {
 	}
 
 	if time.Since(sock.lastValidated) > pe.swampopt.stale {
-		buf := copABuffer.Get().(*strings.Builder)
+		buf := pools.CopABuffer.Get().(*strings.Builder)
 		buf.WriteString("proxy stale: ")
 		buf.WriteString(sock.Endpoint)
 		pe.dbgPrint(buf)
