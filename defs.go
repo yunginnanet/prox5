@@ -59,9 +59,9 @@ type ProxyEngine struct {
 }
 
 var (
-	defaultStaleTime   = 1 * time.Hour
-	defaultWorkerCount = 50
-	defaultBailout     = 15
+	defaultStaleTime   = 30 * time.Minute
+	defaultWorkerCount = 20
+	defaultBailout     = 20
 	defaultRemoveAfter = 25
 	// Note: I've chosen to use https here exclusively assuring all validated proxies are SSL capable.
 	defaultChecks = []string{
@@ -93,7 +93,7 @@ func defOpt() *config {
 		maxWorkers:     defaultWorkerCount,
 		redact:         true,
 	}
-	sm.validationTimeout = time.Duration(12) * time.Second
+	sm.validationTimeout = time.Duration(18) * time.Second
 	sm.serverTimeout = time.Duration(180) * time.Second
 	return sm
 }
@@ -156,7 +156,7 @@ func NewProxyEngine() *ProxyEngine {
 
 	chans := []*chan *Proxy{&pe.Valids.SOCKS5, &pe.Valids.SOCKS4, &pe.Valids.SOCKS4a, &pe.Valids.HTTP, &pe.Pending}
 	for _, c := range chans {
-		*c = make(chan *Proxy, 250)
+		*c = make(chan *Proxy, 500)
 	}
 
 	pe.dispenseMiddleware = func(p *Proxy) (*Proxy, bool) {

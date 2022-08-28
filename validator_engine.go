@@ -160,7 +160,7 @@ func (pe *ProxyEngine) singleProxyCheck(sock *Proxy) error {
 var protoMap = map[ProxyProtocol]string{
 	ProtoSOCKS4: "4", ProtoSOCKS4a: "4a",
 	ProtoSOCKS5: "5", ProtoHTTP: "http",
-	ProtoSOCKS5h: "5h",
+	ProtoSOCKS5h: "5h", protoNULL: "null",
 }
 
 func getProtoStr(protocol ProxyProtocol) string {
@@ -171,7 +171,9 @@ func getProtoStr(protocol ProxyProtocol) string {
 }
 
 func (sock *Proxy) validate() {
-	atomic.StoreUint32(&sock.lock, stateLocked)
+	if !atomic.CompareAndSwapUint32(&sock.lock, stateUnlocked, stateLocked) {
+		return
+	}
 	defer atomic.StoreUint32(&sock.lock, stateUnlocked)
 
 	pe := sock.parent
@@ -188,18 +190,26 @@ func (sock *Proxy) validate() {
 
 	// TODO: consider giving the option for verbose logging of this stuff?
 
-	// try to use the proxy with all 3 SOCKS versions
-	for proto := range protoMap {
-		select {
-		case <-pe.ctx.Done():
-			return
-		default:
-			sock.proto = proto
-			if err := pe.singleProxyCheck(sock); err != nil {
-				// if the proxy is no good, we continue on to the next.
-				continue
+	if sock.timesValidated == 0 || sock.proto == protoNULL {
+		// try to use the proxy with all 3 SOCKS versions
+		for proto := range protoMap {
+			select {
+			case <-pe.ctx.Done():
+				return
+			default:
+				sock.proto = proto
+				if err := pe.singleProxyCheck(sock); err != nil {
+					// if the proxy is no good, we continue on to the next.
+					continue
+				}
+				break
 			}
-			break
+		}
+	} else {
+		if err := pe.singleProxyCheck(sock); err != nil {
+			sock.bad()
+			pe.badProx.Check(sock)
+			return
 		}
 	}
 

@@ -94,6 +94,8 @@ func (pe *ProxyEngine) mapBuilder() {
 				} else {
 					pe.Pending <- p
 				}
+			default:
+				pe.recycling()
 			}
 		}
 	}()
@@ -120,6 +122,8 @@ func (pe *ProxyEngine) recycling() int {
 			return 0
 		case pe.Pending <- sock:
 			count++
+		default:
+			continue
 		}
 	}
 

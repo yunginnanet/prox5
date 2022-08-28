@@ -5,8 +5,6 @@ import (
 	"sync/atomic"
 	"time"
 
-	"git.tcp.direct/kayos/common/entropy"
-
 	"git.tcp.direct/kayos/prox5/internal/pools"
 )
 
@@ -21,6 +19,8 @@ func (pe *ProxyEngine) Socks5Str() string {
 			}
 			pe.stats.dispense()
 			return sock.Endpoint
+		default:
+			pe.recycling()
 		}
 	}
 }
@@ -36,6 +36,8 @@ func (pe *ProxyEngine) Socks4Str() string {
 				continue
 			}
 			return sock.Endpoint
+		default:
+			pe.recycling()
 		}
 	}
 }
@@ -51,6 +53,8 @@ func (pe *ProxyEngine) Socks4aStr() string {
 				continue
 			}
 			return sock.Endpoint
+		default:
+			pe.recycling()
 		}
 	}
 }
@@ -83,13 +87,7 @@ func (pe *ProxyEngine) GetAnySOCKS(acceptHTTP bool) *Proxy {
 		case sock = <-pe.Valids.SOCKS5:
 			break
 		default:
-			if !acceptHTTP {
-				continue
-			}
-			if httptun, htok := pe.GetHTTPTunnel(); htok {
-				sock = httptun
-				break
-			}
+			pe.recycling()
 		}
 		if pe.stillGood(sock) {
 			return sock
@@ -99,8 +97,11 @@ func (pe *ProxyEngine) GetAnySOCKS(acceptHTTP bool) *Proxy {
 }
 
 func (pe *ProxyEngine) stillGood(sock *Proxy) bool {
-	for !atomic.CompareAndSwapUint32(&sock.lock, stateUnlocked, stateLocked) {
-		entropy.RandSleepMS(200)
+	if sock == nil {
+		return false
+	}
+	if !atomic.CompareAndSwapUint32(&sock.lock, stateUnlocked, stateLocked) {
+		return false
 	}
 	defer atomic.StoreUint32(&sock.lock, stateUnlocked)
 
