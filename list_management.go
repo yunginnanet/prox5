@@ -2,16 +2,12 @@ package prox5
 
 import (
 	"bufio"
-	"fmt"
 	"io"
 	"os"
 	"strconv"
 	"strings"
 	"sync/atomic"
 	"time"
-
-	"github.com/miekg/dns"
-	ipa "inet.af/netaddr"
 )
 
 // throw shit proxies here, get map
@@ -20,70 +16,6 @@ var inChan chan string
 
 func init() {
 	inChan = make(chan string, 100000)
-}
-
-func checkV6(in string) (filtered string, ok bool) {
-	split := strings.Split(in, "]:")
-	if len(split) != 2 {
-		return in, false
-	}
-
-	combo, err := ipa.ParseIPPort(split[0] + "]:" + split[1])
-	if err != nil {
-		return in, false
-	}
-
-	if !strings.Contains(split[1], ":") {
-		return combo.String(), true
-	}
-
-	split6 := strings.Split(split[1], ":")
-	if len(split6) != 2 {
-		return in, false
-	}
-
-	return fmt.Sprintf("%s:%s@%s", split6[0], split6[1], combo.String()), true
-}
-
-func (s *Swamp) filter(in string) (filtered string, ok bool) {
-	if !strings.Contains(in, ":") {
-		return in, false
-	}
-	split := strings.Split(in, ":")
-
-	if len(split) < 2 {
-		return in, false
-	}
-
-	if _, err := strconv.Atoi(split[1]); err != nil {
-		return in, false
-	}
-
-	switch len(split) {
-	case 2:
-		if _, ok := dns.IsDomainName(split[0]); ok {
-			return in, true
-		}
-		combo, err := ipa.ParseIPPort(in)
-		if err != nil {
-			return in, false
-		}
-		return combo.String(), true
-	case 4:
-		if _, ok := dns.IsDomainName(split[0]); ok {
-			return fmt.Sprintf("%s:%s@%s:%s", split[2], split[3], split[0], split[1]), true
-		}
-		combo, err := ipa.ParseIPPort(split[0] + ":" + split[1])
-		if err != nil {
-			return in, false
-		}
-		return fmt.Sprintf("%s:%s@%s", split[2], split[3], combo.String()), true
-	default:
-		if !strings.Contains(split[0], "[") || !strings.Contains(split[0], "]:") {
-			return in, false
-		}
-	}
-	return checkV6(in)
 }
 
 // LoadProxyTXT loads proxies from a given seed file and feeds them to the mapBuilder to be later queued automatically for validation.
@@ -125,7 +57,7 @@ func (s *Swamp) LoadProxyTXT(seedFile string) int {
 
 // LoadSingleProxy loads a SOCKS proxy into our map. Uses the format: 127.0.0.1:1080 (host:port).
 func (s *Swamp) LoadSingleProxy(sock string) (ok bool) {
-	if sock, ok = s.filter(sock); !ok {
+	if sock, ok = filter(sock); !ok {
 		return
 	}
 	go s.loadSingleProxy(sock)
