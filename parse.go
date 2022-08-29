@@ -24,14 +24,12 @@ func filterv6(in string) (filtered string, ok bool) {
 			return combo.String(), true
 		}
 	case 1:
-		println("len(split2) == 1")
 		concat := buildProxyString("", "", split[0], split2[0], true)
 		combo, err := ipa.ParseIPPort(concat)
 		if err == nil {
 			return combo.String(), true
 		}
 	default:
-		println("len(split2) != 1")
 		_, err := ipa.ParseIPPort(buildProxyString("", "", split[0], split2[0], true))
 		if err == nil {
 			return buildProxyString(split2[1], split2[2], split[0], split2[0], true), true
