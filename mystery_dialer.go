@@ -41,6 +41,11 @@ func (s *Swamp) MysteryDialer(ctx context.Context, network, addr string) (net.Co
 	var count int
 	// pull down proxies from channel until we get a proxy good enough for our spoiled asses
 	for {
+		select {
+		case <-ctx.Done():
+			return nil, ctx.Err()
+		default:
+		}
 		max := s.GetDialerBailout()
 		if count > max {
 			return nil, errors.New("giving up after " + strconv.Itoa(max) + " tries")
