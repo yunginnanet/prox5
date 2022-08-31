@@ -5,25 +5,24 @@ import (
 	"crypto/tls"
 	"net"
 	"net/http"
-	"net/url"
 )
 
 // GetHTTPClient retrieves a pointer to an http.Client powered by MysteryDialer.
 func (pe *ProxyEngine) GetHTTPClient() *http.Client {
-	var htp func(*http.Request) (*url.URL, error)
+	// var htp func(*http.Request) (*url.URL, error)
 	var dctx func(ctx context.Context, network string, addr string) (net.Conn, error)
-	if httun, htok := pe.GetHTTPTunnel(); htok {
-		httprox, uerr := url.Parse("http://" + httun.Endpoint)
-		if uerr == nil {
-			htp = http.ProxyURL(httprox)
-		}
-	}
-	if htp == nil {
-		dctx = pe.DialContext
-	}
+	//	if httun, htok := pe.GetHTTPTunnel(); htok {
+	//		httprox, uerr := url.Parse("http://" + httun.Endpoint)
+	//		if uerr == nil {
+	//			htp = http.ProxyURL(httprox)
+	//		}
+	//	}
+	// if htp == nil {
+	dctx = pe.DialContext
+	// }
 	return &http.Client{
 		Transport: &http.Transport{
-			Proxy:                 htp,
+			// Proxy:                 htp,
 			DialContext:           dctx,
 			TLSClientConfig:       &tls.Config{InsecureSkipVerify: true},
 			TLSHandshakeTimeout:   pe.GetServerTimeout(),
