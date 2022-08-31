@@ -140,7 +140,7 @@ type config struct {
 func NewProxyEngine() *ProxyEngine {
 	pe := &ProxyEngine{
 		stats:       &statistics{birthday: time.Now()},
-		DebugLogger: basicPrinter{},
+		DebugLogger: &basicPrinter{},
 
 		swampopt: defOpt(),
 

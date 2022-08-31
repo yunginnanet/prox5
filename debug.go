@@ -37,11 +37,11 @@ func (s SocksLogger) Printf(format string, a ...interface{}) {
 
 type basicPrinter struct{}
 
-func (b basicPrinter) Print(str string) {
+func (b *basicPrinter) Print(str string) {
 	println("[prox5] " + str)
 }
 
-func (b basicPrinter) Printf(format string, items ...any) {
+func (b *basicPrinter) Printf(format string, items ...any) {
 	println(fmt.Sprintf("prox5: "+format, items))
 }
 
