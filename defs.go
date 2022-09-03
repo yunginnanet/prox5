@@ -3,6 +3,7 @@ package prox5
 import (
 	"context"
 	"fmt"
+	"net/http"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -48,6 +49,7 @@ type Swamp struct {
 	mu             *sync.RWMutex
 	pool           *ants.Pool
 	swampopt       *swampOptions
+	httpClient     *http.Client
 	runningdaemons int32
 	conductor      chan bool
 }

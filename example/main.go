@@ -2,8 +2,11 @@ package main
 
 import (
 	"fmt"
+	"io"
 	"os"
+	"os/signal"
 	"strconv"
+	"syscall"
 	"time"
 
 	"git.tcp.direct/kayos/prox5"
@@ -125,6 +128,15 @@ func watchKeyPresses() {
 		case "q":
 			done = true
 			break
+		case "i":
+			go func() {
+				res, getErr := swamp.GetHTTPClient().Get("https://wtfismyip.com/text")
+				if getErr != nil {
+					println(getErr.Error())
+					return
+				}
+				io.Copy(os.Stdout, res.Body)
+			}()
 		default:
 			//
 		}
@@ -132,17 +144,28 @@ func watchKeyPresses() {
 			break
 		}
 	}
-
+	_ = t.Close()
 	quit <- true
 	return
 }
 
+func sigWatch() {
+	c := make(chan os.Signal, 5)
+	signal.Notify(c, os.Interrupt, syscall.SIGTERM)
+	for {
+		select {
+		case <-c:
+			if t != nil {
+				_ = t.Close()
+			}
+			os.Exit(9)
+		}
+	}
+}
+
 func main() {
 	go watchKeyPresses()
-
-	defer func(t *tty.TTY) {
-		_ = t.Close()
-	}(t)
+	go sigWatch()
 
 	go func() {
 		for {

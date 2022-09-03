@@ -7,7 +7,10 @@ import (
 
 // GetHTTPClient retrieves a pointer to an http.Client powered by MysteryDialer.
 func (s *Swamp) GetHTTPClient() *http.Client {
-	return &http.Client{
+	if s.httpClient != nil {
+		return s.httpClient
+	}
+	s.httpClient = &http.Client{
 		Transport: &http.Transport{
 			DialContext:         s.DialContext,
 			DisableKeepAlives:   true,
@@ -16,6 +19,7 @@ func (s *Swamp) GetHTTPClient() *http.Client {
 		},
 		Timeout: s.GetServerTimeout(),
 	}
+	return s.httpClient
 }
 
 // RoundTrip is Mr. WorldWide. Obviously. See: https://pkg.go.dev/net/http#RoundTripper
