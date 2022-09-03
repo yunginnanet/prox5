@@ -2,8 +2,10 @@ package prox5
 
 import (
 	"errors"
+	"strconv"
 	"sync"
 	"sync/atomic"
+	"time"
 )
 
 func (s *Swamp) svcUp() {
@@ -94,6 +96,8 @@ func (s *Swamp) mapBuilder() {
 }
 
 func (s *Swamp) recycling() int {
+	s.mu.Lock()
+	defer s.mu.Unlock()
 	if !s.GetRecyclingStatus() {
 		return 0
 	}
@@ -113,6 +117,7 @@ func (s *Swamp) recycling() int {
 			return 0
 		case s.Pending <- sock:
 			count++
+		default:
 		}
 	}
 
@@ -130,6 +135,7 @@ func (s *Swamp) jobSpawner() {
 	q := make(chan bool)
 
 	go func() {
+		var count = 0
 		for {
 			select {
 			case <-s.ctx.Done():
@@ -139,6 +145,20 @@ func (s *Swamp) jobSpawner() {
 			case sock := <-s.Pending:
 				if err := s.pool.Submit(sock.validate); err != nil {
 					s.dbgPrint(ylw + err.Error() + rst)
+				}
+
+			default:
+				time.Sleep(25 * time.Millisecond)
+				if count == 0 {
+					time.Sleep(5 * time.Second)
+				}
+				count++
+				if count > 100 {
+					rcount := s.recycling()
+					if rcount > 0 {
+						s.dbgPrint(ylw + "recycled " + strconv.Itoa(rcount) + " proxies from our map" + rst)
+					}
+					count = 0
 				}
 			}
 		}
