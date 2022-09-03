@@ -2,10 +2,8 @@ package prox5
 
 import (
 	"errors"
-	"strconv"
 	"sync"
 	"sync/atomic"
-	"time"
 )
 
 func (s *Swamp) svcUp() {
@@ -142,10 +140,6 @@ func (s *Swamp) jobSpawner() {
 				if err := s.pool.Submit(sock.validate); err != nil {
 					s.dbgPrint(ylw + err.Error() + rst)
 				}
-			default:
-				time.Sleep(25 * time.Millisecond)
-				count := s.recycling()
-				s.dbgPrint(ylw + "recycled " + strconv.Itoa(count) + " proxies from our map" + rst)
 			}
 		}
 	}()

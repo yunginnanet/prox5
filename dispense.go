@@ -1,6 +1,7 @@
 package prox5
 
 import (
+	"strconv"
 	"sync/atomic"
 	"time"
 )
@@ -16,6 +17,12 @@ func (s *Swamp) Socks5Str() string {
 			}
 			s.Stats.dispense()
 			return sock.Endpoint
+		default:
+			count := s.recycling()
+			if count > 0 {
+				s.dbgPrint(ylw + "recycled " + strconv.Itoa(count) + " proxies from our map" + rst)
+			}
+			time.Sleep(1 * time.Second)
 		}
 	}
 }
@@ -31,6 +38,12 @@ func (s *Swamp) Socks4Str() string {
 				continue
 			}
 			return sock.Endpoint
+		default:
+			count := s.recycling()
+			if count > 0 {
+				s.dbgPrint(ylw + "recycled " + strconv.Itoa(count) + " proxies from our map" + rst)
+			}
+			time.Sleep(1 * time.Second)
 		}
 	}
 }
@@ -46,6 +59,12 @@ func (s *Swamp) Socks4aStr() string {
 				continue
 			}
 			return sock.Endpoint
+		default:
+			count := s.recycling()
+			if count > 0 {
+				s.dbgPrint(ylw + "recycled " + strconv.Itoa(count) + " proxies from our map" + rst)
+			}
+			time.Sleep(1 * time.Second)
 		}
 	}
 }
@@ -73,7 +92,11 @@ func (s *Swamp) GetAnySOCKS() *Proxy {
 			continue
 		default:
 			// s.dbgPrint(red + "no valid proxies in channels, sleeping" + rst)
-			time.Sleep(3 * time.Second)
+			count := s.recycling()
+			if count > 0 {
+				s.dbgPrint(ylw + "recycled " + strconv.Itoa(count) + " proxies from our map" + rst)
+			}
+			time.Sleep(1 * time.Second)
 		}
 	}
 }
