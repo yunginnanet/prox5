@@ -40,7 +40,7 @@ What makes Prox5 special is largely the Mystery Dialer. This dialer satisfies th
  
 The way you choose to use this lib is yours. The API is fairly extensive for you to be able to customize runtime configuration without having to do any surgery.
   
-Things like the amount of validation workers that are concurrently operating, timeouts, and proxy re-use policies may be tuned in real-time. [please read the docs.](https://pkg.go.dev/git.tcp.direct/kayos/Prox5)
+Things like the amount of validation workers that are concurrently operating, timeouts, and proxy re-use policies may be tuned in real-time. [please read the docs.](https://pkg.go.dev/git.tcp.direct/kayos/prox5)
 
  ---
  
