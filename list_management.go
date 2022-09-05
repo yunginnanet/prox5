@@ -20,12 +20,12 @@ func init() {
 
 // LoadProxyTXT loads proxies from a given seed file and feeds them to the mapBuilder to be later queued automatically for validation.
 // Expects the following formats:
-// * 127.0.0.1:1080
-// * 127.0.0.1:1080:user:pass
-// * yeet.com:1080
-// * yeet.com:1080:user:pass
-// * [fe80::2ef0:5dff:fe7f:c299]:1080
-// * [fe80::2ef0:5dff:fe7f:c299]:1080:user:pass
+//    * 127.0.0.1:1080
+//    * 127.0.0.1:1080:user:pass
+//    * yeet.com:1080
+//    * yeet.com:1080:user:pass
+//    * [fe80::2ef0:5dff:fe7f:c299]:1080
+//    * [fe80::2ef0:5dff:fe7f:c299]:1080:user:pass
 func (s *Swamp) LoadProxyTXT(seedFile string) int {
 	var count = &atomic.Value{}
 	count.Store(0)
