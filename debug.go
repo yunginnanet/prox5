@@ -1,65 +1,183 @@
 package prox5
 
 import (
+	"fmt"
+	"strings"
 	"sync"
+	"sync/atomic"
+
+	"git.tcp.direct/kayos/prox5/internal/pools"
 )
 
 var (
-	useDebugChannel = false
-	debugChan       chan string
-	debugMutex      *sync.RWMutex
+	debugStatus   *uint32
+	debugHardLock = &sync.RWMutex{}
 )
 
 func init() {
-	debugMutex = &sync.RWMutex{}
+	dd := debugDisabled
+	debugStatus = &dd
 }
 
-// DebugChannel will return a channel which will receive debug messages once debug is enabled.
-// This will alter the flow of debug messages, they will no longer print to console, they will be pushed into this channel.
-// Make sure you pull from the channel eventually to avoid build up of blocked goroutines.
-func (s *Swamp) DebugChannel() chan string {
-	debugChan = make(chan string, 1000000)
-	useDebugChannel = true
-	return debugChan
+const (
+	debugEnabled uint32 = iota
+	debugDisabled
+)
+
+type SocksLogger struct {
+	parent *Swamp
+}
+
+// Printf is used to handle socks server logging.
+func (s SocksLogger) Printf(format string, a ...interface{}) {
+	buf := pools.CopABuffer.Get().(*strings.Builder)
+	buf.WriteString(fmt.Sprintf(format, a...))
+	s.parent.dbgPrint(buf)
+}
+
+type basicPrinter struct{}
+
+func (b *basicPrinter) Print(str string) {
+	println("[prox5] " + str)
+}
+
+func (b *basicPrinter) Printf(format string, items ...any) {
+	println(fmt.Sprintf("prox5: "+format, items))
 }
 
 // DebugEnabled returns the current state of our debug switch.
-func (s *Swamp) DebugEnabled() bool {
-	return s.swampopt.debug.Load().(bool)
-}
-
-// DisableDebugChannel redirects debug messages back to the console.
-// DisableProxyChannel does not disable debug, use DisableDebug().
-func (s *Swamp) DisableDebugChannel() {
-	debugMutex.Lock()
-	defer debugMutex.Unlock()
-	useDebugChannel = false
+func (pe *Swamp) DebugEnabled() bool {
+	debugHardLock.RLock()
+	defer debugHardLock.RUnlock()
+	return atomic.CompareAndSwapUint32(debugStatus, debugEnabled, debugEnabled)
 }
 
 // EnableDebug enables printing of verbose messages during operation
-func (s *Swamp) EnableDebug() {
-	s.swampopt.debug.Store(true)
+func (pe *Swamp) EnableDebug() {
+	atomic.StoreUint32(debugStatus, debugEnabled)
 }
 
 // DisableDebug enables printing of verbose messages during operation.
 // WARNING: if you are using a DebugChannel, you must read all of the messages in the channel's cache or this will block.
-func (s *Swamp) DisableDebug() {
-	s.swampopt.debug.Store(false)
+func (pe *Swamp) DisableDebug() {
+	atomic.StoreUint32(debugStatus, debugDisabled)
 }
 
-func (s *Swamp) dbgPrint(str string) {
-	if !s.swampopt.debug.Load().(bool) {
+func simpleString(s string) *strings.Builder {
+	buf := pools.CopABuffer.Get().(*strings.Builder)
+	buf.WriteString(s)
+	return buf
+}
+
+func (pe *Swamp) dbgPrint(builder *strings.Builder) {
+	defer pools.DiscardBuffer(builder)
+	if !pe.DebugEnabled() {
 		return
 	}
+	pe.DebugLogger.Print(builder.String())
+	return
+}
 
-	if useDebugChannel {
-		select {
-		case debugChan <- str:
-			return
-		default:
-			println("prox5 overflow: " + str)
-			return
-		}
+func (pe *Swamp) msgUnableToReach(socksString, target string, err error) {
+	if !pe.DebugEnabled() {
+		return
 	}
-	println("prox5: " + str)
+	buf := pools.CopABuffer.Get().(*strings.Builder)
+	buf.WriteString("unable to reach ")
+	if pe.swampopt.redact {
+		buf.WriteString("[redacted]")
+	} else {
+		buf.WriteString(target)
+	}
+	buf.WriteString(" with ")
+	buf.WriteString(socksString)
+	if !pe.swampopt.redact {
+		buf.WriteString(": ")
+		buf.WriteString(err.Error())
+	}
+	buf.WriteString(", cycling...")
+	pe.dbgPrint(buf)
+}
+
+func (pe *Swamp) msgUsingProxy(socksString string) {
+	if !pe.DebugEnabled() {
+		return
+	}
+	buf := pools.CopABuffer.Get().(*strings.Builder)
+	buf.WriteString("MysteryDialer using socks: ")
+	buf.WriteString(socksString)
+	pe.dbgPrint(buf)
+}
+
+func (pe *Swamp) msgFailedMiddleware(socksString string) {
+	if !pe.DebugEnabled() {
+		return
+	}
+	buf := pools.CopABuffer.Get().(*strings.Builder)
+	buf.WriteString("failed middleware check, ")
+	buf.WriteString(socksString)
+	buf.WriteString(", cycling...")
+	pe.dbgPrint(buf)
+}
+
+func (pe *Swamp) msgTry(socksString string) {
+	if !pe.DebugEnabled() {
+		return
+	}
+	buf := pools.CopABuffer.Get().(*strings.Builder)
+	buf.WriteString("try dial with: ")
+	buf.WriteString(socksString)
+	pe.dbgPrint(buf)
+}
+
+func (pe *Swamp) msgCantGetLock(socksString string, putback bool) {
+	if !pe.DebugEnabled() {
+		return
+	}
+	buf := pools.CopABuffer.Get().(*strings.Builder)
+	buf.WriteString("can't get lock for ")
+	buf.WriteString(socksString)
+	if putback {
+		buf.WriteString(", putting back in queue")
+	}
+	pe.dbgPrint(buf)
+}
+
+func (pe *Swamp) msgGotLock(socksString string) {
+	if !pe.DebugEnabled() {
+		return
+	}
+	buf := pools.CopABuffer.Get().(*strings.Builder)
+	buf.WriteString("got lock for ")
+	buf.WriteString(socksString)
+	pe.dbgPrint(buf)
+}
+
+func (pe *Swamp) msgChecked(sock *Proxy, success bool) {
+	if !pe.DebugEnabled() {
+		return
+	}
+	buf := pools.CopABuffer.Get().(*strings.Builder)
+	if success {
+		buf.WriteString("verified ")
+		buf.WriteString(sock.Endpoint)
+		buf.WriteString(" as ")
+		buf.WriteString(sock.protocol.Get().String())
+		buf.WriteString(" proxy")
+		pe.dbgPrint(buf)
+		return
+	}
+	buf.WriteString("failed to verify: ")
+	buf.WriteString(sock.Endpoint)
+	pe.dbgPrint(buf)
+}
+
+func (pe *Swamp) msgBadProxRate(sock *Proxy) {
+	if !pe.DebugEnabled() {
+		return
+	}
+	buf := pools.CopABuffer.Get().(*strings.Builder)
+	buf.WriteString("badProx ratelimited: ")
+	buf.WriteString(sock.Endpoint)
+	pe.dbgPrint(buf)
 }

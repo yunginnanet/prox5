@@ -4,9 +4,7 @@ import (
 	"bufio"
 	"io"
 	"os"
-	"strconv"
 	"strings"
-	"sync/atomic"
 	"time"
 )
 
@@ -19,52 +17,53 @@ func init() {
 }
 
 // LoadProxyTXT loads proxies from a given seed file and feeds them to the mapBuilder to be later queued automatically for validation.
-// Expects the following formats:
-//    * 127.0.0.1:1080
-//    * 127.0.0.1:1080:user:pass
-//    * yeet.com:1080
-//    * yeet.com:1080:user:pass
-//    * [fe80::2ef0:5dff:fe7f:c299]:1080
-//    * [fe80::2ef0:5dff:fe7f:c299]:1080:user:pass
-func (s *Swamp) LoadProxyTXT(seedFile string) int {
-	var count = &atomic.Value{}
-	count.Store(0)
-
+// Expects one of the following formats for each line:
+// * 127.0.0.1:1080
+// * 127.0.0.1:1080:user:pass
+// * yeet.com:1080
+// * yeet.com:1080:user:pass
+// * [fe80::2ef0:5dff:fe7f:c299]:1080
+// * [fe80::2ef0:5dff:fe7f:c299]:1080:user:pass
+func (p5 *Swamp) LoadProxyTXT(seedFile string) (count int) {
 	f, err := os.Open(seedFile)
 	if err != nil {
-		s.dbgPrint(red + err.Error() + rst)
+		p5.dbgPrint(simpleString(err.Error()))
 		return 0
 	}
 
-	s.dbgPrint("LoadProxyTXT start: " + seedFile)
 	defer func() {
-		s.dbgPrint("LoadProxyTXT finished: " + strconv.Itoa(count.Load().(int)))
 		if err := f.Close(); err != nil {
-			s.dbgPrint(red + err.Error() + rst)
+			p5.dbgPrint(simpleString(err.Error()))
 		}
 	}()
 
 	bs, err := io.ReadAll(f)
 	if err != nil {
-		s.dbgPrint(red + err.Error() + rst)
+		p5.dbgPrint(simpleString(err.Error()))
 		return 0
 	}
 	sockstr := string(bs)
 
-	count.Store(s.LoadMultiLineString(sockstr))
-	return count.Load().(int)
+	return p5.LoadMultiLineString(sockstr)
 }
 
-// LoadSingleProxy loads a SOCKS proxy into our map. Uses the format: 127.0.0.1:1080 (host:port).
-func (s *Swamp) LoadSingleProxy(sock string) (ok bool) {
+// LoadSingleProxy loads a SOCKS proxy into our map.
+// Expects one of the following formats:
+// * 127.0.0.1:1080
+// * 127.0.0.1:1080:user:pass
+// * yeet.com:1080
+// * yeet.com:1080:user:pass
+// * [fe80::2ef0:5dff:fe7f:c299]:1080
+// * [fe80::2ef0:5dff:fe7f:c299]:1080:user:pass
+func (p5 *Swamp) LoadSingleProxy(sock string) (ok bool) {
 	if sock, ok = filter(sock); !ok {
 		return
 	}
-	go s.loadSingleProxy(sock)
+	go p5.loadSingleProxy(sock)
 	return
 }
 
-func (s *Swamp) loadSingleProxy(sock string) {
+func (p5 *Swamp) loadSingleProxy(sock string) {
 	for {
 		select {
 		case inChan <- sock:
@@ -75,12 +74,19 @@ func (s *Swamp) loadSingleProxy(sock string) {
 	}
 }
 
-// LoadMultiLineString loads a multiine string object with one (host:port) SOCKS proxy per line.
-func (s *Swamp) LoadMultiLineString(socks string) int {
+// LoadMultiLineString loads a multiine string object with proxy per line.
+// Expects one of the following formats for each line:
+// * 127.0.0.1:1080
+// * 127.0.0.1:1080:user:pass
+// * yeet.com:1080
+// * yeet.com:1080:user:pass
+// * [fe80::2ef0:5dff:fe7f:c299]:1080
+// * [fe80::2ef0:5dff:fe7f:c299]:1080:user:pass
+func (p5 *Swamp) LoadMultiLineString(socks string) int {
 	var count int
 	scan := bufio.NewScanner(strings.NewReader(socks))
 	for scan.Scan() {
-		if s.LoadSingleProxy(scan.Text()) {
+		if p5.LoadSingleProxy(scan.Text()) {
 			count++
 		}
 	}
@@ -89,6 +95,6 @@ func (s *Swamp) LoadMultiLineString(socks string) int {
 
 // ClearSOCKSList clears the map of proxies that we have on record.
 // Other operations (proxies that are still in buffered channels) will continue.
-func (s *Swamp) ClearSOCKSList() {
-	s.swampmap.clear()
+func (p5 *Swamp) ClearSOCKSList() {
+	p5.swampmap.clear()
 }

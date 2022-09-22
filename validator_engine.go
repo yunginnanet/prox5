@@ -4,90 +4,95 @@ import (
 	"bytes"
 	"crypto/tls"
 	"errors"
-	"fmt"
 	"io"
 	"net"
 	"net/http"
+	"net/url"
 	"strings"
-	//	"net/url"
 	"sync/atomic"
 	"time"
 
+	"git.tcp.direct/kayos/socks"
 	"golang.org/x/net/proxy"
-	"h12.io/socks"
+
+	"git.tcp.direct/kayos/prox5/internal/pools"
 )
 
-func (s *Swamp) prepHTTP() (*http.Client, *http.Transport, *http.Request, error) {
-	req, err := http.NewRequest("GET", s.GetRandomEndpoint(), bytes.NewBuffer([]byte("")))
+func (pe *Swamp) prepHTTP() (*http.Client, *http.Transport, *http.Request, error) {
+	req, err := http.NewRequest("GET", pe.GetRandomEndpoint(), bytes.NewBuffer([]byte("")))
 	if err != nil {
 		return nil, nil, nil, err
 	}
 	headers := make(map[string]string)
-	headers["User-Agent"] = s.RandomUserAgent()
+	headers["User-Agent"] = pe.RandomUserAgent()
 	headers["Accept"] = "text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,image/apng,*/*;q=0.8"
 	headers["Accept-Language"] = "en-US,en;q=0.5"
 	headers["'Accept-Encoding'"] = "gzip, deflate, br"
-	headers["Connection"] = "keep-alive"
+	// headers["Connection"] = "keep-alive"
 	for header, value := range headers {
 		req.Header.Set(header, value)
 	}
-	var client *http.Client
+	var client = &http.Client{}
 	var transporter = &http.Transport{
 		DisableKeepAlives:   true,
-		TLSClientConfig:     &tls.Config{InsecureSkipVerify: true},
-		TLSHandshakeTimeout: s.swampopt.validationTimeout.Load().(time.Duration),
+		TLSClientConfig:     &tls.Config{InsecureSkipVerify: true}, //nolint:gosec
+		TLSHandshakeTimeout: pe.GetValidationTimeout(),
 	}
 
 	return client, transporter, req, err
 }
 
 func (sock *Proxy) bad() {
-	sock.timesBad.Store(sock.timesBad.Load().(int) + 1)
+	atomic.AddInt64(&sock.timesBad, 1)
 }
 
 func (sock *Proxy) good() {
-	sock.timesValidated.Store(sock.timesValidated.Load().(int) + 1)
-	sock.lastValidated.Store(time.Now())
+	atomic.AddInt64(&sock.timesValidated, 1)
+	sock.lastValidated = time.Now()
 }
 
-func (s *Swamp) checkHTTP(sock *Proxy) (string, error) {
+func (pe *Swamp) bakeHTTP(hmd *HandMeDown) (client *http.Client, req *http.Request, err error) {
+	builder := pools.CopABuffer.Get().(*strings.Builder)
+	builder.WriteString(hmd.protoCheck.String())
+	builder.WriteString("://")
+	builder.WriteString(hmd.sock.Endpoint)
+	builder.WriteString("/?timeout=")
+	builder.WriteString(pe.GetValidationTimeoutStr())
+	builder.WriteString("s")
+	dialSocks := socks.DialWithConn(builder.String(), hmd.conn)
+	pools.DiscardBuffer(builder)
+
 	var (
-		client      *http.Client
-		transporter *http.Transport
-		req         *http.Request
-		err         error
+		purl      *url.URL
+		transport *http.Transport
 	)
 
-	if client, transporter, req, err = s.prepHTTP(); err != nil {
+	if client, transport, req, err = pe.prepHTTP(); err != nil {
+		return
+	}
+
+	if hmd.protoCheck != ProtoHTTP {
+		transport.Dial = dialSocks
+		client.Transport = transport
+		return
+	}
+	if purl, err = url.Parse("http://" + hmd.sock.Endpoint); err != nil {
+		return
+	}
+	transport.Proxy = http.ProxyURL(purl)
+	return
+}
+
+func (pe *Swamp) validate(hmd *HandMeDown) (string, error) {
+	var (
+		client *http.Client
+		req    *http.Request
+		err    error
+	)
+
+	client, req, err = pe.bakeHTTP(hmd)
+	if err != nil {
 		return "", err
-	}
-
-	var dialSocks = socks.Dial(fmt.Sprintf(
-		"socks%s://%s/?timeout=%ss",
-		sock.Proto.Load().(string),
-		sock.Endpoint,
-		s.GetValidationTimeoutStr()),
-	)
-
-	var transportDialer = dialSocks
-	if sock.Proto.Load().(string) == "none" {
-		transportDialer = proxy.Direct.Dial
-	}
-
-	// if sock.Proto.Load().(string) != "http" {
-	transporter.Dial = transportDialer
-
-	// } else {
-	//	if purl, err := url.Parse("http://" + sock.Endpoint); err == nil {
-	//		transporter.Proxy = http.ProxyURL(purl)
-	//	} else {
-	//		return "", err
-	//	}
-	// }
-
-	client = &http.Client{
-		Transport: transporter,
-		Timeout:   s.swampopt.validationTimeout.Load().(time.Duration),
 	}
 
 	resp, err := client.Do(req)
@@ -95,42 +100,54 @@ func (s *Swamp) checkHTTP(sock *Proxy) (string, error) {
 		return "", err
 	}
 
-	defer func(Body io.ReadCloser) {
-		err := Body.Close()
-		if err != nil {
-			panic(err)
-		}
-	}(resp.Body)
-
 	rbody, err := io.ReadAll(resp.Body)
+	_ = resp.Body.Close()
 	return string(rbody), err
 }
 
-func (s *Swamp) anothaOne() {
-	s.Stats.Checked++
+func (pe *Swamp) anothaOne() {
+	pe.stats.Checked++
 }
 
-func (s *Swamp) singleProxyCheck(sock *Proxy) error {
-	defer s.anothaOne()
+type HandMeDown struct {
+	sock       *Proxy
+	protoCheck ProxyProtocol
+	conn       net.Conn
+	under      proxy.Dialer
+}
+
+func (hmd *HandMeDown) Dial(network, addr string) (c net.Conn, err error) {
+	if hmd.conn.LocalAddr().Network() != network {
+		return hmd.under.Dial(network, addr)
+	}
+	if hmd.conn.RemoteAddr().String() != addr {
+		return hmd.under.Dial(network, addr)
+	}
+	return hmd.conn, nil
+}
+
+func (pe *Swamp) singleProxyCheck(sock *Proxy, protocol ProxyProtocol) error {
+	defer pe.anothaOne()
 	split := strings.Split(sock.Endpoint, "@")
 	endpoint := split[0]
 	if len(split) == 2 {
 		endpoint = split[1]
 	}
-	if _, err := net.DialTimeout("tcp", endpoint,
-		s.swampopt.validationTimeout.Load().(time.Duration)); err != nil {
-		s.badProx.Check(sock)
+	conn, err := net.DialTimeout("tcp", endpoint, pe.GetValidationTimeout())
+	if err != nil {
 		return err
 	}
 
-	resp, err := s.checkHTTP(sock)
+	hmd := &HandMeDown{sock: sock, conn: conn, under: proxy.Direct, protoCheck: protocol}
+
+	resp, err := pe.validate(hmd)
 	if err != nil {
-		s.badProx.Check(sock)
+		pe.badProx.Check(sock)
 		return err
 	}
 
 	if newip := net.ParseIP(resp); newip == nil {
-		s.badProx.Check(sock)
+		pe.badProx.Check(sock)
 		return errors.New("bad response from http request: " + resp)
 	}
 
@@ -140,71 +157,76 @@ func (s *Swamp) singleProxyCheck(sock *Proxy) error {
 }
 
 func (sock *Proxy) validate() {
-	var sversions = []string{"4", "5", "4a"}
+	if !atomic.CompareAndSwapUint32(&sock.lock, stateUnlocked, stateLocked) {
+		return
+	}
+	defer atomic.StoreUint32(&sock.lock, stateUnlocked)
 
-	s := sock.parent
-	if s.useProx.Check(sock) {
-		// s.dbgPrint(ylw + "useProx ratelimited: " + sock.Endpoint + rst)
-		atomic.StoreUint32(&sock.lock, stateUnlocked)
+	pe := sock.parent
+	if pe.useProx.Check(sock) {
+		// s.dbgPrint("useProx ratelimited: " + sock.Endpoint )
 		return
 	}
 
 	// determined as bad, won't try again until it expires from that cache
-	if s.badProx.Peek(sock) {
-		s.dbgPrint(ylw + "badProx ratelimited: " + sock.Endpoint + rst)
-		atomic.StoreUint32(&sock.lock, stateUnlocked)
+	if pe.badProx.Peek(sock) {
+		pe.msgBadProxRate(sock)
 		return
 	}
 
-	// try to use the proxy with all 3 SOCKS versions
-	var good = false
-	for _, sver := range sversions {
-		if s.Status.Load().(SwampStatus) == Paused {
-			return
-		}
+	// TODO: consider giving the option for verbose logging of this stuff?
 
-		sock.Proto.Store(sver)
-		if err := s.singleProxyCheck(sock); err == nil {
-			//			if sock.Proto != "http" {
-			s.dbgPrint(grn + "verified " + sock.Endpoint + " as SOCKS" + sver + rst)
-			//			} else {
-			//				s.dbgPrint(ylw + "verified " + sock.Endpoint + " as http (not usable yet)" + rst)
-			//			}
-			good = true
-			break
+	if sock.timesValidated == 0 || sock.protocol.Get() == ProtoNull {
+		// try to use the proxy with all 3 SOCKS versions
+		for tryProto := range protoMap {
+			select {
+			case <-pe.ctx.Done():
+				return
+			default:
+				if err := pe.singleProxyCheck(sock, tryProto); err != nil {
+					// if the proxy is no good, we continue on to the next.
+					continue
+				}
+				sock.protocol.set(tryProto)
+				break
+			}
+		}
+	} else {
+		if err := pe.singleProxyCheck(sock, sock.GetProto()); err != nil {
+			sock.bad()
+			pe.badProx.Check(sock)
+			return
 		}
 	}
 
-	if !good {
-		s.dbgPrint(red + "failed to verify: " + sock.Endpoint + rst)
+	switch sock.protocol.Get() {
+	case ProtoSOCKS4, ProtoSOCKS4a, ProtoSOCKS5, ProtoHTTP:
+		pe.msgChecked(sock, true)
+	default:
+		pe.msgChecked(sock, false)
 		sock.bad()
-		s.badProx.Check(sock)
-		atomic.StoreUint32(&sock.lock, stateUnlocked)
+		pe.badProx.Check(sock)
 		return
 	}
 
 	sock.good()
-	atomic.StoreUint32(&sock.lock, stateUnlocked)
+	pe.tally(sock)
+}
 
-	switch sock.Proto.Load().(string) {
-	case "4":
-		go func() {
-			s.Stats.v4()
-			s.ValidSocks4 <- sock
-		}()
-		return
-	case "4a":
-		go func() {
-			s.Stats.v4a()
-			s.ValidSocks4a <- sock
-		}()
-		return
-	case "5":
-		go func() {
-			s.Stats.v5()
-			s.ValidSocks5 <- sock
-		}()
-		return
+func (pe *Swamp) tally(sock *Proxy) {
+	switch sock.protocol.Get() {
+	case ProtoSOCKS4:
+		pe.stats.v4()
+		pe.Valids.SOCKS4 <- sock
+	case ProtoSOCKS4a:
+		pe.stats.v4a()
+		pe.Valids.SOCKS4a <- sock
+	case ProtoSOCKS5:
+		pe.stats.v5()
+		pe.Valids.SOCKS5 <- sock
+	case ProtoHTTP:
+		pe.stats.http()
+		pe.Valids.HTTP <- sock
 	default:
 		return
 	}

@@ -2,80 +2,110 @@ package prox5
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"net"
-	"strconv"
+	"strings"
 	"sync/atomic"
 	"time"
 
-	"h12.io/socks"
+	"git.tcp.direct/kayos/socks"
+
+	"git.tcp.direct/kayos/prox5/internal/pools"
 )
 
-// DialContext is a simple stub adapter to implement a net.Dialer with context.
-func (s *Swamp) DialContext(ctx context.Context, network, addr string) (net.Conn, error) {
-	return s.MysteryDialer(ctx, network, addr)
+// DialContext is a simple stub adapter to implement a net.Dialer.
+func (p5 *Swamp) DialContext(ctx context.Context, network, addr string) (net.Conn, error) {
+	return p5.MysteryDialer(ctx, network, addr)
 }
 
 // Dial is a simple stub adapter to implement a net.Dialer.
-func (s *Swamp) Dial(network, addr string) (net.Conn, error) {
-	return s.DialContext(context.Background(), network, addr)
+func (p5 *Swamp) Dial(network, addr string) (net.Conn, error) {
+	return p5.MysteryDialer(context.Background(), network, addr)
 }
 
 // DialTimeout is a simple stub adapter to implement a net.Dialer with a timeout.
-func (s *Swamp) DialTimeout(network, addr string, timeout time.Duration) (net.Conn, error) {
+func (p5 *Swamp) DialTimeout(network, addr string, timeout time.Duration) (net.Conn, error) {
 	ctx, cancel := context.WithDeadline(context.Background(), time.Now().Add(timeout))
-	go func() {
-		select {
-		case <-ctx.Done():
-			cancel()
-		}
+	go func() { // this is a goroutine that calls cancel() upon the deadline expiring to avoid context leaks
+		<-ctx.Done()
+		cancel()
 	}()
-	return s.MysteryDialer(ctx, network, addr)
+	return p5.MysteryDialer(ctx, network, addr)
+}
+
+func (p5 *Swamp) addTimeout(socksString string) string {
+	tout := pools.CopABuffer.Get().(*strings.Builder)
+	tout.WriteString(socksString)
+	tout.WriteString("?timeout=")
+	tout.WriteString(p5.GetServerTimeoutStr())
+	tout.WriteRune('s')
+	socksString = tout.String()
+	pools.DiscardBuffer(tout)
+	return socksString
+}
+
+func (p5 *Swamp) popSockAndLockIt(ctx context.Context) (*Proxy, error) {
+	sock := p5.GetAnySOCKS(false)
+	socksString := sock.String()
+	select {
+	case <-ctx.Done():
+		return nil, fmt.Errorf("context done: %w", ctx.Err())
+	default:
+		if atomic.CompareAndSwapUint32(&sock.lock, stateUnlocked, stateLocked) {
+			p5.msgGotLock(socksString)
+			return sock, nil
+		}
+		select {
+		case p5.Pending <- sock:
+			p5.msgCantGetLock(socksString, true)
+			return nil, nil
+		default:
+			p5.msgCantGetLock(socksString, false)
+			return nil, nil
+		}
+	}
 }
 
 // MysteryDialer is a dialer function that will use a different proxy for every request.
-func (s *Swamp) MysteryDialer(ctx context.Context, network, addr string) (net.Conn, error) {
-	var sock *Proxy
-	var conn net.Conn
-	var count int
+func (p5 *Swamp) MysteryDialer(ctx context.Context, network, addr string) (net.Conn, error) {
 	// pull down proxies from channel until we get a proxy good enough for our spoiled asses
+	var count = 0
 	for {
-		select {
-		case <-ctx.Done():
-			return nil, ctx.Err()
-		default:
-		}
-		max := s.GetDialerBailout()
+		max := p5.GetDialerBailout()
 		if count > max {
-			return nil, errors.New("giving up after " + strconv.Itoa(max) + " tries")
+			return nil, fmt.Errorf("giving up after %d tries", max)
 		}
 		if err := ctx.Err(); err != nil {
-			return nil, fmt.Errorf("context error: %v", err)
+			return nil, fmt.Errorf("context error: %w", err)
 		}
-
-		sock = s.GetAnySOCKS()
-		for !atomic.CompareAndSwapUint32(&sock.lock, stateUnlocked, stateLocked) {
-			if sock == nil {
+		var sock *Proxy
+		for {
+			var err error
+			sock, err = p5.popSockAndLockIt(ctx)
+			if err != nil {
+				return nil, err
+			}
+			if sock != nil {
 				break
 			}
-			randSleep()
 		}
-		if sock == nil {
+		socksString := sock.String()
+		var ok bool
+		if sock, ok = p5.dispenseMiddleware(sock); !ok {
+			atomic.StoreUint32(&sock.lock, stateUnlocked)
+			p5.msgFailedMiddleware(socksString)
 			continue
 		}
-
-		s.dbgPrint("dialer trying: " + sock.Endpoint + "...")
+		p5.msgTry(socksString)
 		atomic.StoreUint32(&sock.lock, stateUnlocked)
-		dialSocks := socks.Dial(sock.String())
-		var err error
-		if conn, err = dialSocks(network, addr); err != nil {
+		dialSocks := socks.Dial(socksString)
+		conn, err := dialSocks(network, addr)
+		if err != nil {
 			count++
-			s.dbgPrint(ylw + "unable to reach [redacted] with " + sock.String() + ", cycling..." + rst)
+			p5.msgUnableToReach(socksString, addr, err)
 			continue
 		}
-		break
+		p5.msgUsingProxy(socksString)
+		return conn, nil
 	}
-	s.dbgPrint(grn + "MysteryDialer using socks: " + sock.String() + rst)
-	return conn, nil
 }

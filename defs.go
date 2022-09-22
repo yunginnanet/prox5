@@ -2,33 +2,38 @@ package prox5
 
 import (
 	"context"
-	"fmt"
-	"net/http"
+	"strings"
 	"sync"
 	"sync/atomic"
 	"time"
 
 	"github.com/panjf2000/ants/v2"
 	rl "github.com/yunginnanet/Rate5"
+
+	"git.tcp.direct/kayos/prox5/internal/pools"
+	"git.tcp.direct/kayos/prox5/logger"
 )
+
+type ProxyChannels struct {
+	// SOCKS5 is a constant stream of verified SOCKS5 proxies
+	SOCKS5 chan *Proxy
+	// SOCKS4 is a constant stream of verified SOCKS4 proxies
+	SOCKS4 chan *Proxy
+	// SOCKS4a is a constant stream of verified SOCKS5 proxies
+	SOCKS4a chan *Proxy
+	// HTTP is a constant stream of verified SOCKS5 proxies
+	HTTP chan *Proxy
+}
 
 // Swamp represents a proxy pool
 type Swamp struct {
-	// ValidSocks5 is a constant stream of verified ValidSocks5 proxies
-	ValidSocks5 chan *Proxy
-	// ValidSocks4 is a constant stream of verified ValidSocks4 proxies
-	ValidSocks4 chan *Proxy
-	// ValidSocks4a is a constant stream of verified ValidSocks5 proxies
-	ValidSocks4a chan *Proxy
-	// ValidHTTP is a constant stream of verified ValidSocks5 proxies
-	ValidHTTP chan *Proxy
+	Valids      ProxyChannels
+	DebugLogger logger.Logger
 
-	socksServerLogger socksLogger
+	// stats holds the statistics for our swamp
+	stats *statistics
 
-	// Stats holds the Statistics for our swamp
-	Stats *Statistics
-
-	Status atomic.Value
+	Status uint32
 
 	// Pending is a constant stream of proxy strings to be verified
 	Pending chan *Proxy
@@ -37,7 +42,7 @@ type Swamp struct {
 	useProx *rl.Limiter
 	badProx *rl.Limiter
 
-	socks5ServerAuth socksCreds
+	dispenseMiddleware func(*Proxy) (*Proxy, bool)
 
 	ctx  context.Context
 	quit context.CancelFunc
@@ -48,16 +53,16 @@ type Swamp struct {
 
 	mu             *sync.RWMutex
 	pool           *ants.Pool
-	swampopt       *swampOptions
-	httpClient     *http.Client
+	swampopt       *config
 	runningdaemons int32
 	conductor      chan bool
 }
 
 var (
-	defaultStaleTime = 1 * time.Hour
-	defWorkers       = 100
-	defBailout       = 5
+	defaultStaleTime   = 30 * time.Minute
+	defaultWorkerCount = 20
+	defaultBailout     = 20
+	defaultRemoveAfter = 25
 	// Note: I've chosen to use https here exclusively assuring all validated proxies are SSL capable.
 	defaultChecks = []string{
 		"https://wtfismyip.com/text",
@@ -71,196 +76,129 @@ var (
 	}
 )
 
-// https://pkg.go.dev/github.com/yunginnanet/Rate5#Policy
-var defUseProx = rl.Policy{
-	Window: 60,
-	Burst:  2,
-}
-
-var defBadProx = rl.Policy{
-	Window: 60,
-	Burst:  3,
-}
-
 // Returns a pointer to our default options (modified and accessed later through concurrent safe getters and setters)
-func defOpt() *swampOptions {
-	sm := &swampOptions{
-		useProxConfig: defUseProx,
-		badProxConfig: defBadProx,
+func defOpt() *config {
+	sm := &config{
+		useProxConfig: defaultUseProxyRatelimiter,
+		badProxConfig: defaultBadProxyRateLimiter,
 
 		checkEndpoints: defaultChecks,
 		userAgents:     defaultUserAgents,
+		RWMutex:        &sync.RWMutex{},
+		removeafter:    defaultRemoveAfter,
+		recycle:        true,
+		debug:          true,
+		dialerBailout:  defaultBailout,
+		stale:          defaultStaleTime,
+		maxWorkers:     defaultWorkerCount,
+		redact:         true,
 	}
-
-	sm.removeafter.Store(5)
-	sm.recycle.Store(true)
-	sm.debug.Store(false)
-	sm.validationTimeout.Store(time.Duration(12) * time.Second)
-	sm.serverTimeout.Store(time.Duration(60) * time.Second)
-
-	sm.dialerBailout.Store(defBailout)
-	sm.stale.Store(defaultStaleTime)
-	sm.maxWorkers = defWorkers
-
+	sm.validationTimeout = time.Duration(18) * time.Second
+	sm.serverTimeout = time.Duration(180) * time.Second
 	return sm
 }
 
-/*type connPoolOptions struct {
-	dialer    func() (net.Conn, error)
-	deathFunc func(*Conn) error
-}
-*/
-
-/*// scvm is a pooled net.Conn
-type scvm struct {
-	moss net.Conn
-	used atomic.Value
-}
-
-func getScvm(moss net.Conn) *scvm {
-	s := &scvm{
-		moss: moss,
-	}
-	s.used.Store(time.Now())
-	return s
-}*/
-
-// swampOptions holds our configuration for Swamp instances.
+// config holds our configuration for Swamp instances.
 // This is implemented as a pointer, and should be interacted with via the setter and getter functions.
-type swampOptions struct {
+type config struct {
 	// stale is the amount of time since verification that qualifies a proxy going stale.
 	// if a stale proxy is drawn during the use of our getter functions, it will be skipped.
-	stale atomic.Value
-
+	stale time.Duration
 	// userAgents contains a list of userAgents to be randomly drawn from for proxied requests, this should be supplied via SetUserAgents
 	userAgents []string
-
 	// debug when enabled will print results as they come in
-	debug atomic.Value
-
+	debug bool
 	// checkEndpoints includes web services that respond with (just) the WAN IP of the connection for validation purposes
 	checkEndpoints []string
-
 	// maxWorkers determines the maximum amount of workers used for checking proxies
 	maxWorkers int
-
 	// validationTimeout defines the timeout for proxy validation operations.
 	// This will apply for both the initial quick check (dial), and the second check (HTTP GET).
-	validationTimeout atomic.Value
-
+	validationTimeout time.Duration
 	// serverTimeout defines the timeout for outgoing connections made with the MysteryDialer.
-	serverTimeout atomic.Value
-
-	dialerBailout atomic.Value
-
+	serverTimeout time.Duration
+	// dialerBailout defines the amount of times a dial atttempt can fail before giving up and returning an error.
+	dialerBailout int
+	// redact when enabled will redact the target string from the debug output
+	redact bool
 	// recycle determines whether or not we recycle proxies pack into the pending channel after we dispense them
-	recycle atomic.Value
+	recycle bool
 	// remove proxy from recycling after being marked bad this many times
-	removeafter atomic.Value
+	removeafter int
+	// shuffle determines whether or not we shuffle proxies before we validate and dispense them.
+	shuffle bool
 
 	// TODO: make getters and setters for these
 	useProxConfig rl.Policy
 	badProxConfig rl.Policy
+
+	*sync.RWMutex
 }
 
-const (
-	stateUnlocked uint32 = iota
-	stateLocked
-)
-
-// Proxy represents an individual proxy
-type Proxy struct {
-	// Endpoint is the address:port of the proxy that we connect to
-	Endpoint string
-	// ProxiedIP is the address that we end up having when making proxied requests through this proxy
-	ProxiedIP string
-	// Proto is the version/Protocol (currently SOCKS* only) of the proxy
-	Proto atomic.Value
-	// lastValidated is the time this proxy was last verified working
-	lastValidated atomic.Value
-	// timesValidated is the amount of times the proxy has been validated.
-	timesValidated atomic.Value
-	// timesBad is the amount of times the proxy has been marked as bad.
-	timesBad atomic.Value
-
-	parent   *Swamp
-	lock     uint32
-	hardlock *sync.Mutex
-}
-
-// UniqueKey is an implementation of the Identity interface from Rate5.
-// See: https://pkg.go.dev/github.com/yunginnanet/Rate5#Identity
-func (sock *Proxy) UniqueKey() string {
-	return sock.Endpoint
-}
-
-// NewDefaultSwamp returns a Swamp with basic options.
-// After calling this you can use the various "setters" to change the options before calling Swamp.Start().
-func NewDefaultSwamp() *Swamp {
-	s := &Swamp{
-		ValidSocks5:  make(chan *Proxy, 1000000),
-		ValidSocks4:  make(chan *Proxy, 1000000),
-		ValidSocks4a: make(chan *Proxy, 1000000),
-		Pending:      make(chan *Proxy, 1000000),
-
-		Stats: &Statistics{
-			Valid4:    0,
-			Valid4a:   0,
-			Valid5:    0,
-			Dispensed: 0,
-			birthday:  time.Now(),
-			mu:        &sync.Mutex{},
-		},
+// NewProxyEngine returns a Swamp with default options.
+// After calling this you may use the various "setters" to change the options before calling Swamp.Start().
+func NewProxyEngine() *Swamp {
+	pe := &Swamp{
+		stats:       &statistics{birthday: time.Now()},
+		DebugLogger: &basicPrinter{},
 
 		swampopt: defOpt(),
 
 		conductor: make(chan bool),
 		mu:        &sync.RWMutex{},
-		Status:    atomic.Value{},
+		Status:    uint32(StateNew),
 	}
 
-	s.ctx, s.quit = context.WithCancel(context.Background())
-
-	s.Status.Store(New)
-
-	s.swampmap = swampMap{
-		plot:   make(map[string]*Proxy),
-		mu:     &sync.RWMutex{},
-		parent: s,
+	stats := []int64{pe.stats.Valid4, pe.stats.Valid4a, pe.stats.Valid5, pe.stats.ValidHTTP, pe.stats.Dispensed}
+	for i := range stats {
+		atomic.StoreInt64(&stats[i], 0)
 	}
 
-	s.socksServerLogger = socksLogger{parent: s}
+	chans := []*chan *Proxy{&pe.Valids.SOCKS5, &pe.Valids.SOCKS4, &pe.Valids.SOCKS4a, &pe.Valids.HTTP, &pe.Pending}
+	for _, c := range chans {
+		*c = make(chan *Proxy, 500)
+	}
 
-	atomic.StoreInt32(&s.runningdaemons, 0)
+	pe.dispenseMiddleware = func(p *Proxy) (*Proxy, bool) {
+		return p, true
+	}
+	pe.ctx, pe.quit = context.WithCancel(context.Background())
+	pe.swampmap = newSwampMap(pe)
 
-	s.useProx = rl.NewCustomLimiter(s.swampopt.useProxConfig)
-	s.badProx = rl.NewCustomLimiter(s.swampopt.badProxConfig)
+	atomic.StoreUint32(&pe.Status, uint32(StateNew))
+	atomic.StoreInt32(&pe.runningdaemons, 0)
+
+	pe.useProx = rl.NewCustomLimiter(pe.swampopt.useProxConfig)
+	pe.badProx = rl.NewCustomLimiter(pe.swampopt.badProxConfig)
 
 	var err error
-	s.pool, err = ants.NewPool(s.swampopt.maxWorkers, ants.WithOptions(ants.Options{
+	pe.pool, err = ants.NewPool(pe.swampopt.maxWorkers, ants.WithOptions(ants.Options{
 		ExpiryDuration: 2 * time.Minute,
-		PanicHandler:   s.pondPanic,
+		PanicHandler:   pe.pondPanic,
 	}))
 
 	if err != nil {
-		s.dbgPrint(red + "CRITICAL: " + err.Error() + rst)
+		buf := pools.CopABuffer.Get().(*strings.Builder)
+		buf.WriteString("CRITICAL: ")
+		buf.WriteString(err.Error())
+		pe.dbgPrint(buf)
 		panic(err)
 	}
 
-	/*	s.reaper = sync.Pool{
-			New: func() interface{} {
-				clock := time.NewTimer(time.Duration(s.swampopt.validationTimeout) * time.Second)
-				clock.Stop()
-				return clock
-			},
-		}
-	*/
-	return s
+	return pe
 }
 
-func (s *Swamp) pondPanic(p interface{}) {
-	fmt.Println("WORKER PANIC! ", p)
-	s.dbgPrint(red + "PANIC! " + fmt.Sprintf("%v", p))
+func newSwampMap(pe *Swamp) swampMap {
+	return swampMap{
+		plot:   make(map[string]*Proxy),
+		mu:     &sync.RWMutex{},
+		parent: pe,
+	}
+}
+
+func (p5 *Swamp) pondPanic(p interface{}) {
+	panic(p)
+	// pe.dbgPrint("Worker panic: " + fmt.Sprintf("%v", p))
 }
 
 // defaultUserAgents is a small list of user agents to use during validation.

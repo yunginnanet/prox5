@@ -9,9 +9,10 @@ import (
 	"syscall"
 	"time"
 
-	"git.tcp.direct/kayos/prox5"
 	"github.com/haxii/socks5"
 	"github.com/mattn/go-tty"
+
+	"git.tcp.direct/kayos/prox5"
 )
 
 var (
@@ -46,7 +47,7 @@ func StartUpstreamProxy(listen string) {
 
 func init() {
 	quit = make(chan bool)
-	swamp = prox5.NewDefaultSwamp()
+	swamp = prox5.NewProxyEngine()
 	swamp.SetMaxWorkers(5)
 	swamp.EnableDebug()
 	go StartUpstreamProxy("127.0.0.1:1555")
@@ -169,7 +170,8 @@ func main() {
 
 	go func() {
 		for {
-			fmt.Printf("4: %d, 4a: %d, 5: %d \n", swamp.Stats.Valid4, swamp.Stats.Valid4a, swamp.Stats.Valid5)
+			stats := swamp.GetStatistics()
+			fmt.Printf("4: %d, 4a: %d, 5: %d \n", stats.Valid4, stats.Valid4a, stats.Valid5)
 			time.Sleep(5 * time.Second)
 		}
 	}()
