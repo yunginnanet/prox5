@@ -40,7 +40,7 @@ type Proxy struct {
 	// timesBad is the amount of times the proxy has been marked as bad.
 	timesBad int64
 
-	parent *ProxyEngine
+	parent *Swamp
 	lock   uint32
 }
 

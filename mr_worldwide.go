@@ -8,7 +8,7 @@ import (
 )
 
 // GetHTTPClient retrieves a pointer to an http.Client powered by MysteryDialer.
-func (pe *ProxyEngine) GetHTTPClient() *http.Client {
+func (pe *Swamp) GetHTTPClient() *http.Client {
 	// var htp func(*http.Request) (*url.URL, error)
 	var dctx func(ctx context.Context, network string, addr string) (net.Conn, error)
 	//	if httun, htok := pe.GetHTTPTunnel(); htok {
@@ -37,6 +37,6 @@ func (pe *ProxyEngine) GetHTTPClient() *http.Client {
 }
 
 // RoundTrip is Mr. WorldWide. Obviously. See: https://pkg.go.dev/net/http#RoundTripper
-func (pe *ProxyEngine) RoundTrip(req *http.Request) (*http.Response, error) {
+func (pe *Swamp) RoundTrip(req *http.Request) (*http.Response, error) {
 	return pe.GetHTTPClient().Do(req)
 }

@@ -14,17 +14,17 @@ import (
 )
 
 // DialContext is a simple stub adapter to implement a net.Dialer.
-func (pe *ProxyEngine) DialContext(ctx context.Context, network, addr string) (net.Conn, error) {
+func (pe *Swamp) DialContext(ctx context.Context, network, addr string) (net.Conn, error) {
 	return pe.MysteryDialer(ctx, network, addr)
 }
 
 // Dial is a simple stub adapter to implement a net.Dialer.
-func (pe *ProxyEngine) Dial(network, addr string) (net.Conn, error) {
+func (pe *Swamp) Dial(network, addr string) (net.Conn, error) {
 	return pe.MysteryDialer(context.Background(), network, addr)
 }
 
 // DialTimeout is a simple stub adapter to implement a net.Dialer with a timeout.
-func (pe *ProxyEngine) DialTimeout(network, addr string, timeout time.Duration) (net.Conn, error) {
+func (pe *Swamp) DialTimeout(network, addr string, timeout time.Duration) (net.Conn, error) {
 	ctx, cancel := context.WithDeadline(context.Background(), time.Now().Add(timeout))
 	go func() { // this is a goroutine that calls cancel() upon the deadline expiring to avoid context leaks
 		<-ctx.Done()
@@ -33,7 +33,7 @@ func (pe *ProxyEngine) DialTimeout(network, addr string, timeout time.Duration) 
 	return pe.MysteryDialer(ctx, network, addr)
 }
 
-func (pe *ProxyEngine) addTimeout(socksString string) string {
+func (pe *Swamp) addTimeout(socksString string) string {
 	tout := pools.CopABuffer.Get().(*strings.Builder)
 	tout.WriteString(socksString)
 	tout.WriteString("?timeout=")
@@ -44,7 +44,7 @@ func (pe *ProxyEngine) addTimeout(socksString string) string {
 	return socksString
 }
 
-func (pe *ProxyEngine) popSockAndLockIt(ctx context.Context) (*Proxy, error) {
+func (pe *Swamp) popSockAndLockIt(ctx context.Context) (*Proxy, error) {
 	sock := pe.GetAnySOCKS(false)
 	socksString := sock.String()
 	select {
@@ -67,7 +67,7 @@ func (pe *ProxyEngine) popSockAndLockIt(ctx context.Context) (*Proxy, error) {
 }
 
 // MysteryDialer is a dialer function that will use a different proxy for every request.
-func (pe *ProxyEngine) MysteryDialer(ctx context.Context, network, addr string) (net.Conn, error) {
+func (pe *Swamp) MysteryDialer(ctx context.Context, network, addr string) (net.Conn, error) {
 	// pull down proxies from channel until we get a proxy good enough for our spoiled asses
 	var count = 0
 	for {

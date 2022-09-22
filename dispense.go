@@ -10,7 +10,7 @@ import (
 
 // Socks5Str gets a SOCKS5 proxy that we have fully verified (dialed and then retrieved our IP address from a what-is-my-ip endpoint.
 // Will block if one is not available!
-func (pe *ProxyEngine) Socks5Str() string {
+func (pe *Swamp) Socks5Str() string {
 	for {
 		select {
 		case sock := <-pe.Valids.SOCKS5:
@@ -27,7 +27,7 @@ func (pe *ProxyEngine) Socks5Str() string {
 
 // Socks4Str gets a SOCKS4 proxy that we have fully verified.
 // Will block if one is not available!
-func (pe *ProxyEngine) Socks4Str() string {
+func (pe *Swamp) Socks4Str() string {
 	defer pe.stats.dispense()
 	for {
 		select {
@@ -44,7 +44,7 @@ func (pe *ProxyEngine) Socks4Str() string {
 
 // Socks4aStr gets a SOCKS4 proxy that we have fully verified.
 // Will block if one is not available!
-func (pe *ProxyEngine) Socks4aStr() string {
+func (pe *Swamp) Socks4aStr() string {
 	defer pe.stats.dispense()
 	for {
 		select {
@@ -63,7 +63,7 @@ func (pe *ProxyEngine) Socks4aStr() string {
 // For now, this function does not loop forever like the GetAnySOCKS does.
 // Alternatively it can be included within the for loop by passing true to GetAnySOCKS.
 // If there is an HTTP proxy available, ok will be true. If not, it will return false without delay.
-func (pe *ProxyEngine) GetHTTPTunnel() (p *Proxy, ok bool) {
+func (pe *Swamp) GetHTTPTunnel() (p *Proxy, ok bool) {
 	select {
 	case httptunnel := <-pe.Valids.HTTP:
 		return httptunnel, true
@@ -75,7 +75,7 @@ func (pe *ProxyEngine) GetHTTPTunnel() (p *Proxy, ok bool) {
 // GetAnySOCKS retrieves any version SOCKS proxy as a Proxy type
 // Will block if one is not available!
 // StateNew/Temporary: Pass a true boolean to this to also receive HTTP proxies.
-func (pe *ProxyEngine) GetAnySOCKS(acceptHTTP bool) *Proxy {
+func (pe *Swamp) GetAnySOCKS(acceptHTTP bool) *Proxy {
 	defer pe.stats.dispense()
 	for {
 		var sock *Proxy
@@ -96,7 +96,7 @@ func (pe *ProxyEngine) GetAnySOCKS(acceptHTTP bool) *Proxy {
 	}
 }
 
-func (pe *ProxyEngine) stillGood(sock *Proxy) bool {
+func (pe *Swamp) stillGood(sock *Proxy) bool {
 	if sock == nil {
 		return false
 	}

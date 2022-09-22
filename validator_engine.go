@@ -18,7 +18,7 @@ import (
 	"git.tcp.direct/kayos/prox5/internal/pools"
 )
 
-func (pe *ProxyEngine) prepHTTP() (*http.Client, *http.Transport, *http.Request, error) {
+func (pe *Swamp) prepHTTP() (*http.Client, *http.Transport, *http.Request, error) {
 	req, err := http.NewRequest("GET", pe.GetRandomEndpoint(), bytes.NewBuffer([]byte("")))
 	if err != nil {
 		return nil, nil, nil, err
@@ -51,7 +51,7 @@ func (sock *Proxy) good() {
 	sock.lastValidated = time.Now()
 }
 
-func (pe *ProxyEngine) bakeHTTP(hmd *HandMeDown) (client *http.Client, req *http.Request, err error) {
+func (pe *Swamp) bakeHTTP(hmd *HandMeDown) (client *http.Client, req *http.Request, err error) {
 	builder := pools.CopABuffer.Get().(*strings.Builder)
 	builder.WriteString(hmd.protoCheck.String())
 	builder.WriteString("://")
@@ -83,7 +83,7 @@ func (pe *ProxyEngine) bakeHTTP(hmd *HandMeDown) (client *http.Client, req *http
 	return
 }
 
-func (pe *ProxyEngine) validate(hmd *HandMeDown) (string, error) {
+func (pe *Swamp) validate(hmd *HandMeDown) (string, error) {
 	var (
 		client *http.Client
 		req    *http.Request
@@ -105,7 +105,7 @@ func (pe *ProxyEngine) validate(hmd *HandMeDown) (string, error) {
 	return string(rbody), err
 }
 
-func (pe *ProxyEngine) anothaOne() {
+func (pe *Swamp) anothaOne() {
 	pe.stats.Checked++
 }
 
@@ -126,7 +126,7 @@ func (hmd *HandMeDown) Dial(network, addr string) (c net.Conn, err error) {
 	return hmd.conn, nil
 }
 
-func (pe *ProxyEngine) singleProxyCheck(sock *Proxy, protocol ProxyProtocol) error {
+func (pe *Swamp) singleProxyCheck(sock *Proxy, protocol ProxyProtocol) error {
 	defer pe.anothaOne()
 	split := strings.Split(sock.Endpoint, "@")
 	endpoint := split[0]
@@ -213,7 +213,7 @@ func (sock *Proxy) validate() {
 	pe.tally(sock)
 }
 
-func (pe *ProxyEngine) tally(sock *Proxy) {
+func (pe *Swamp) tally(sock *Proxy) {
 	switch sock.protocol.Get() {
 	case ProtoSOCKS4:
 		pe.stats.v4()

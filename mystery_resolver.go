@@ -12,7 +12,7 @@ type dnsCacheEntry []netaddr.IP
 
 var dnsCache = make(map[string]dnsCacheEntry)
 
-func (pe *ProxyEngine) Resolve(ctx context.Context, name string) (context.Context, net.IP, error) {
+func (pe *Swamp) Resolve(ctx context.Context, name string) (context.Context, net.IP, error) {
 	var result net.IP
 	for {
 		select {

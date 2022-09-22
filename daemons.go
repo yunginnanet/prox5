@@ -11,18 +11,18 @@ import (
 	"git.tcp.direct/kayos/prox5/internal/pools"
 )
 
-func (pe *ProxyEngine) svcUp() {
+func (pe *Swamp) svcUp() {
 	atomic.AddInt32(&pe.runningdaemons, 1)
 }
 
-func (pe *ProxyEngine) svcDown() {
+func (pe *Swamp) svcDown() {
 	atomic.AddInt32(&pe.runningdaemons, -1)
 }
 
 type swampMap struct {
 	plot   map[string]*Proxy
 	mu     *sync.RWMutex
-	parent *ProxyEngine
+	parent *Swamp
 }
 
 func (sm swampMap) add(sock string) (*Proxy, bool) {
@@ -74,7 +74,7 @@ func (sm swampMap) clear() {
 	}
 }
 
-func (pe *ProxyEngine) mapBuilder() {
+func (pe *Swamp) mapBuilder() {
 	if pe.pool.IsClosed() {
 		pe.pool.Reboot()
 	}
@@ -102,7 +102,7 @@ func (pe *ProxyEngine) mapBuilder() {
 	pe.conductor <- true
 }
 
-func (pe *ProxyEngine) recycling() int {
+func (pe *Swamp) recycling() int {
 	if !pe.GetRecyclingStatus() {
 		return 0
 	}
@@ -130,7 +130,7 @@ func (pe *ProxyEngine) recycling() int {
 	return count
 }
 
-func (pe *ProxyEngine) jobSpawner() {
+func (pe *Swamp) jobSpawner() {
 	if pe.pool.IsClosed() {
 		pe.pool.Reboot()
 	}

@@ -25,8 +25,8 @@ type ProxyChannels struct {
 	HTTP chan *Proxy
 }
 
-// ProxyEngine represents a proxy pool
-type ProxyEngine struct {
+// Swamp represents a proxy pool
+type Swamp struct {
 	Valids      ProxyChannels
 	DebugLogger logger.Logger
 
@@ -98,7 +98,7 @@ func defOpt() *config {
 	return sm
 }
 
-// config holds our configuration for ProxyEngine instances.
+// config holds our configuration for Swamp instances.
 // This is implemented as a pointer, and should be interacted with via the setter and getter functions.
 type config struct {
 	// stale is the amount of time since verification that qualifies a proxy going stale.
@@ -135,10 +135,10 @@ type config struct {
 	*sync.RWMutex
 }
 
-// NewProxyEngine returns a ProxyEngine with default options.
-// After calling this you may use the various "setters" to change the options before calling ProxyEngine.Start().
-func NewProxyEngine() *ProxyEngine {
-	pe := &ProxyEngine{
+// NewProxyEngine returns a Swamp with default options.
+// After calling this you may use the various "setters" to change the options before calling Swamp.Start().
+func NewProxyEngine() *Swamp {
+	pe := &Swamp{
 		stats:       &statistics{birthday: time.Now()},
 		DebugLogger: &basicPrinter{},
 
@@ -188,7 +188,7 @@ func NewProxyEngine() *ProxyEngine {
 	return pe
 }
 
-func newSwampMap(pe *ProxyEngine) swampMap {
+func newSwampMap(pe *Swamp) swampMap {
 	return swampMap{
 		plot:   make(map[string]*Proxy),
 		mu:     &sync.RWMutex{},
@@ -196,7 +196,7 @@ func newSwampMap(pe *ProxyEngine) swampMap {
 	}
 }
 
-func (pe *ProxyEngine) pondPanic(p interface{}) {
+func (pe *Swamp) pondPanic(p interface{}) {
 	panic(p)
 	// pe.dbgPrint("Worker panic: " + fmt.Sprintf("%v", p))
 }

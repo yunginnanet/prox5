@@ -13,7 +13,7 @@ import (
 )
 
 var (
-	swamp *prox5.ProxyEngine
+	swamp *prox5.Swamp
 	quit  chan bool
 	t     *tty.TTY
 )

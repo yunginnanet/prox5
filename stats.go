@@ -49,7 +49,7 @@ func (stats *statistics) http() {
 }
 
 // GetTotalValidated retrieves our grand total validated proxy count.
-func (pe *ProxyEngine) GetTotalValidated() int {
+func (pe *Swamp) GetTotalValidated() int {
 	stats := pe.GetStatistics()
 	return int(stats.Valid4a + stats.Valid4 + stats.Valid5 + stats.ValidHTTP)
 }

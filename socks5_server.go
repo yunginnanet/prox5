@@ -24,7 +24,7 @@ func (s socksCreds) Valid(username, password string) bool {
 // StartSOCKS5Server starts our rotating proxy SOCKS5 server.
 // listen is standard Go listen string, e.g: "127.0.0.1:1080".
 // username and password are used for authenticatig to the SOCKS5 server.
-func (pe *ProxyEngine) StartSOCKS5Server(listen, username, password string) error {
+func (pe *Swamp) StartSOCKS5Server(listen, username, password string) error {
 
 	conf := &socks5.Config{
 		Credentials: socksCreds{username: username, password: password},

@@ -25,7 +25,7 @@ const (
 )
 
 type SocksLogger struct {
-	parent *ProxyEngine
+	parent *Swamp
 }
 
 // Printf is used to handle socks server logging.
@@ -46,20 +46,20 @@ func (b *basicPrinter) Printf(format string, items ...any) {
 }
 
 // DebugEnabled returns the current state of our debug switch.
-func (pe *ProxyEngine) DebugEnabled() bool {
+func (pe *Swamp) DebugEnabled() bool {
 	debugHardLock.RLock()
 	defer debugHardLock.RUnlock()
 	return atomic.CompareAndSwapUint32(debugStatus, debugEnabled, debugEnabled)
 }
 
 // EnableDebug enables printing of verbose messages during operation
-func (pe *ProxyEngine) EnableDebug() {
+func (pe *Swamp) EnableDebug() {
 	atomic.StoreUint32(debugStatus, debugEnabled)
 }
 
 // DisableDebug enables printing of verbose messages during operation.
 // WARNING: if you are using a DebugChannel, you must read all of the messages in the channel's cache or this will block.
-func (pe *ProxyEngine) DisableDebug() {
+func (pe *Swamp) DisableDebug() {
 	atomic.StoreUint32(debugStatus, debugDisabled)
 }
 
@@ -69,7 +69,7 @@ func simpleString(s string) *strings.Builder {
 	return buf
 }
 
-func (pe *ProxyEngine) dbgPrint(builder *strings.Builder) {
+func (pe *Swamp) dbgPrint(builder *strings.Builder) {
 	defer pools.DiscardBuffer(builder)
 	if !pe.DebugEnabled() {
 		return
@@ -78,7 +78,7 @@ func (pe *ProxyEngine) dbgPrint(builder *strings.Builder) {
 	return
 }
 
-func (pe *ProxyEngine) msgUnableToReach(socksString, target string, err error) {
+func (pe *Swamp) msgUnableToReach(socksString, target string, err error) {
 	if !pe.DebugEnabled() {
 		return
 	}
@@ -99,7 +99,7 @@ func (pe *ProxyEngine) msgUnableToReach(socksString, target string, err error) {
 	pe.dbgPrint(buf)
 }
 
-func (pe *ProxyEngine) msgUsingProxy(socksString string) {
+func (pe *Swamp) msgUsingProxy(socksString string) {
 	if !pe.DebugEnabled() {
 		return
 	}
@@ -109,7 +109,7 @@ func (pe *ProxyEngine) msgUsingProxy(socksString string) {
 	pe.dbgPrint(buf)
 }
 
-func (pe *ProxyEngine) msgFailedMiddleware(socksString string) {
+func (pe *Swamp) msgFailedMiddleware(socksString string) {
 	if !pe.DebugEnabled() {
 		return
 	}
@@ -120,7 +120,7 @@ func (pe *ProxyEngine) msgFailedMiddleware(socksString string) {
 	pe.dbgPrint(buf)
 }
 
-func (pe *ProxyEngine) msgTry(socksString string) {
+func (pe *Swamp) msgTry(socksString string) {
 	if !pe.DebugEnabled() {
 		return
 	}
@@ -130,7 +130,7 @@ func (pe *ProxyEngine) msgTry(socksString string) {
 	pe.dbgPrint(buf)
 }
 
-func (pe *ProxyEngine) msgCantGetLock(socksString string, putback bool) {
+func (pe *Swamp) msgCantGetLock(socksString string, putback bool) {
 	if !pe.DebugEnabled() {
 		return
 	}
@@ -143,7 +143,7 @@ func (pe *ProxyEngine) msgCantGetLock(socksString string, putback bool) {
 	pe.dbgPrint(buf)
 }
 
-func (pe *ProxyEngine) msgGotLock(socksString string) {
+func (pe *Swamp) msgGotLock(socksString string) {
 	if !pe.DebugEnabled() {
 		return
 	}
@@ -153,7 +153,7 @@ func (pe *ProxyEngine) msgGotLock(socksString string) {
 	pe.dbgPrint(buf)
 }
 
-func (pe *ProxyEngine) msgChecked(sock *Proxy, success bool) {
+func (pe *Swamp) msgChecked(sock *Proxy, success bool) {
 	if !pe.DebugEnabled() {
 		return
 	}
@@ -172,7 +172,7 @@ func (pe *ProxyEngine) msgChecked(sock *Proxy, success bool) {
 	pe.dbgPrint(buf)
 }
 
-func (pe *ProxyEngine) msgBadProxRate(sock *Proxy) {
+func (pe *Swamp) msgBadProxRate(sock *Proxy) {
 	if !pe.DebugEnabled() {
 		return
 	}
