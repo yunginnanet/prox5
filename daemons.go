@@ -35,7 +35,7 @@ func (sm swampMap) add(sock string) (*Proxy, bool) {
 
 	sm.plot[sock] = &Proxy{
 		Endpoint:       sock,
-		proto:          protoNULL,
+		protocol:       newImmutableProto(),
 		lastValidated:  time.UnixMilli(0),
 		timesValidated: 0,
 		timesBad:       0,

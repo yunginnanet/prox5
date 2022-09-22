@@ -53,14 +53,12 @@ func (sock *Proxy) good() {
 
 func (pe *ProxyEngine) bakeHTTP(hmd *HandMeDown) (client *http.Client, req *http.Request, err error) {
 	builder := pools.CopABuffer.Get().(*strings.Builder)
-	builder.WriteString("socks")
-	builder.WriteString(getProtoStr(hmd.sock.proto))
+	builder.WriteString(hmd.protoCheck.String())
 	builder.WriteString("://")
 	builder.WriteString(hmd.sock.Endpoint)
 	builder.WriteString("/?timeout=")
 	builder.WriteString(pe.GetValidationTimeoutStr())
 	builder.WriteString("s")
-
 	dialSocks := socks.DialWithConn(builder.String(), hmd.conn)
 	pools.DiscardBuffer(builder)
 
@@ -73,7 +71,7 @@ func (pe *ProxyEngine) bakeHTTP(hmd *HandMeDown) (client *http.Client, req *http
 		return
 	}
 
-	if hmd.sock.proto != ProtoHTTP {
+	if hmd.protoCheck != ProtoHTTP {
 		transport.Dial = dialSocks
 		client.Transport = transport
 		return
@@ -112,9 +110,10 @@ func (pe *ProxyEngine) anothaOne() {
 }
 
 type HandMeDown struct {
-	sock  *Proxy
-	conn  net.Conn
-	under proxy.Dialer
+	sock       *Proxy
+	protoCheck ProxyProtocol
+	conn       net.Conn
+	under      proxy.Dialer
 }
 
 func (hmd *HandMeDown) Dial(network, addr string) (c net.Conn, err error) {
@@ -127,7 +126,7 @@ func (hmd *HandMeDown) Dial(network, addr string) (c net.Conn, err error) {
 	return hmd.conn, nil
 }
 
-func (pe *ProxyEngine) singleProxyCheck(sock *Proxy) error {
+func (pe *ProxyEngine) singleProxyCheck(sock *Proxy, protocol ProxyProtocol) error {
 	defer pe.anothaOne()
 	split := strings.Split(sock.Endpoint, "@")
 	endpoint := split[0]
@@ -139,7 +138,7 @@ func (pe *ProxyEngine) singleProxyCheck(sock *Proxy) error {
 		return err
 	}
 
-	hmd := &HandMeDown{sock: sock, conn: conn, under: proxy.Direct}
+	hmd := &HandMeDown{sock: sock, conn: conn, under: proxy.Direct, protoCheck: protocol}
 
 	resp, err := pe.validate(hmd)
 	if err != nil {
@@ -155,19 +154,6 @@ func (pe *ProxyEngine) singleProxyCheck(sock *Proxy) error {
 	sock.ProxiedIP = resp
 
 	return nil
-}
-
-var protoMap = map[ProxyProtocol]string{
-	ProtoSOCKS4: "4", ProtoSOCKS4a: "4a",
-	ProtoSOCKS5: "5", ProtoHTTP: "http",
-	ProtoSOCKS5h: "5h", protoNULL: "null",
-}
-
-func getProtoStr(protocol ProxyProtocol) string {
-	if str, ok := protoMap[protocol]; ok {
-		return str
-	}
-	panic(protoMap[protocol])
 }
 
 func (sock *Proxy) validate() {
@@ -190,30 +176,30 @@ func (sock *Proxy) validate() {
 
 	// TODO: consider giving the option for verbose logging of this stuff?
 
-	if sock.timesValidated == 0 || sock.proto == protoNULL {
+	if sock.timesValidated == 0 || sock.protocol.Get() == ProtoNull {
 		// try to use the proxy with all 3 SOCKS versions
-		for proto := range protoMap {
+		for tryProto := range protoMap {
 			select {
 			case <-pe.ctx.Done():
 				return
 			default:
-				sock.proto = proto
-				if err := pe.singleProxyCheck(sock); err != nil {
+				if err := pe.singleProxyCheck(sock, tryProto); err != nil {
 					// if the proxy is no good, we continue on to the next.
 					continue
 				}
+				sock.protocol.set(tryProto)
 				break
 			}
 		}
 	} else {
-		if err := pe.singleProxyCheck(sock); err != nil {
+		if err := pe.singleProxyCheck(sock, sock.GetProto()); err != nil {
 			sock.bad()
 			pe.badProx.Check(sock)
 			return
 		}
 	}
 
-	switch sock.proto {
+	switch sock.protocol.Get() {
 	case ProtoSOCKS4, ProtoSOCKS4a, ProtoSOCKS5, ProtoHTTP:
 		pe.msgChecked(sock, true)
 	default:
@@ -228,7 +214,7 @@ func (sock *Proxy) validate() {
 }
 
 func (pe *ProxyEngine) tally(sock *Proxy) {
-	switch sock.proto {
+	switch sock.protocol.Get() {
 	case ProtoSOCKS4:
 		pe.stats.v4()
 		pe.Valids.SOCKS4 <- sock

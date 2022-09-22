@@ -1,9 +1,12 @@
 package prox5
 
 import (
+	"strings"
 	"time"
 
 	rl "github.com/yunginnanet/Rate5"
+
+	"git.tcp.direct/kayos/prox5/internal/pools"
 )
 
 // https://pkg.go.dev/github.com/yunginnanet/Rate5#Policy
@@ -22,25 +25,14 @@ const (
 	stateLocked
 )
 
-type ProxyProtocol uint8
-
-const (
-	protoNULL ProxyProtocol = iota
-	ProtoSOCKS4
-	ProtoSOCKS4a
-	ProtoSOCKS5
-	ProtoSOCKS5h
-	ProtoHTTP
-)
-
 // Proxy represents an individual proxy
 type Proxy struct {
 	// Endpoint is the address:port of the proxy that we connect to
 	Endpoint string
 	// ProxiedIP is the address that we end up having when making proxied requests through this proxy
 	ProxiedIP string
-	// proto is the version/Protocol (currently SOCKS* only) of the proxy
-	proto ProxyProtocol
+	// protocol is the version/Protocol (currently SOCKS* only) of the proxy
+	protocol proto
 	// lastValidated is the time this proxy was last verified working
 	lastValidated time.Time
 	// timesValidated is the amount of times the proxy has been validated.
@@ -56,4 +48,32 @@ type Proxy struct {
 // See: https://pkg.go.dev/github.com/yunginnanet/Rate5#Identity
 func (sock *Proxy) UniqueKey() string {
 	return sock.Endpoint
+}
+
+// GetProto retrieves the known protocol value of the Proxy.
+func (sock *Proxy) GetProto() ProxyProtocol {
+	return sock.protocol.Get()
+}
+
+// GetProto safely retrieves the protocol value of the Proxy.
+func (sock *Proxy) String() string {
+	tout := ""
+	if sock.parent.GetServerTimeoutStr() != "-1" {
+		tbuf := pools.CopABuffer.Get().(*strings.Builder)
+		tbuf.WriteString("?timeout=")
+		tbuf.WriteString(sock.parent.GetServerTimeoutStr())
+		tbuf.WriteString("s")
+		tout = tbuf.String()
+		pools.DiscardBuffer(tbuf)
+	}
+	buf := pools.CopABuffer.Get().(*strings.Builder)
+	buf.WriteString(sock.GetProto().String())
+	buf.WriteString("://")
+	buf.WriteString(sock.Endpoint)
+	if tout != "" {
+		buf.WriteString(tout)
+	}
+	out := buf.String()
+	pools.DiscardBuffer(buf)
+	return out
 }

@@ -2,43 +2,11 @@ package prox5
 
 import (
 	"strconv"
-	"strings"
 	"sync/atomic"
 	"time"
 
 	"git.tcp.direct/kayos/common/entropy"
-
-	"git.tcp.direct/kayos/prox5/internal/pools"
 )
-
-// GetProto retrieves the known protocol value of the Proxy.
-func (sock *Proxy) GetProto() ProxyProtocol {
-	return sock.proto
-}
-
-// GetProto safely retrieves the protocol value of the Proxy.
-func (sock *Proxy) String() string {
-	tout := ""
-	if sock.parent.GetServerTimeoutStr() != "-1" {
-		tbuf := pools.CopABuffer.Get().(*strings.Builder)
-		tbuf.WriteString("?timeout=")
-		tbuf.WriteString(sock.parent.GetServerTimeoutStr())
-		tbuf.WriteString("s")
-		tout = tbuf.String()
-		pools.DiscardBuffer(tbuf)
-	}
-	buf := pools.CopABuffer.Get().(*strings.Builder)
-	buf.WriteString("socks")
-	buf.WriteString(getProtoStr(sock.GetProto()))
-	buf.WriteString("://")
-	buf.WriteString(sock.Endpoint)
-	if tout != "" {
-		buf.WriteString(tout)
-	}
-	out := buf.String()
-	pools.DiscardBuffer(buf)
-	return out
-}
 
 // GetStatistics returns all current statistics.
 // * This is a pointer, do not modify it!

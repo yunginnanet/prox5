@@ -9,19 +9,25 @@ require (
 	github.com/haxii/socks5 v1.0.0
 	github.com/mattn/go-tty v0.0.4
 	github.com/miekg/dns v1.1.50
+	github.com/ooni/oohttp v0.3.0
 	github.com/panjf2000/ants/v2 v2.5.0
+	github.com/refraction-networking/utls v1.1.2
 	github.com/yunginnanet/Rate5 v1.0.1
-	golang.org/x/net v0.0.0-20210726213435-c6fcb2dbf985
+	golang.org/x/net v0.0.0-20220812174116-3211cb980234
 	inet.af/netaddr v0.0.0-20220617031823-097006376321
 )
 
 require (
+	github.com/andybalholm/brotli v1.0.4 // indirect
+	github.com/klauspost/compress v1.13.6 // indirect
 	github.com/mattn/go-isatty v0.0.14 // indirect
 	github.com/patrickmn/go-cache v2.1.0+incompatible // indirect
 	go4.org/intern v0.0.0-20211027215823-ae77deb06f29 // indirect
 	go4.org/unsafe/assume-no-moving-gc v0.0.0-20220617031537-928513b29760 // indirect
+	golang.org/x/crypto v0.0.0-20220513210258-46612604a0f9 // indirect
 	golang.org/x/mod v0.4.2 // indirect
-	golang.org/x/sys v0.0.0-20210927094055-39ccf1dd6fa6 // indirect
+	golang.org/x/sys v0.0.0-20220728004956-3c1f35247d10 // indirect
+	golang.org/x/text v0.3.7 // indirect
 	golang.org/x/tools v0.1.6-0.20210726203631-07bc1bf47fb2 // indirect
 	golang.org/x/xerrors v0.0.0-20200804184101-5ec99f83aff1 // indirect
 	nullprogram.com/x/rng v1.1.0 // indirect

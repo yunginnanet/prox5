@@ -161,14 +161,9 @@ func (pe *ProxyEngine) msgChecked(sock *Proxy, success bool) {
 	if success {
 		buf.WriteString("verified ")
 		buf.WriteString(sock.Endpoint)
-		if sock.proto != ProtoHTTP {
-			buf.WriteString(" as SOCKS")
-		} else {
-			buf.WriteString(" as HTTP proxy")
-			pe.dbgPrint(buf)
-			return
-		}
-		buf.WriteString(getProtoStr(sock.proto))
+		buf.WriteString(" as ")
+		buf.WriteString(sock.protocol.Get().String())
+		buf.WriteString(" proxy")
 		pe.dbgPrint(buf)
 		return
 	}
