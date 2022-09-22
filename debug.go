@@ -38,11 +38,20 @@ func (s SocksLogger) Printf(format string, a ...interface{}) {
 type basicPrinter struct{}
 
 func (b *basicPrinter) Print(str string) {
-	println("[prox5] " + str)
+	if !useDebugChannel {
+		println("[prox5] " + str)
+	} else {
+		debugChan <- str
+	}
 }
 
 func (b *basicPrinter) Printf(format string, items ...any) {
-	println(fmt.Sprintf("prox5: "+format, items))
+	str := fmt.Sprintf("[prox5] "+format, items)
+	if !useDebugChannel {
+		println(str)
+	} else {
+		debugChan <- str
+	}
 }
 
 // DebugEnabled returns the current state of our debug switch.
@@ -158,17 +167,17 @@ func (p5 *Swamp) msgChecked(sock *Proxy, success bool) {
 		return
 	}
 	buf := pools.CopABuffer.Get().(*strings.Builder)
-	if success {
-		buf.WriteString("verified ")
+	if !success {
+		buf.WriteString("failed to verify: ")
 		buf.WriteString(sock.Endpoint)
-		buf.WriteString(" as ")
-		buf.WriteString(sock.protocol.Get().String())
-		buf.WriteString(" proxy")
 		p5.dbgPrint(buf)
 		return
 	}
-	buf.WriteString("failed to verify: ")
+	buf.WriteString("verified ")
 	buf.WriteString(sock.Endpoint)
+	buf.WriteString(" as ")
+	buf.WriteString(sock.protocol.Get().String())
+	buf.WriteString(" proxy")
 	p5.dbgPrint(buf)
 }
 
@@ -180,4 +189,22 @@ func (p5 *Swamp) msgBadProxRate(sock *Proxy) {
 	buf.WriteString("badProx ratelimited: ")
 	buf.WriteString(sock.Endpoint)
 	p5.dbgPrint(buf)
+}
+
+// ------------
+
+var (
+	debugChan       chan string
+	useDebugChannel bool
+)
+
+// DebugChannel will return a channel which will receive debug messages once debug is enabled.
+// This will alter the flow of debug messages, they will no longer print to console, they will be pushed into this channel.
+// Make sure you pull from the channel eventually to avoid build up of blocked goroutines.
+//
+// Deprecated: use DebugLogger instead. This will be removed in a future version.
+func (p5 *Swamp) DebugChannel() chan string {
+	debugChan = make(chan string, 100)
+	useDebugChannel = true
+	return debugChan
 }
