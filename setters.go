@@ -7,113 +7,113 @@ import (
 )
 
 // AddUserAgents appends to the list of useragents we randomly choose from during proxied requests
-func (pe *Swamp) AddUserAgents(uagents []string) {
-	pe.mu.Lock()
-	defer pe.mu.Unlock()
-	pe.swampopt.userAgents = append(pe.swampopt.userAgents, uagents...)
+func (p5 *Swamp) AddUserAgents(uagents []string) {
+	p5.mu.Lock()
+	defer p5.mu.Unlock()
+	p5.swampopt.userAgents = append(p5.swampopt.userAgents, uagents...)
 }
 
 // SetUserAgents sets the list of useragents we randomly choose from during proxied requests
-func (pe *Swamp) SetUserAgents(uagents []string) {
-	pe.mu.Lock()
-	defer pe.mu.Unlock()
-	pe.swampopt.userAgents = uagents
+func (p5 *Swamp) SetUserAgents(uagents []string) {
+	p5.mu.Lock()
+	defer p5.mu.Unlock()
+	p5.swampopt.userAgents = uagents
 }
 
 // SetCheckEndpoints replaces the running list of whatismyip style endpoitns for validation. (must return only the WAN IP)
-func (pe *Swamp) SetCheckEndpoints(newendpoints []string) {
-	pe.mu.Lock()
-	defer pe.mu.Unlock()
-	pe.swampopt.checkEndpoints = newendpoints
+func (p5 *Swamp) SetCheckEndpoints(newendpoints []string) {
+	p5.mu.Lock()
+	defer p5.mu.Unlock()
+	p5.swampopt.checkEndpoints = newendpoints
 }
 
 // AddCheckEndpoints appends entries to the running list of whatismyip style endpoitns for validation. (must return only the WAN IP)
-func (pe *Swamp) AddCheckEndpoints(endpoints []string) {
-	pe.mu.Lock()
-	defer pe.mu.Unlock()
-	pe.swampopt.checkEndpoints = append(pe.swampopt.checkEndpoints, endpoints...)
+func (p5 *Swamp) AddCheckEndpoints(endpoints []string) {
+	p5.mu.Lock()
+	defer p5.mu.Unlock()
+	p5.swampopt.checkEndpoints = append(p5.swampopt.checkEndpoints, endpoints...)
 }
 
 // SetStaleTime replaces the duration of time after which a proxy will be considered "stale". stale proxies will be skipped upon retrieval.
-func (pe *Swamp) SetStaleTime(newtime time.Duration) {
-	pe.swampopt.Lock()
-	defer pe.swampopt.Unlock()
-	pe.swampopt.stale = newtime
+func (p5 *Swamp) SetStaleTime(newtime time.Duration) {
+	p5.swampopt.Lock()
+	defer p5.swampopt.Unlock()
+	p5.swampopt.stale = newtime
 }
 
 // SetValidationTimeout sets the validationTimeout option.
-func (pe *Swamp) SetValidationTimeout(timeout time.Duration) {
-	pe.swampopt.Lock()
-	defer pe.swampopt.Unlock()
-	pe.swampopt.validationTimeout = timeout
+func (p5 *Swamp) SetValidationTimeout(timeout time.Duration) {
+	p5.swampopt.Lock()
+	defer p5.swampopt.Unlock()
+	p5.swampopt.validationTimeout = timeout
 }
 
 // SetServerTimeout sets the serverTimeout option.
 // * serverTimeout defines the timeout for outgoing connections made with the MysteryDialer.
 // * To disable timeout on outgoing MysteryDialer connections, set this to time.Duration(0).
-func (pe *Swamp) SetServerTimeout(timeout time.Duration) {
-	pe.swampopt.Lock()
-	defer pe.swampopt.Unlock()
-	pe.swampopt.serverTimeout = timeout
+func (p5 *Swamp) SetServerTimeout(timeout time.Duration) {
+	p5.swampopt.Lock()
+	defer p5.swampopt.Unlock()
+	p5.swampopt.serverTimeout = timeout
 }
 
 // SetMaxWorkers set the maximum workers for proxy checking and clears the current proxy map and worker pool jobs.
-func (pe *Swamp) SetMaxWorkers(num int) {
-	pe.pool.Tune(num)
+func (p5 *Swamp) SetMaxWorkers(num int) {
+	p5.pool.Tune(num)
 }
 
 // EnableRecycling enables recycling used proxies back into the pending channel for revalidation after dispensed.
-func (pe *Swamp) EnableRecycling() {
-	pe.swampopt.Lock()
-	defer pe.swampopt.Unlock()
-	pe.swampopt.recycle = true
+func (p5 *Swamp) EnableRecycling() {
+	p5.swampopt.Lock()
+	defer p5.swampopt.Unlock()
+	p5.swampopt.recycle = true
 }
 
 // DisableRecycling disables recycling used proxies back into the pending channel for revalidation after dispensed.
-func (pe *Swamp) DisableRecycling() {
-	pe.swampopt.Lock()
-	defer pe.swampopt.Unlock()
-	pe.swampopt.recycle = false
+func (p5 *Swamp) DisableRecycling() {
+	p5.swampopt.Lock()
+	defer p5.swampopt.Unlock()
+	p5.swampopt.recycle = false
 }
 
 // SetRemoveAfter sets the removeafter policy, the amount of times a recycled proxy is marked as bad before it is removed entirely.
 //   - Default is 10
 //   - To disable deleting entirely, set this value to -1
 //   - Only applies when recycling is enabled
-func (pe *Swamp) SetRemoveAfter(timesfailed int) {
-	pe.swampopt.Lock()
-	defer pe.swampopt.Unlock()
-	pe.swampopt.removeafter = timesfailed
+func (p5 *Swamp) SetRemoveAfter(timesfailed int) {
+	p5.swampopt.Lock()
+	defer p5.swampopt.Unlock()
+	p5.swampopt.removeafter = timesfailed
 }
 
 // SetDialerBailout sets the amount of times the MysteryDialer will dial out and fail before it bails out.
 //   - The dialer will attempt to redial a destination with a different proxy a specified amount of times before it gives up
-func (pe *Swamp) SetDialerBailout(dialattempts int) {
-	pe.swampopt.Lock()
-	defer pe.swampopt.Unlock()
-	pe.swampopt.dialerBailout = dialattempts
+func (p5 *Swamp) SetDialerBailout(dialattempts int) {
+	p5.swampopt.Lock()
+	defer p5.swampopt.Unlock()
+	p5.swampopt.dialerBailout = dialattempts
 }
 
 // SetDispenseMiddleware will add a function that sits within the dialing process of the MysteryDialer and anyhing using it.
 // This means this function will be called mid-dial during connections. Return true to approve proxy, false to skip it.
 // Take care modiying the proxy in-flight as it is a pointer.
-func (pe *Swamp) SetDispenseMiddleware(f func(*Proxy) (*Proxy, bool)) {
-	pe.mu.Lock()
-	defer pe.mu.Unlock()
-	pe.dispenseMiddleware = f
+func (p5 *Swamp) SetDispenseMiddleware(f func(*Proxy) (*Proxy, bool)) {
+	p5.mu.Lock()
+	defer p5.mu.Unlock()
+	p5.dispenseMiddleware = f
 }
 
 // SetDebugLogger sets the debug logger for the Swamp. See the Logger interface for implementation details.
-func (pe *Swamp) SetDebugLogger(l logger.Logger) {
+func (p5 *Swamp) SetDebugLogger(l logger.Logger) {
 	debugHardLock.Lock()
-	pe.mu.Lock()
-	pe.DebugLogger = l
-	pe.mu.Unlock()
+	p5.mu.Lock()
+	p5.DebugLogger = l
+	p5.mu.Unlock()
 	debugHardLock.Unlock()
 }
 
-func (pe *Swamp) SetShuffle(shuffle bool) {
-	pe.mu.Lock()
-	defer pe.mu.Unlock()
-	pe.swampopt.shuffle = shuffle
+func (p5 *Swamp) SetShuffle(shuffle bool) {
+	p5.mu.Lock()
+	defer p5.mu.Unlock()
+	p5.swampopt.shuffle = shuffle
 }

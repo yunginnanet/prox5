@@ -45,7 +45,7 @@ func (p5 *Swamp) addTimeout(socksString string) string {
 }
 
 func (p5 *Swamp) popSockAndLockIt(ctx context.Context) (*Proxy, error) {
-	sock := p5.GetAnySOCKS(false)
+	sock := p5.GetAnySOCKS()
 	socksString := sock.String()
 	select {
 	case <-ctx.Done():

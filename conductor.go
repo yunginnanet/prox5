@@ -19,11 +19,11 @@ const (
 )
 
 // Start starts our proxy pool operations. Trying to start a running Swamp will return an error.
-func (pe *Swamp) Start() error {
-	if atomic.LoadUint32(&pe.Status) != uint32(StateNew) {
-		return pe.Resume()
+func (p5 *Swamp) Start() error {
+	if atomic.LoadUint32(&p5.Status) != uint32(StateNew) {
+		return p5.Resume()
 	}
-	pe.startDaemons()
+	p5.startDaemons()
 	return nil
 }
 
@@ -34,39 +34,39 @@ Pause will cease the creation of any new proxy validation operations.
   - Options may be changed and proxy lists may be loaded when paused.
   - Pausing an already paused Swamp is a nonop.
 */
-func (pe *Swamp) Pause() error {
-	if !pe.IsRunning() {
+func (p5 *Swamp) Pause() error {
+	if !p5.IsRunning() {
 		return errors.New("not running")
 	}
 
-	pe.dbgPrint(simpleString("pausing proxy pool"))
+	p5.dbgPrint(simpleString("pausing proxy pool"))
 
-	pe.quit()
+	p5.quit()
 
-	atomic.StoreUint32(&pe.Status, uint32(StatePaused))
+	atomic.StoreUint32(&p5.Status, uint32(StatePaused))
 	return nil
 }
 
-func (pe *Swamp) startDaemons() {
-	go pe.mapBuilder()
-	<-pe.conductor
-	pe.svcUp()
-	go pe.jobSpawner()
+func (p5 *Swamp) startDaemons() {
+	go p5.mapBuilder()
+	<-p5.conductor
+	p5.svcUp()
+	go p5.jobSpawner()
 
 	for {
-		if pe.IsRunning() {
-			atomic.StoreUint32(&pe.Status, uint32(StateRunning))
+		if p5.IsRunning() {
+			atomic.StoreUint32(&p5.Status, uint32(StateRunning))
 			break
 		}
 	}
 }
 
 // Resume will resume pause proxy pool operations, attempting to resume a running Swamp is returns an error.
-func (pe *Swamp) Resume() error {
-	if pe.IsRunning() {
+func (p5 *Swamp) Resume() error {
+	if p5.IsRunning() {
 		return errors.New("already running")
 	}
-	pe.ctx, pe.quit = context.WithCancel(context.Background())
-	pe.startDaemons()
+	p5.ctx, p5.quit = context.WithCancel(context.Background())
+	p5.startDaemons()
 	return nil
 }

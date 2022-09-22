@@ -10,6 +10,7 @@ require (
 	github.com/mattn/go-tty v0.0.4
 	github.com/miekg/dns v1.1.50
 	github.com/ooni/oohttp v0.3.0
+	github.com/panjf2000/ants/v2 v2.5.0
 	github.com/refraction-networking/utls v1.1.2
 	github.com/yunginnanet/Rate5 v1.1.0
 	golang.org/x/net v0.0.0-20220921203646-d300de134e69

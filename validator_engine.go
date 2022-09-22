@@ -18,13 +18,13 @@ import (
 	"git.tcp.direct/kayos/prox5/internal/pools"
 )
 
-func (pe *Swamp) prepHTTP() (*http.Client, *http.Transport, *http.Request, error) {
-	req, err := http.NewRequest("GET", pe.GetRandomEndpoint(), bytes.NewBuffer([]byte("")))
+func (p5 *Swamp) prepHTTP() (*http.Client, *http.Transport, *http.Request, error) {
+	req, err := http.NewRequest("GET", p5.GetRandomEndpoint(), bytes.NewBuffer([]byte("")))
 	if err != nil {
 		return nil, nil, nil, err
 	}
 	headers := make(map[string]string)
-	headers["User-Agent"] = pe.RandomUserAgent()
+	headers["User-Agent"] = p5.RandomUserAgent()
 	headers["Accept"] = "text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,image/apng,*/*;q=0.8"
 	headers["Accept-Language"] = "en-US,en;q=0.5"
 	headers["'Accept-Encoding'"] = "gzip, deflate, br"
@@ -36,7 +36,7 @@ func (pe *Swamp) prepHTTP() (*http.Client, *http.Transport, *http.Request, error
 	var transporter = &http.Transport{
 		DisableKeepAlives:   true,
 		TLSClientConfig:     &tls.Config{InsecureSkipVerify: true}, //nolint:gosec
-		TLSHandshakeTimeout: pe.GetValidationTimeout(),
+		TLSHandshakeTimeout: p5.GetValidationTimeout(),
 	}
 
 	return client, transporter, req, err
@@ -51,13 +51,13 @@ func (sock *Proxy) good() {
 	sock.lastValidated = time.Now()
 }
 
-func (pe *Swamp) bakeHTTP(hmd *HandMeDown) (client *http.Client, req *http.Request, err error) {
+func (p5 *Swamp) bakeHTTP(hmd *HandMeDown) (client *http.Client, req *http.Request, err error) {
 	builder := pools.CopABuffer.Get().(*strings.Builder)
 	builder.WriteString(hmd.protoCheck.String())
 	builder.WriteString("://")
 	builder.WriteString(hmd.sock.Endpoint)
 	builder.WriteString("/?timeout=")
-	builder.WriteString(pe.GetValidationTimeoutStr())
+	builder.WriteString(p5.GetValidationTimeoutStr())
 	builder.WriteString("s")
 	dialSocks := socks.DialWithConn(builder.String(), hmd.conn)
 	pools.DiscardBuffer(builder)
@@ -67,7 +67,7 @@ func (pe *Swamp) bakeHTTP(hmd *HandMeDown) (client *http.Client, req *http.Reque
 		transport *http.Transport
 	)
 
-	if client, transport, req, err = pe.prepHTTP(); err != nil {
+	if client, transport, req, err = p5.prepHTTP(); err != nil {
 		return
 	}
 
@@ -83,14 +83,14 @@ func (pe *Swamp) bakeHTTP(hmd *HandMeDown) (client *http.Client, req *http.Reque
 	return
 }
 
-func (pe *Swamp) validate(hmd *HandMeDown) (string, error) {
+func (p5 *Swamp) validate(hmd *HandMeDown) (string, error) {
 	var (
 		client *http.Client
 		req    *http.Request
 		err    error
 	)
 
-	client, req, err = pe.bakeHTTP(hmd)
+	client, req, err = p5.bakeHTTP(hmd)
 	if err != nil {
 		return "", err
 	}
@@ -105,8 +105,8 @@ func (pe *Swamp) validate(hmd *HandMeDown) (string, error) {
 	return string(rbody), err
 }
 
-func (pe *Swamp) anothaOne() {
-	pe.stats.Checked++
+func (p5 *Swamp) anothaOne() {
+	p5.stats.Checked++
 }
 
 type HandMeDown struct {
@@ -126,28 +126,28 @@ func (hmd *HandMeDown) Dial(network, addr string) (c net.Conn, err error) {
 	return hmd.conn, nil
 }
 
-func (pe *Swamp) singleProxyCheck(sock *Proxy, protocol ProxyProtocol) error {
-	defer pe.anothaOne()
+func (p5 *Swamp) singleProxyCheck(sock *Proxy, protocol ProxyProtocol) error {
+	defer p5.anothaOne()
 	split := strings.Split(sock.Endpoint, "@")
 	endpoint := split[0]
 	if len(split) == 2 {
 		endpoint = split[1]
 	}
-	conn, err := net.DialTimeout("tcp", endpoint, pe.GetValidationTimeout())
+	conn, err := net.DialTimeout("tcp", endpoint, p5.GetValidationTimeout())
 	if err != nil {
 		return err
 	}
 
 	hmd := &HandMeDown{sock: sock, conn: conn, under: proxy.Direct, protoCheck: protocol}
 
-	resp, err := pe.validate(hmd)
+	resp, err := p5.validate(hmd)
 	if err != nil {
-		pe.badProx.Check(sock)
+		p5.badProx.Check(sock)
 		return err
 	}
 
 	if newip := net.ParseIP(resp); newip == nil {
-		pe.badProx.Check(sock)
+		p5.badProx.Check(sock)
 		return errors.New("bad response from http request: " + resp)
 	}
 
@@ -213,20 +213,20 @@ func (sock *Proxy) validate() {
 	pe.tally(sock)
 }
 
-func (pe *Swamp) tally(sock *Proxy) {
+func (p5 *Swamp) tally(sock *Proxy) {
 	switch sock.protocol.Get() {
 	case ProtoSOCKS4:
-		pe.stats.v4()
-		pe.Valids.SOCKS4 <- sock
+		p5.stats.v4()
+		p5.Valids.SOCKS4 <- sock
 	case ProtoSOCKS4a:
-		pe.stats.v4a()
-		pe.Valids.SOCKS4a <- sock
+		p5.stats.v4a()
+		p5.Valids.SOCKS4a <- sock
 	case ProtoSOCKS5:
-		pe.stats.v5()
-		pe.Valids.SOCKS5 <- sock
+		p5.stats.v5()
+		p5.Valids.SOCKS5 <- sock
 	case ProtoHTTP:
-		pe.stats.http()
-		pe.Valids.HTTP <- sock
+		p5.stats.http()
+		p5.Valids.HTTP <- sock
 	default:
 		return
 	}
