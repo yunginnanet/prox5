@@ -18,12 +18,12 @@ func init() {
 
 // LoadProxyTXT loads proxies from a given seed file and feeds them to the mapBuilder to be later queued automatically for validation.
 // Expects one of the following formats for each line:
-// * 127.0.0.1:1080
-// * 127.0.0.1:1080:user:pass
-// * yeet.com:1080
-// * yeet.com:1080:user:pass
-// * [fe80::2ef0:5dff:fe7f:c299]:1080
-// * [fe80::2ef0:5dff:fe7f:c299]:1080:user:pass
+//   - 127.0.0.1:1080
+//   - 127.0.0.1:1080:user:pass
+//   - yeet.com:1080
+//   - yeet.com:1080:user:pass
+//   - [fe80::2ef0:5dff:fe7f:c299]:1080
+//   - [fe80::2ef0:5dff:fe7f:c299]:1080:user:pass
 func (p5 *Swamp) LoadProxyTXT(seedFile string) (count int) {
 	f, err := os.Open(seedFile)
 	if err != nil {
@@ -49,12 +49,12 @@ func (p5 *Swamp) LoadProxyTXT(seedFile string) (count int) {
 
 // LoadSingleProxy loads a SOCKS proxy into our map.
 // Expects one of the following formats:
-// * 127.0.0.1:1080
-// * 127.0.0.1:1080:user:pass
-// * yeet.com:1080
-// * yeet.com:1080:user:pass
-// * [fe80::2ef0:5dff:fe7f:c299]:1080
-// * [fe80::2ef0:5dff:fe7f:c299]:1080:user:pass
+//   - 127.0.0.1:1080
+//   - 127.0.0.1:1080:user:pass
+//   - yeet.com:1080
+//   - yeet.com:1080:user:pass
+//   - [fe80::2ef0:5dff:fe7f:c299]:1080
+//   - [fe80::2ef0:5dff:fe7f:c299]:1080:user:pass
 func (p5 *Swamp) LoadSingleProxy(sock string) (ok bool) {
 	if sock, ok = filter(sock); !ok {
 		return
@@ -76,12 +76,12 @@ func (p5 *Swamp) loadSingleProxy(sock string) {
 
 // LoadMultiLineString loads a multiine string object with proxy per line.
 // Expects one of the following formats for each line:
-// * 127.0.0.1:1080
-// * 127.0.0.1:1080:user:pass
-// * yeet.com:1080
-// * yeet.com:1080:user:pass
-// * [fe80::2ef0:5dff:fe7f:c299]:1080
-// * [fe80::2ef0:5dff:fe7f:c299]:1080:user:pass
+//   - 127.0.0.1:1080
+//   - 127.0.0.1:1080:user:pass
+//   - yeet.com:1080
+//   - yeet.com:1080:user:pass
+//   - [fe80::2ef0:5dff:fe7f:c299]:1080
+//   - [fe80::2ef0:5dff:fe7f:c299]:1080:user:pass
 func (p5 *Swamp) LoadMultiLineString(socks string) int {
 	var count int
 	scan := bufio.NewScanner(strings.NewReader(socks))
