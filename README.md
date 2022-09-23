@@ -50,4 +50,4 @@ It "works" and has been used in "production", but still needs some love.
 
 Please break it and let me know what broke.
 
-### **See [the docs](https://pkg.go.dev/git.tcp.direct/kayos/Prox5) and the [example](example/main.go) for more details.**
+### **See [the docs](https://pkg.go.dev/git.tcp.direct/kayos/prox5) and the [example](example/main.go) for more details.**
