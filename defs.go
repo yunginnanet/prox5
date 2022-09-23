@@ -135,6 +135,13 @@ type config struct {
 	*sync.RWMutex
 }
 
+// NewDefaultSwamp returns a new Swamp instance.
+//
+// Deprecated: use NewProxyEngine instead.
+func NewDefaultSwamp() *Swamp {
+	return NewProxyEngine()
+}
+
 // NewProxyEngine returns a Swamp with default options.
 // After calling this you may use the various "setters" to change the options before calling Swamp.Start().
 func NewProxyEngine() *Swamp {
