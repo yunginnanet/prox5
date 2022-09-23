@@ -95,6 +95,7 @@ func (p5 *Swamp) mapBuilder() {
 					p5.Pending <- p
 				}
 			default:
+				time.Sleep(500 * time.Millisecond)
 				p5.recycling()
 			}
 		}
@@ -153,7 +154,7 @@ func (p5 *Swamp) jobSpawner() {
 				}
 
 			default:
-				time.Sleep(25 * time.Millisecond)
+				time.Sleep(500 * time.Millisecond)
 				count := p5.recycling()
 				buf := pools.CopABuffer.Get().(*strings.Builder)
 				buf.WriteString("recycled ")

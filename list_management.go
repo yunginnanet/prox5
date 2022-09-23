@@ -2,6 +2,7 @@ package prox5
 
 import (
 	"bufio"
+	"fmt"
 	"io"
 	"os"
 	"strings"
@@ -63,13 +64,13 @@ func (p5 *Swamp) LoadSingleProxy(sock string) (ok bool) {
 	return
 }
 
-func (p5 *Swamp) loadSingleProxy(sock string) {
+func (p5 *Swamp) loadSingleProxy(sock string) error {
 	for {
 		select {
 		case inChan <- sock:
-			return
+			return nil
 		default:
-			time.Sleep(1 * time.Second)
+			return fmt.Errorf("cannot load %s, channel is full", sock)
 		}
 	}
 }
@@ -86,9 +87,10 @@ func (p5 *Swamp) LoadMultiLineString(socks string) int {
 	var count int
 	scan := bufio.NewScanner(strings.NewReader(socks))
 	for scan.Scan() {
-		if p5.LoadSingleProxy(scan.Text()) {
-			count++
+		if err := p5.loadSingleProxy(scan.Text()); err != nil {
+			continue
 		}
+		count++
 	}
 	return count
 }
