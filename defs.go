@@ -163,7 +163,7 @@ func NewProxyEngine() *Swamp {
 
 	chans := []*chan *Proxy{&pe.Valids.SOCKS5, &pe.Valids.SOCKS4, &pe.Valids.SOCKS4a, &pe.Valids.HTTP, &pe.Pending}
 	for _, c := range chans {
-		*c = make(chan *Proxy, 500)
+		*c = make(chan *Proxy, 10000)
 	}
 
 	pe.dispenseMiddleware = func(p *Proxy) (*Proxy, bool) {
