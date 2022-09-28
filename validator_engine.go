@@ -213,21 +213,26 @@ func (sock *Proxy) validate() {
 	pe.tally(sock)
 }
 
-func (p5 *Swamp) tally(sock *Proxy) {
+func (p5 *Swamp) tally(sock *Proxy) bool {
+	var target chan *Proxy
 	switch sock.protocol.Get() {
 	case ProtoSOCKS4:
 		p5.stats.v4()
-		p5.Valids.SOCKS4 <- sock
+		target = p5.Valids.SOCKS4
 	case ProtoSOCKS4a:
 		p5.stats.v4a()
-		p5.Valids.SOCKS4a <- sock
+		target = p5.Valids.SOCKS4a
 	case ProtoSOCKS5:
 		p5.stats.v5()
-		p5.Valids.SOCKS5 <- sock
+		target = p5.Valids.SOCKS5
 	case ProtoHTTP:
 		p5.stats.http()
-		p5.Valids.HTTP <- sock
+		target = p5.Valids.HTTP
 	default:
-		return
+		return false
+	}
+	select {
+	case target <- sock:
+		return true
 	}
 }

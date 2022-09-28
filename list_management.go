@@ -2,19 +2,11 @@ package prox5
 
 import (
 	"bufio"
-	"fmt"
+	"errors"
 	"io"
 	"os"
 	"strings"
 )
-
-// throw shit proxies here, get map
-// see daemons.go
-var inChan chan string
-
-func init() {
-	inChan = make(chan string, 100000)
-}
 
 // LoadProxyTXT loads proxies from a given seed file and feeds them to the mapBuilder to be later queued automatically for validation.
 // Expects one of the following formats for each line:
@@ -55,23 +47,22 @@ func (p5 *Swamp) LoadProxyTXT(seedFile string) (count int) {
 //   - yeet.com:1080:user:pass
 //   - [fe80::2ef0:5dff:fe7f:c299]:1080
 //   - [fe80::2ef0:5dff:fe7f:c299]:1080:user:pass
-func (p5 *Swamp) LoadSingleProxy(sock string) (ok bool) {
+func (p5 *Swamp) LoadSingleProxy(sock string) bool {
+	var ok bool
 	if sock, ok = filter(sock); !ok {
-		return
+		return false
 	}
-	go p5.loadSingleProxy(sock)
-	return
+	if err := p5.loadSingleProxy(sock); err != nil {
+		return false
+	}
+	return true
 }
 
 func (p5 *Swamp) loadSingleProxy(sock string) error {
-	for {
-		select {
-		case inChan <- sock:
-			return nil
-		default:
-			return fmt.Errorf("cannot load %s, channel is full", sock)
-		}
+	if _, ok := p5.swampmap.add(sock); !ok {
+		return errors.New("proxy already exists")
 	}
+	return nil
 }
 
 // LoadMultiLineString loads a multiine string object with proxy per line.

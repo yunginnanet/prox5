@@ -5,19 +5,10 @@ import (
 	"strconv"
 	"strings"
 	"sync"
-	"sync/atomic"
 	"time"
 
 	"git.tcp.direct/kayos/prox5/internal/pools"
 )
-
-func (p5 *Swamp) svcUp() {
-	atomic.AddInt32(&p5.runningdaemons, 1)
-}
-
-func (p5 *Swamp) svcDown() {
-	atomic.AddInt32(&p5.runningdaemons, -1)
-}
 
 type swampMap struct {
 	plot   map[string]*Proxy
@@ -74,34 +65,6 @@ func (sm swampMap) clear() {
 	}
 }
 
-func (p5 *Swamp) mapBuilder() {
-	if p5.pool.IsClosed() {
-		p5.pool.Reboot()
-	}
-
-	p5.dbgPrint(simpleString("map builder started"))
-
-	go func() {
-		defer p5.dbgPrint(simpleString("map builder paused"))
-		for {
-			select {
-			case <-p5.ctx.Done():
-				p5.svcDown()
-				return
-			case in := <-inChan:
-				if p, ok := p5.swampmap.add(in); !ok {
-					continue
-				} else {
-					p5.Pending <- p
-				}
-			default:
-				time.Sleep(500 * time.Millisecond)
-				p5.recycling()
-			}
-		}
-	}()
-	p5.conductor <- true
-}
 
 func (p5 *Swamp) recycling() int {
 	if !p5.GetRecyclingStatus() {
@@ -146,7 +109,6 @@ func (p5 *Swamp) jobSpawner() {
 			select {
 			case <-p5.ctx.Done():
 				q <- true
-				p5.svcDown()
 				return
 			case sock := <-p5.Pending:
 				if err := p5.pool.Submit(sock.validate); err != nil {
@@ -165,7 +127,6 @@ func (p5 *Swamp) jobSpawner() {
 		}
 	}()
 
-	p5.svcUp()
 	<-q
 	p5.pool.Release()
 }
