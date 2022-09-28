@@ -3,7 +3,7 @@ module git.tcp.direct/kayos/prox5
 go 1.19
 
 require (
-	git.tcp.direct/kayos/common v0.7.2
+	git.tcp.direct/kayos/common v0.7.4
 	git.tcp.direct/kayos/go-socks5 v1.0.1
 	git.tcp.direct/kayos/socks v0.0.0-20220828111753-f9f7cd3e7ee7
 	github.com/haxii/socks5 v1.0.0
