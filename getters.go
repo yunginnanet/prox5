@@ -75,7 +75,7 @@ func (p5 *Swamp) GetMaxWorkers() int {
 
 // IsRunning returns true if our background goroutines defined in daemons.go are currently operational
 func (p5 *Swamp) IsRunning() bool {
-	return atomic.LoadInt32(&p5.runningdaemons) == 2
+	return atomic.LoadUint32(&p5.Status) == 0
 }
 
 // GetRecyclingStatus retrieves the current recycling status, see EnableRecycling.

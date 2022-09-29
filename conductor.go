@@ -49,6 +49,7 @@ func (p5 *Swamp) Pause() error {
 
 func (p5 *Swamp) startDaemons() {
 	go p5.jobSpawner()
+	atomic.StoreUint32(&p5.Status, uint32(StateRunning))
 }
 
 // Resume will resume pause proxy pool operations, attempting to resume a running Swamp is returns an error.
