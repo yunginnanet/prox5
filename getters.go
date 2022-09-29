@@ -33,7 +33,7 @@ func (p5 *Swamp) GetRandomEndpoint() string {
 // GetStaleTime returns the duration of time after which a proxy will be considered "stale".
 func (p5 *Swamp) GetStaleTime() time.Duration {
 	p5.swampopt.RLock()
-	defer p5.swampopt.RLock()
+	defer p5.swampopt.RUnlock()
 	return p5.swampopt.stale
 }
 
@@ -83,7 +83,7 @@ func (p5 *Swamp) IsRunning() bool {
 // GetRecyclingStatus retrieves the current recycling status, see EnableRecycling.
 func (p5 *Swamp) GetRecyclingStatus() bool {
 	p5.swampopt.RLock()
-	defer p5.swampopt.RLock()
+	defer p5.swampopt.RUnlock()
 	return p5.swampopt.recycle
 }
 
