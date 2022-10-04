@@ -18,6 +18,10 @@ Notably it features interface compatible dialer functions that dial out from dif
 
 Prox5 will then store the endpoint's outward appearing IP address and mark it as valid for use.
 
+### Rate Limiting
+
+Using [Rate5](https://github.com/yunginnanet/Rate5), prox5 naturally reduces the frequency of proxies that fail to validate. It does this by reducing the frequency proxies are accepted into the validation pipeline the more they fail to verify. This is not yet adjustable, but will be soon. See the documentation for Rate5, and the source for prox5 (defs.go is a good place to start) for more details.
+
 ### The Secret Sauce
 
 What makes Prox5 special is largely the Mystery Dialer. This dialer satisfies the net.Dialer interface. Upon using the dialer to connect to and endpoint, Prox5:
