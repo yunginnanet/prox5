@@ -30,6 +30,14 @@ func Test_filter(t *testing.T) {
 			wantOk:       true,
 		},
 		{
+			name: "withAuthAlt",
+			args: args{
+				in: "user:pass@127.0.0.1:1080",
+			},
+			wantFiltered: "user:pass@127.0.0.1:1080",
+			wantOk:       true,
+		},
+		{
 			name: "simpleDomain",
 			args: args{
 				in: "yeet.com:1080",

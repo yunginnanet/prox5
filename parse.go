@@ -82,6 +82,25 @@ func filter(in string) (filtered string, ok bool) { //nolint:cyclop
 			return "", false
 		}
 		return combo.String(), true
+	case 3:
+		if !strings.Contains(in, "@") {
+			return "", false
+		}
+		split := strings.Split(in, "@")
+		if !strings.Contains(split[0], ":") {
+			return "", false
+		}
+		splitAuth := strings.Split(split[0], ":")
+		splitServ := strings.Split(split[1], ":")
+		_, isDomain := dns.IsDomainName(splitServ[0])
+		if isDomain && isNumber(splitServ[1]) {
+			return buildProxyString(splitAuth[0], splitAuth[1],
+				splitServ[0], splitServ[1], false), true
+		}
+		if _, err := ipa.ParseIPPort(split[1]); err == nil {
+			return buildProxyString(splitAuth[0], splitAuth[1],
+				splitServ[0], splitServ[1], false), true
+		}
 	case 4:
 		_, isDomain := dns.IsDomainName(split[0])
 		if isDomain && isNumber(split[1]) {
