@@ -1,9 +1,10 @@
 package prox5
 
 import (
-	"strings"
 	"sync"
 	"sync/atomic"
+
+	"git.tcp.direct/kayos/common/pool"
 )
 
 type ProxyProtocol int8
@@ -50,11 +51,11 @@ func (p *proto) set(proxyproto ProxyProtocol) {
 	})
 }
 
-func (p ProxyProtocol) writeProtoString(builder *strings.Builder) {
-	builder.WriteString(p.String())
+func (p ProxyProtocol) writeProtoString(builder *pool.String) {
+	builder.MustWriteString(p.String())
 }
 
-func (p ProxyProtocol) writeProtoURI(builder *strings.Builder) {
+func (p ProxyProtocol) writeProtoURI(builder *pool.String) {
 	p.writeProtoString(builder)
-	builder.WriteString("://")
+	builder.MustWriteString("://")
 }
