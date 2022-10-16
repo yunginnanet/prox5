@@ -8,9 +8,9 @@ import (
 	"git.tcp.direct/kayos/common/entropy"
 )
 
-// GetStatistics returns all current statistics.
+// GetStatistics returns all current Statistics.
 // * This is a pointer, do not modify it!
-func (p5 *Swamp) GetStatistics() *statistics {
+func (p5 *Swamp) GetStatistics() *Statistics {
 	p5.mu.RLock()
 	defer p5.mu.RUnlock()
 	return p5.stats
@@ -87,7 +87,7 @@ func (p5 *Swamp) GetRecyclingStatus() bool {
 	return p5.swampopt.recycle
 }
 
-// GetWorkers retrieves pond worker statistics:
+// GetWorkers retrieves pond worker Statistics:
 //   - return MaxWorkers, RunningWorkers, IdleWorkers
 func (p5 *Swamp) GetWorkers() (maxWorkers, runningWorkers, idleWorkers int) {
 	p5.mu.RLock()

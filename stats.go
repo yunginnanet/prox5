@@ -4,8 +4,8 @@ import (
 	"time"
 )
 
-// statistics is used to encapsulate various swampy stats
-type statistics struct {
+// Statistics is used to encapsulate various swampy stats
+type Statistics struct {
 	// Valid4 is the amount of SOCKS4 proxies validated
 	Valid4 int64
 	// Valid4a is the amount of SOCKS4a proxies validated
@@ -24,27 +24,27 @@ type statistics struct {
 	birthday time.Time
 }
 
-func (stats *statistics) dispense() {
+func (stats *Statistics) dispense() {
 	stats.Dispensed++
 }
 
-func (stats *statistics) stale() {
+func (stats *Statistics) stale() {
 	stats.Stale++
 }
 
-func (stats *statistics) v4() {
+func (stats *Statistics) v4() {
 	stats.Valid4++
 }
 
-func (stats *statistics) v4a() {
+func (stats *Statistics) v4a() {
 	stats.Valid4a++
 }
 
-func (stats *statistics) v5() {
+func (stats *Statistics) v5() {
 	stats.Valid5++
 }
 
-func (stats *statistics) http() {
+func (stats *Statistics) http() {
 	stats.ValidHTTP++
 }
 
@@ -55,6 +55,6 @@ func (p5 *Swamp) GetTotalValidated() int {
 }
 
 // GetUptime returns the total lifetime duration of our pool.
-func (stats *statistics) GetUptime() time.Duration {
+func (stats *Statistics) GetUptime() time.Duration {
 	return time.Since(stats.birthday)
 }

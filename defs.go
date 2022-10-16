@@ -28,8 +28,8 @@ type Swamp struct {
 	Valids      ProxyChannels
 	DebugLogger logger.Logger
 
-	// stats holds the statistics for our swamp
-	stats *statistics
+	// stats holds the Statistics for our swamp
+	stats *Statistics
 
 	Status uint32
 
