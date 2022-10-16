@@ -10,60 +10,60 @@ import (
 
 // GetStatistics returns all current Statistics.
 // * This is a pointer, do not modify it!
-func (p5 *Swamp) GetStatistics() *Statistics {
+func (p5 *ProxyEngine) GetStatistics() *Statistics {
 	p5.mu.RLock()
 	defer p5.mu.RUnlock()
 	return p5.stats
 }
 
 // RandomUserAgent retrieves a random user agent from our list in string form.
-func (p5 *Swamp) RandomUserAgent() string {
+func (p5 *ProxyEngine) RandomUserAgent() string {
 	p5.mu.RLock()
 	defer p5.mu.RUnlock()
-	return entropy.RandomStrChoice(p5.swampopt.userAgents)
+	return entropy.RandomStrChoice(p5.opt.userAgents)
 }
 
-// GetRandomEndpoint returns a random whatismyip style endpoint from our Swamp's options
-func (p5 *Swamp) GetRandomEndpoint() string {
+// GetRandomEndpoint returns a random whatismyip style endpoint from our ProxyEngine's options
+func (p5 *ProxyEngine) GetRandomEndpoint() string {
 	p5.mu.RLock()
 	defer p5.mu.RUnlock()
-	return entropy.RandomStrChoice(p5.swampopt.checkEndpoints)
+	return entropy.RandomStrChoice(p5.opt.checkEndpoints)
 }
 
 // GetStaleTime returns the duration of time after which a proxy will be considered "stale".
-func (p5 *Swamp) GetStaleTime() time.Duration {
-	p5.swampopt.RLock()
-	defer p5.swampopt.RUnlock()
-	return p5.swampopt.stale
+func (p5 *ProxyEngine) GetStaleTime() time.Duration {
+	p5.opt.RLock()
+	defer p5.opt.RUnlock()
+	return p5.opt.stale
 }
 
 // GetValidationTimeout returns the current value of validationTimeout.
-func (p5 *Swamp) GetValidationTimeout() time.Duration {
-	p5.swampopt.RLock()
-	defer p5.swampopt.RUnlock()
-	return p5.swampopt.validationTimeout
+func (p5 *ProxyEngine) GetValidationTimeout() time.Duration {
+	p5.opt.RLock()
+	defer p5.opt.RUnlock()
+	return p5.opt.validationTimeout
 }
 
 // GetValidationTimeoutStr returns the current value of validationTimeout (in seconds string).
-func (p5 *Swamp) GetValidationTimeoutStr() string {
-	p5.swampopt.RLock()
-	defer p5.swampopt.RUnlock()
-	timeout := p5.swampopt.validationTimeout
+func (p5 *ProxyEngine) GetValidationTimeoutStr() string {
+	p5.opt.RLock()
+	defer p5.opt.RUnlock()
+	timeout := p5.opt.validationTimeout
 	return strconv.Itoa(int(timeout / time.Second))
 }
 
 // GetServerTimeout returns the current value of serverTimeout.
-func (p5 *Swamp) GetServerTimeout() time.Duration {
-	p5.swampopt.RLock()
-	defer p5.swampopt.RUnlock()
-	return p5.swampopt.serverTimeout
+func (p5 *ProxyEngine) GetServerTimeout() time.Duration {
+	p5.opt.RLock()
+	defer p5.opt.RUnlock()
+	return p5.opt.serverTimeout
 }
 
 // GetServerTimeoutStr returns the current value of serverTimeout (in seconds string).
-func (p5 *Swamp) GetServerTimeoutStr() string {
-	p5.swampopt.RLock()
-	defer p5.swampopt.RUnlock()
-	timeout := p5.swampopt.serverTimeout
+func (p5 *ProxyEngine) GetServerTimeoutStr() string {
+	p5.opt.RLock()
+	defer p5.opt.RUnlock()
+	timeout := p5.opt.serverTimeout
 	if timeout == time.Duration(0) {
 		return "-1"
 	}
@@ -71,25 +71,25 @@ func (p5 *Swamp) GetServerTimeoutStr() string {
 }
 
 // GetMaxWorkers returns maximum amount of workers that validate proxies concurrently. Note this is read-only during runtime.
-func (p5 *Swamp) GetMaxWorkers() int {
+func (p5 *ProxyEngine) GetMaxWorkers() int {
 	return p5.pool.Cap()
 }
 
 // IsRunning returns true if our background goroutines defined in daemons.go are currently operational
-func (p5 *Swamp) IsRunning() bool {
+func (p5 *ProxyEngine) IsRunning() bool {
 	return atomic.LoadUint32(&p5.Status) == 0
 }
 
 // GetRecyclingStatus retrieves the current recycling status, see EnableRecycling.
-func (p5 *Swamp) GetRecyclingStatus() bool {
-	p5.swampopt.RLock()
-	defer p5.swampopt.RUnlock()
-	return p5.swampopt.recycle
+func (p5 *ProxyEngine) GetRecyclingStatus() bool {
+	p5.opt.RLock()
+	defer p5.opt.RUnlock()
+	return p5.opt.recycle
 }
 
 // GetWorkers retrieves pond worker Statistics:
 //   - return MaxWorkers, RunningWorkers, IdleWorkers
-func (p5 *Swamp) GetWorkers() (maxWorkers, runningWorkers, idleWorkers int) {
+func (p5 *ProxyEngine) GetWorkers() (maxWorkers, runningWorkers, idleWorkers int) {
 	p5.mu.RLock()
 	defer p5.mu.RUnlock()
 	return p5.pool.Cap(), p5.pool.Running(), p5.pool.Free()
@@ -97,32 +97,32 @@ func (p5 *Swamp) GetWorkers() (maxWorkers, runningWorkers, idleWorkers int) {
 
 // GetRemoveAfter retrieves the removeafter policy, the amount of times a recycled proxy is marked as bad until it is removed entirely.
 //   - returns -1 if recycling is disabled.
-func (p5 *Swamp) GetRemoveAfter() int {
+func (p5 *ProxyEngine) GetRemoveAfter() int {
 	p5.mu.RLock()
 	defer p5.mu.RUnlock()
-	if !p5.swampopt.recycle {
+	if !p5.opt.recycle {
 		return -1
 	}
-	return p5.swampopt.removeafter
+	return p5.opt.removeafter
 }
 
 // GetDialerBailout retrieves the dialer bailout policy. See SetDialerBailout for more info.
-func (p5 *Swamp) GetDialerBailout() int {
+func (p5 *ProxyEngine) GetDialerBailout() int {
 	p5.mu.RLock()
 	defer p5.mu.RUnlock()
-	return p5.swampopt.dialerBailout
+	return p5.opt.dialerBailout
 }
 
 // TODO: Document middleware concept
 
-func (p5 *Swamp) GetDispenseMiddleware() func(*Proxy) (*Proxy, bool) {
+func (p5 *ProxyEngine) GetDispenseMiddleware() func(*Proxy) (*Proxy, bool) {
 	p5.mu.RLock()
 	defer p5.mu.RUnlock()
 	return p5.dispenseMiddleware
 }
 
-func (p5 *Swamp) GetShuffleStatus() bool {
+func (p5 *ProxyEngine) GetShuffleStatus() bool {
 	p5.mu.RLock()
 	defer p5.mu.RUnlock()
-	return p5.swampopt.shuffle
+	return p5.opt.shuffle
 }

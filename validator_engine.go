@@ -16,7 +16,7 @@ import (
 	"golang.org/x/net/proxy"
 )
 
-func (p5 *Swamp) prepHTTP() (*http.Client, *http.Transport, *http.Request, error) {
+func (p5 *ProxyEngine) prepHTTP() (*http.Client, *http.Transport, *http.Request, error) {
 	req, err := http.NewRequest("GET", p5.GetRandomEndpoint(), bytes.NewBuffer([]byte("")))
 	if err != nil {
 		return nil, nil, nil, err
@@ -49,7 +49,7 @@ func (sock *Proxy) good() {
 	sock.lastValidated = time.Now()
 }
 
-func (p5 *Swamp) bakeHTTP(hmd *HandMeDown) (client *http.Client, req *http.Request, err error) {
+func (p5 *ProxyEngine) bakeHTTP(hmd *HandMeDown) (client *http.Client, req *http.Request, err error) {
 	builder := strs.Get()
 	builder.MustWriteString(hmd.protoCheck.String())
 	builder.MustWriteString("://")
@@ -81,7 +81,7 @@ func (p5 *Swamp) bakeHTTP(hmd *HandMeDown) (client *http.Client, req *http.Reque
 	return
 }
 
-func (p5 *Swamp) validate(hmd *HandMeDown) (string, error) {
+func (p5 *ProxyEngine) validate(hmd *HandMeDown) (string, error) {
 	var (
 		client *http.Client
 		req    *http.Request
@@ -103,7 +103,7 @@ func (p5 *Swamp) validate(hmd *HandMeDown) (string, error) {
 	return string(rbody), err
 }
 
-func (p5 *Swamp) anothaOne() {
+func (p5 *ProxyEngine) anothaOne() {
 	p5.stats.Checked++
 }
 
@@ -124,7 +124,7 @@ func (hmd *HandMeDown) Dial(network, addr string) (c net.Conn, err error) {
 	return hmd.conn, nil
 }
 
-func (p5 *Swamp) singleProxyCheck(sock *Proxy, protocol ProxyProtocol) error {
+func (p5 *ProxyEngine) singleProxyCheck(sock *Proxy, protocol ProxyProtocol) error {
 	defer p5.anothaOne()
 	split := strings.Split(sock.Endpoint, "@")
 	endpoint := split[0]
@@ -177,6 +177,9 @@ func (sock *Proxy) validate() {
 	if sock.timesValidated == 0 || sock.protocol.Get() == ProtoNull {
 		// try to use the proxy with all 3 SOCKS versions
 		for tryProto := range protoMap {
+			if tryProto == ProtoNull {
+				continue
+			}
 			select {
 			case <-pe.ctx.Done():
 				return
@@ -211,7 +214,7 @@ func (sock *Proxy) validate() {
 	pe.tally(sock)
 }
 
-func (p5 *Swamp) tally(sock *Proxy) bool {
+func (p5 *ProxyEngine) tally(sock *Proxy) bool {
 	var target chan *Proxy
 	switch sock.protocol.Get() {
 	case ProtoSOCKS4:

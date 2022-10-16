@@ -9,6 +9,7 @@ import (
 	"github.com/panjf2000/ants/v2"
 	rl "github.com/yunginnanet/Rate5"
 
+	"git.tcp.direct/kayos/prox5/internal/scaler"
 	"git.tcp.direct/kayos/prox5/logger"
 )
 
@@ -23,12 +24,12 @@ type ProxyChannels struct {
 	HTTP chan *Proxy
 }
 
-// Swamp represents a proxy pool
-type Swamp struct {
+// ProxyEngine represents a proxy pool
+type ProxyEngine struct {
 	Valids      ProxyChannels
 	DebugLogger logger.Logger
 
-	// stats holds the Statistics for our swamp
+	// stats holds the Statistics for ProxyEngine
 	stats *Statistics
 
 	Status uint32
@@ -42,16 +43,19 @@ type Swamp struct {
 
 	dispenseMiddleware func(*Proxy) (*Proxy, bool)
 
-	ctx  context.Context
-	quit context.CancelFunc
+	conCtx    context.Context
+	killConns context.CancelFunc
+	ctx       context.Context
+	quit      context.CancelFunc
 
-	swampmap swampMap
+	proxyMap proxyMap
 
 	// reaper sync.Pool
 
 	mu             *sync.RWMutex
 	pool           *ants.Pool
-	swampopt       *config
+	scaler         *scaler.AutoScaler
+	opt            *config
 	runningdaemons int32
 	conductor      chan bool
 }
@@ -96,7 +100,7 @@ func defOpt() *config {
 	return sm
 }
 
-// config holds our configuration for Swamp instances.
+// config holds our configuration for ProxyEngine instances.
 // This is implemented as a pointer, and should be interacted with via the setter and getter functions.
 type config struct {
 	// stale is the amount of time since verification that qualifies a proxy going stale.
@@ -133,21 +137,28 @@ type config struct {
 	*sync.RWMutex
 }
 
-// NewDefaultSwamp returns a new Swamp instance.
+// NewDefaultSwamp returns a new ProxyEngine instance.
 //
 // Deprecated: use NewProxyEngine instead.
 func NewDefaultSwamp() *Swamp {
-	return NewProxyEngine()
+	return &Swamp{NewProxyEngine()}
 }
 
-// NewProxyEngine returns a Swamp with default options.
-// After calling this you may use the various "setters" to change the options before calling Swamp.Start().
-func NewProxyEngine() *Swamp {
-	pe := &Swamp{
+// Swamp is a deprecated alias for ProxyEngine
+//
+// Deprecated: use ProxyEngine instead.
+type Swamp struct {
+	*ProxyEngine
+}
+
+// NewProxyEngine returns a ProxyEngine with default options.
+// After calling this you may use the various "setters" to change the options before calling ProxyEngine.Start().
+func NewProxyEngine() *ProxyEngine {
+	pe := &ProxyEngine{
 		stats:       &Statistics{birthday: time.Now()},
 		DebugLogger: &basicPrinter{},
 
-		swampopt: defOpt(),
+		opt: defOpt(),
 
 		conductor: make(chan bool),
 		mu:        &sync.RWMutex{},
@@ -168,16 +179,17 @@ func NewProxyEngine() *Swamp {
 		return p, true
 	}
 	pe.ctx, pe.quit = context.WithCancel(context.Background())
-	pe.swampmap = newSwampMap(pe)
+	pe.conCtx, pe.killConns = context.WithCancel(context.Background())
+	pe.proxyMap = newProxyMap(pe)
 
 	atomic.StoreUint32(&pe.Status, uint32(StateNew))
 	atomic.StoreInt32(&pe.runningdaemons, 0)
 
-	pe.useProx = rl.NewCustomLimiter(pe.swampopt.useProxConfig)
-	pe.badProx = rl.NewCustomLimiter(pe.swampopt.badProxConfig)
+	pe.useProx = rl.NewCustomLimiter(pe.opt.useProxConfig)
+	pe.badProx = rl.NewCustomLimiter(pe.opt.badProxConfig)
 
 	var err error
-	pe.pool, err = ants.NewPool(pe.swampopt.maxWorkers, ants.WithOptions(ants.Options{
+	pe.pool, err = ants.NewPool(pe.opt.maxWorkers, ants.WithOptions(ants.Options{
 		ExpiryDuration: 2 * time.Minute,
 		PanicHandler:   pe.pondPanic,
 	}))
@@ -193,15 +205,15 @@ func NewProxyEngine() *Swamp {
 	return pe
 }
 
-func newSwampMap(pe *Swamp) swampMap {
-	return swampMap{
+func newProxyMap(pe *ProxyEngine) proxyMap {
+	return proxyMap{
 		plot:   make(map[string]*Proxy),
 		mu:     &sync.RWMutex{},
 		parent: pe,
 	}
 }
 
-func (p5 *Swamp) pondPanic(p interface{}) {
+func (p5 *ProxyEngine) pondPanic(p interface{}) {
 	panic(p)
 	// pe.dbgPrint("Worker panic: " + fmt.Sprintf("%v", p))
 }

@@ -7,7 +7,7 @@ import (
 
 // Socks5Str gets a SOCKS5 proxy that we have fully verified (dialed and then retrieved our IP address from a what-is-my-ip endpoint.
 // Will block if one is not available!
-func (p5 *Swamp) Socks5Str() string {
+func (p5 *ProxyEngine) Socks5Str() string {
 	for {
 		select {
 		case sock := <-p5.Valids.SOCKS5:
@@ -24,7 +24,7 @@ func (p5 *Swamp) Socks5Str() string {
 
 // Socks4Str gets a SOCKS4 proxy that we have fully verified.
 // Will block if one is not available!
-func (p5 *Swamp) Socks4Str() string {
+func (p5 *ProxyEngine) Socks4Str() string {
 	defer p5.stats.dispense()
 	for {
 		select {
@@ -41,7 +41,7 @@ func (p5 *Swamp) Socks4Str() string {
 
 // Socks4aStr gets a SOCKS4 proxy that we have fully verified.
 // Will block if one is not available!
-func (p5 *Swamp) Socks4aStr() string {
+func (p5 *ProxyEngine) Socks4aStr() string {
 	defer p5.stats.dispense()
 	for {
 		select {
@@ -60,7 +60,7 @@ func (p5 *Swamp) Socks4aStr() string {
 // For now, this function does not loop forever like the GetAnySOCKS does.
 // Alternatively it can be included within the for loop by passing true to GetAnySOCKS.
 // If there is an HTTP proxy available, ok will be true. If not, it will return false without delay.
-func (p5 *Swamp) GetHTTPTunnel() (p *Proxy, ok bool) {
+func (p5 *ProxyEngine) GetHTTPTunnel() (p *Proxy, ok bool) {
 	select {
 	case httptunnel := <-p5.Valids.HTTP:
 		return httptunnel, true
@@ -71,7 +71,8 @@ func (p5 *Swamp) GetHTTPTunnel() (p *Proxy, ok bool) {
 
 // GetAnySOCKS retrieves any version SOCKS proxy as a Proxy type
 // Will block if one is not available!
-func (p5 *Swamp) GetAnySOCKS() *Proxy {
+func (p5 *ProxyEngine) GetAnySOCKS() *Proxy {
+
 	defer p5.stats.dispense()
 	for {
 		var sock *Proxy
@@ -92,7 +93,7 @@ func (p5 *Swamp) GetAnySOCKS() *Proxy {
 	}
 }
 
-func (p5 *Swamp) stillGood(sock *Proxy) bool {
+func (p5 *ProxyEngine) stillGood(sock *Proxy) bool {
 	if sock == nil {
 		return false
 	}
@@ -106,7 +107,7 @@ func (p5 *Swamp) stillGood(sock *Proxy) bool {
 		buf.MustWriteString("deleting from map (too many failures): ")
 		buf.MustWriteString(sock.Endpoint)
 		p5.dbgPrint(buf)
-		if err := p5.swampmap.delete(sock.Endpoint); err != nil {
+		if err := p5.proxyMap.delete(sock.Endpoint); err != nil {
 			p5.dbgPrint(simpleString(err.Error()))
 		}
 	}
@@ -119,7 +120,7 @@ func (p5 *Swamp) stillGood(sock *Proxy) bool {
 		return false
 	}
 
-	if time.Since(sock.lastValidated) > p5.swampopt.stale {
+	if time.Since(sock.lastValidated) > p5.opt.stale {
 		buf := strs.Get()
 		buf.MustWriteString("proxy stale: ")
 		buf.MustWriteString(sock.Endpoint)

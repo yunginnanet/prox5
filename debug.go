@@ -24,7 +24,7 @@ const (
 )
 
 type SocksLogger struct {
-	parent *Swamp
+	parent *ProxyEngine
 }
 
 // Printf is used to handle socks server logging.
@@ -54,20 +54,20 @@ func (b *basicPrinter) Printf(format string, items ...any) {
 }
 
 // DebugEnabled returns the current state of our debug switch.
-func (p5 *Swamp) DebugEnabled() bool {
+func (p5 *ProxyEngine) DebugEnabled() bool {
 	debugHardLock.RLock()
 	defer debugHardLock.RUnlock()
 	return atomic.CompareAndSwapUint32(debugStatus, debugEnabled, debugEnabled)
 }
 
 // EnableDebug enables printing of verbose messages during operation
-func (p5 *Swamp) EnableDebug() {
+func (p5 *ProxyEngine) EnableDebug() {
 	atomic.StoreUint32(debugStatus, debugEnabled)
 }
 
 // DisableDebug enables printing of verbose messages during operation.
 // WARNING: if you are using a DebugChannel, you must read all of the messages in the channel's cache or this will block.
-func (p5 *Swamp) DisableDebug() {
+func (p5 *ProxyEngine) DisableDebug() {
 	atomic.StoreUint32(debugStatus, debugDisabled)
 }
 
@@ -77,7 +77,7 @@ func simpleString(s string) *pool.String {
 	return buf
 }
 
-func (p5 *Swamp) dbgPrint(builder *pool.String) {
+func (p5 *ProxyEngine) dbgPrint(builder *pool.String) {
 	defer strs.MustPut(builder)
 	if !p5.DebugEnabled() {
 		return
@@ -86,20 +86,20 @@ func (p5 *Swamp) dbgPrint(builder *pool.String) {
 	return
 }
 
-func (p5 *Swamp) msgUnableToReach(socksString, target string, err error) {
+func (p5 *ProxyEngine) msgUnableToReach(socksString, target string, err error) {
 	if !p5.DebugEnabled() {
 		return
 	}
 	buf := strs.Get()
 	buf.MustWriteString("unable to reach ")
-	if p5.swampopt.redact {
+	if p5.opt.redact {
 		buf.MustWriteString("[redacted]")
 	} else {
 		buf.MustWriteString(target)
 	}
 	buf.MustWriteString(" with ")
 	buf.MustWriteString(socksString)
-	if !p5.swampopt.redact {
+	if !p5.opt.redact {
 		buf.MustWriteString(": ")
 		buf.MustWriteString(err.Error())
 	}
@@ -107,7 +107,7 @@ func (p5 *Swamp) msgUnableToReach(socksString, target string, err error) {
 	p5.dbgPrint(buf)
 }
 
-func (p5 *Swamp) msgUsingProxy(socksString string) {
+func (p5 *ProxyEngine) msgUsingProxy(socksString string) {
 	if !p5.DebugEnabled() {
 		return
 	}
@@ -117,7 +117,7 @@ func (p5 *Swamp) msgUsingProxy(socksString string) {
 	p5.dbgPrint(buf)
 }
 
-func (p5 *Swamp) msgFailedMiddleware(socksString string) {
+func (p5 *ProxyEngine) msgFailedMiddleware(socksString string) {
 	if !p5.DebugEnabled() {
 		return
 	}
@@ -128,7 +128,7 @@ func (p5 *Swamp) msgFailedMiddleware(socksString string) {
 	p5.dbgPrint(buf)
 }
 
-func (p5 *Swamp) msgTry(socksString string) {
+func (p5 *ProxyEngine) msgTry(socksString string) {
 	if !p5.DebugEnabled() {
 		return
 	}
@@ -138,7 +138,7 @@ func (p5 *Swamp) msgTry(socksString string) {
 	p5.dbgPrint(buf)
 }
 
-func (p5 *Swamp) msgCantGetLock(socksString string, putback bool) {
+func (p5 *ProxyEngine) msgCantGetLock(socksString string, putback bool) {
 	if !p5.DebugEnabled() {
 		return
 	}
@@ -151,7 +151,7 @@ func (p5 *Swamp) msgCantGetLock(socksString string, putback bool) {
 	p5.dbgPrint(buf)
 }
 
-func (p5 *Swamp) msgGotLock(socksString string) {
+func (p5 *ProxyEngine) msgGotLock(socksString string) {
 	if !p5.DebugEnabled() {
 		return
 	}
@@ -161,7 +161,7 @@ func (p5 *Swamp) msgGotLock(socksString string) {
 	p5.dbgPrint(buf)
 }
 
-func (p5 *Swamp) msgChecked(sock *Proxy, success bool) {
+func (p5 *ProxyEngine) msgChecked(sock *Proxy, success bool) {
 	if !p5.DebugEnabled() {
 		return
 	}
@@ -180,7 +180,7 @@ func (p5 *Swamp) msgChecked(sock *Proxy, success bool) {
 	p5.dbgPrint(buf)
 }
 
-func (p5 *Swamp) msgBadProxRate(sock *Proxy) {
+func (p5 *ProxyEngine) msgBadProxRate(sock *Proxy) {
 	if !p5.DebugEnabled() {
 		return
 	}
@@ -202,7 +202,7 @@ var (
 // Make sure you pull from the channel eventually to avoid build up of blocked goroutines.
 //
 // Deprecated: use DebugLogger instead. This will be removed in a future version.
-func (p5 *Swamp) DebugChannel() chan string {
+func (p5 *ProxyEngine) DebugChannel() chan string {
 	debugChan = make(chan string, 100)
 	useDebugChannel = true
 	return debugChan

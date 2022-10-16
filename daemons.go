@@ -7,13 +7,13 @@ import (
 	"time"
 )
 
-type swampMap struct {
+type proxyMap struct {
 	plot   map[string]*Proxy
 	mu     *sync.RWMutex
-	parent *Swamp
+	parent *ProxyEngine
 }
 
-func (sm swampMap) add(sock string) (*Proxy, bool) {
+func (sm proxyMap) add(sock string) (*Proxy, bool) {
 	sm.mu.Lock()
 	defer sm.mu.Unlock()
 
@@ -34,14 +34,14 @@ func (sm swampMap) add(sock string) (*Proxy, bool) {
 	return sm.plot[sock], true
 }
 
-func (sm swampMap) exists(sock string) bool {
+func (sm proxyMap) exists(sock string) bool {
 	if _, ok := sm.plot[sock]; !ok {
 		return false
 	}
 	return true
 }
 
-func (sm swampMap) delete(sock string) error {
+func (sm proxyMap) delete(sock string) error {
 	sm.mu.Lock()
 	defer sm.mu.Unlock()
 
@@ -54,7 +54,7 @@ func (sm swampMap) delete(sock string) error {
 	return nil
 }
 
-func (sm swampMap) clear() {
+func (sm proxyMap) clear() {
 	sm.mu.Lock()
 	defer sm.mu.Unlock()
 	for key := range sm.plot {
@@ -62,21 +62,21 @@ func (sm swampMap) clear() {
 	}
 }
 
-func (p5 *Swamp) recycling() int {
+func (p5 *ProxyEngine) recycling() int {
 	if !p5.GetRecyclingStatus() {
 		return 0
 	}
 
-	if len(p5.swampmap.plot) < 1 {
+	if len(p5.proxyMap.plot) < 1 {
 		return 0
 	}
 
 	var count int
 
-	p5.swampmap.mu.RLock()
-	defer p5.swampmap.mu.RUnlock()
+	p5.proxyMap.mu.RLock()
+	defer p5.proxyMap.mu.RUnlock()
 
-	for _, sock := range p5.swampmap.plot {
+	for _, sock := range p5.proxyMap.plot {
 		select {
 		case <-p5.ctx.Done():
 			return 0
@@ -90,7 +90,7 @@ func (p5 *Swamp) recycling() int {
 	return count
 }
 
-func (p5 *Swamp) jobSpawner() {
+func (p5 *ProxyEngine) jobSpawner() {
 	if p5.pool.IsClosed() {
 		p5.pool.Reboot()
 	}

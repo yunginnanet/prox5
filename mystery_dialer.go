@@ -11,17 +11,17 @@ import (
 )
 
 // DialContext is a simple stub adapter to implement a net.Dialer.
-func (p5 *Swamp) DialContext(ctx context.Context, network, addr string) (net.Conn, error) {
+func (p5 *ProxyEngine) DialContext(ctx context.Context, network, addr string) (net.Conn, error) {
 	return p5.MysteryDialer(ctx, network, addr)
 }
 
 // Dial is a simple stub adapter to implement a net.Dialer.
-func (p5 *Swamp) Dial(network, addr string) (net.Conn, error) {
+func (p5 *ProxyEngine) Dial(network, addr string) (net.Conn, error) {
 	return p5.MysteryDialer(context.Background(), network, addr)
 }
 
 // DialTimeout is a simple stub adapter to implement a net.Dialer with a timeout.
-func (p5 *Swamp) DialTimeout(network, addr string, timeout time.Duration) (net.Conn, error) {
+func (p5 *ProxyEngine) DialTimeout(network, addr string, timeout time.Duration) (net.Conn, error) {
 	ctx, cancel := context.WithDeadline(context.Background(), time.Now().Add(timeout))
 	go func() { // this is a goroutine that calls cancel() upon the deadline expiring to avoid context leaks
 		<-ctx.Done()
@@ -30,7 +30,7 @@ func (p5 *Swamp) DialTimeout(network, addr string, timeout time.Duration) (net.C
 	return p5.MysteryDialer(ctx, network, addr)
 }
 
-func (p5 *Swamp) addTimeout(socksString string) string {
+func (p5 *ProxyEngine) addTimeout(socksString string) string {
 	tout := strs.Get()
 	tout.MustWriteString(socksString)
 	tout.MustWriteString("?timeout=")
@@ -41,30 +41,29 @@ func (p5 *Swamp) addTimeout(socksString string) string {
 	return socksString
 }
 
-func (p5 *Swamp) popSockAndLockIt(ctx context.Context) (*Proxy, error) {
+func (p5 *ProxyEngine) popSockAndLockIt(ctx context.Context) (*Proxy, error) {
 	sock := p5.GetAnySOCKS()
-	socksString := sock.String()
 	select {
 	case <-ctx.Done():
 		return nil, fmt.Errorf("context done: %w", ctx.Err())
 	default:
 		if atomic.CompareAndSwapUint32(&sock.lock, stateUnlocked, stateLocked) {
-			p5.msgGotLock(socksString)
+			// p5.msgGotLock(socksString)
 			return sock, nil
 		}
 		select {
 		case p5.Pending <- sock:
-			p5.msgCantGetLock(socksString, true)
+			// p5.msgCantGetLock(socksString, true)
 			return nil, nil
 		default:
-			p5.msgCantGetLock(socksString, false)
+			p5.msgCantGetLock(sock.String(), false)
 			return nil, nil
 		}
 	}
 }
 
 // MysteryDialer is a dialer function that will use a different proxy for every request.
-func (p5 *Swamp) MysteryDialer(ctx context.Context, network, addr string) (net.Conn, error) {
+func (p5 *ProxyEngine) MysteryDialer(ctx context.Context, network, addr string) (net.Conn, error) {
 	// pull down proxies from channel until we get a proxy good enough for our spoiled asses
 	var count = 0
 	for {
@@ -74,6 +73,9 @@ func (p5 *Swamp) MysteryDialer(ctx context.Context, network, addr string) (net.C
 		}
 		if err := ctx.Err(); err != nil {
 			return nil, fmt.Errorf("context error: %w", err)
+		}
+		if p5.conCtx.Err() != nil {
+			return nil, fmt.Errorf("context closed")
 		}
 		var sock *Proxy
 		for {

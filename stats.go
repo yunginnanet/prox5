@@ -4,7 +4,7 @@ import (
 	"time"
 )
 
-// Statistics is used to encapsulate various swampy stats
+// Statistics is used to encapsulate various proxy engine stats
 type Statistics struct {
 	// Valid4 is the amount of SOCKS4 proxies validated
 	Valid4 int64
@@ -49,7 +49,7 @@ func (stats *Statistics) http() {
 }
 
 // GetTotalValidated retrieves our grand total validated proxy count.
-func (p5 *Swamp) GetTotalValidated() int {
+func (p5 *ProxyEngine) GetTotalValidated() int {
 	stats := p5.GetStatistics()
 	return int(stats.Valid4a + stats.Valid4 + stats.Valid5 + stats.ValidHTTP)
 }

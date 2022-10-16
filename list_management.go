@@ -16,7 +16,7 @@ import (
 //   - yeet.com:1080:user:pass
 //   - [fe80::2ef0:5dff:fe7f:c299]:1080
 //   - [fe80::2ef0:5dff:fe7f:c299]:1080:user:pass
-func (p5 *Swamp) LoadProxyTXT(seedFile string) (count int) {
+func (p5 *ProxyEngine) LoadProxyTXT(seedFile string) (count int) {
 	f, err := os.Open(seedFile)
 	if err != nil {
 		p5.dbgPrint(simpleString(err.Error()))
@@ -47,7 +47,7 @@ func (p5 *Swamp) LoadProxyTXT(seedFile string) (count int) {
 //   - yeet.com:1080:user:pass
 //   - [fe80::2ef0:5dff:fe7f:c299]:1080
 //   - [fe80::2ef0:5dff:fe7f:c299]:1080:user:pass
-func (p5 *Swamp) LoadSingleProxy(sock string) bool {
+func (p5 *ProxyEngine) LoadSingleProxy(sock string) bool {
 	var ok bool
 	if sock, ok = filter(sock); !ok {
 		return false
@@ -58,8 +58,8 @@ func (p5 *Swamp) LoadSingleProxy(sock string) bool {
 	return true
 }
 
-func (p5 *Swamp) loadSingleProxy(sock string) error {
-	if _, ok := p5.swampmap.add(sock); !ok {
+func (p5 *ProxyEngine) loadSingleProxy(sock string) error {
+	if _, ok := p5.proxyMap.add(sock); !ok {
 		return errors.New("proxy already exists")
 	}
 	return nil
@@ -73,7 +73,7 @@ func (p5 *Swamp) loadSingleProxy(sock string) error {
 //   - yeet.com:1080:user:pass
 //   - [fe80::2ef0:5dff:fe7f:c299]:1080
 //   - [fe80::2ef0:5dff:fe7f:c299]:1080:user:pass
-func (p5 *Swamp) LoadMultiLineString(socks string) int {
+func (p5 *ProxyEngine) LoadMultiLineString(socks string) int {
 	var count int
 	scan := bufio.NewScanner(strings.NewReader(socks))
 	for scan.Scan() {
@@ -87,6 +87,6 @@ func (p5 *Swamp) LoadMultiLineString(socks string) int {
 
 // ClearSOCKSList clears the map of proxies that we have on record.
 // Other operations (proxies that are still in buffered channels) will continue.
-func (p5 *Swamp) ClearSOCKSList() {
-	p5.swampmap.clear()
+func (p5 *ProxyEngine) ClearSOCKSList() {
+	p5.proxyMap.clear()
 }

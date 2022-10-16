@@ -47,7 +47,7 @@ func StartUpstreamProxy(listen string) {
 
 func init() {
 	quit = make(chan bool)
-	swamp = prox5.NewProxyEngine()
+	swamp = prox5.NewDefaultSwamp()
 	swamp.SetMaxWorkers(5)
 	swamp.EnableDebug()
 	go StartUpstreamProxy("127.0.0.1:1555")
