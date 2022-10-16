@@ -144,7 +144,7 @@ func NewDefaultSwamp() *Swamp {
 // After calling this you may use the various "setters" to change the options before calling Swamp.Start().
 func NewProxyEngine() *Swamp {
 	pe := &Swamp{
-		stats:       &statistics{birthday: time.Now()},
+		stats:       &Statistics{birthday: time.Now()},
 		DebugLogger: &basicPrinter{},
 
 		swampopt: defOpt(),
