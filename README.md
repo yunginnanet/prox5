@@ -4,7 +4,7 @@
 
 ![Animated Screenshot](https://tcp.ac/i/3WRfz.gif)
 
-### SOCKS5/4/4a validating proxy pool + server
+### SOCKS5/4/4a validating proxy pool + SOCKS5 server
 
   
 Prox5 is a golang library for managing, validating, and accessing thousands upon thousands of arbitrary SOCKS proxies.
