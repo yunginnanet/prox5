@@ -15,11 +15,15 @@ Notably it features interface compatible dialer functions that dial out from dif
 
 ### Validation Engine
 
-- TCP Dial to the endpoint
-- HTTPS GET request to a list of IP echo endpoints
-- Optional auto scaling of workers based on workload
+  1) TCP Dial to the endpoint
+  2) HTTPS GET request to a list of IP echo endpoints
+  3) Store the IP address discovered during step 2
+  4) Instantiate a pointer to a `prox5.Proxy` type
+  5) Enqueue the pointer for future use
 
-Prox5 will then store the endpoint's outward appearing IP address and mark it as valid for use.
+##### Auto Scaling
+
+The validation has an optional auto scale feature that allows for the automatic tuning of validation workers as more proxies are dispensed. This feature is brand new and is missing configuration, but works well. It can be enabled with `ProxyEngine.EnableAutoScaler()`.
 
 ### Rate Limiting
 
