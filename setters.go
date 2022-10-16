@@ -112,8 +112,34 @@ func (p5 *ProxyEngine) SetDebugLogger(l logger.Logger) {
 	debugHardLock.Unlock()
 }
 
-func (p5 *ProxyEngine) SetShuffle(shuffle bool) {
+func (p5 *ProxyEngine) EnableAutoScaler() {
+	p5.scaler.Enable()
+}
+
+func (p5 *ProxyEngine) DisableAutoScaler() {
+	p5.scaler.Disable()
+}
+
+func (p5 *ProxyEngine) EnableDebugRedaction() {
 	p5.opt.Lock()
-	p5.opt.shuffle = shuffle
+	p5.opt.redact = true
 	p5.opt.Unlock()
 }
+
+func (p5 *ProxyEngine) DisableDebugRedaction() {
+	p5.opt.Lock()
+	p5.opt.redact = false
+	p5.opt.Unlock()
+}
+
+/*func (p5 *ProxyEngine) EnableListShuffle() {
+	p5.opt.Lock()
+	p5.opt.shuffle = true
+	p5.opt.Unlock()
+}
+
+func (p5 *ProxyEngine) DisableListShuffle() {
+	p5.opt.Lock()
+	p5.opt.shuffle = false
+	p5.opt.Unlock()
+}*/

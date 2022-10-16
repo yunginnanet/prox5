@@ -121,8 +121,24 @@ func (p5 *ProxyEngine) GetDispenseMiddleware() func(*Proxy) (*Proxy, bool) {
 	return p5.dispenseMiddleware
 }
 
-func (p5 *ProxyEngine) GetShuffleStatus() bool {
+// TODO: List shuffling
+
+/*func (p5 *ProxyEngine) GetShuffleStatus() bool {
 	p5.mu.RLock()
 	defer p5.mu.RUnlock()
 	return p5.opt.shuffle
+}*/
+
+func (p5 *ProxyEngine) GetAutoScalerStatus() bool {
+	return p5.scaler.IsOn()
+}
+
+func (p5 *ProxyEngine) GetAutoScalerStateString() string {
+	return p5.scaler.StateString()
+}
+
+func (p5 *ProxyEngine) GetDebugRedactStatus() bool {
+	p5.mu.RLock()
+	defer p5.mu.RUnlock()
+	return p5.opt.redact
 }

@@ -112,6 +112,9 @@ func (p5 *ProxyEngine) msgUsingProxy(socksString string) {
 		return
 	}
 	buf := strs.Get()
+	if p5.GetDebugRedactStatus() {
+		socksString = "(redacted)"
+	}
 	buf.MustWriteString("MysteryDialer using socks: ")
 	buf.MustWriteString(socksString)
 	p5.dbgPrint(buf)
@@ -132,6 +135,9 @@ func (p5 *ProxyEngine) msgTry(socksString string) {
 	if !p5.DebugEnabled() {
 		return
 	}
+	if p5.GetDebugRedactStatus() {
+		socksString = "(redacted)"
+	}
 	buf := strs.Get()
 	buf.MustWriteString("try dial with: ")
 	buf.MustWriteString(socksString)
@@ -141,6 +147,9 @@ func (p5 *ProxyEngine) msgTry(socksString string) {
 func (p5 *ProxyEngine) msgCantGetLock(socksString string, putback bool) {
 	if !p5.DebugEnabled() {
 		return
+	}
+	if p5.GetDebugRedactStatus() {
+		socksString = "(redacted)"
 	}
 	buf := strs.Get()
 	buf.MustWriteString("can't get lock for ")
@@ -155,6 +164,9 @@ func (p5 *ProxyEngine) msgGotLock(socksString string) {
 	if !p5.DebugEnabled() {
 		return
 	}
+	if p5.GetDebugRedactStatus() {
+		socksString = "(redacted)"
+	}
 	buf := strs.Get()
 	buf.MustWriteString("got lock for ")
 	buf.MustWriteString(socksString)
@@ -165,15 +177,19 @@ func (p5 *ProxyEngine) msgChecked(sock *Proxy, success bool) {
 	if !p5.DebugEnabled() {
 		return
 	}
+	pstr := sock.Endpoint
+	if p5.GetDebugRedactStatus() {
+		pstr = "(redacted)"
+	}
 	buf := strs.Get()
 	if !success {
 		buf.MustWriteString("failed to verify: ")
-		buf.MustWriteString(sock.Endpoint)
+		buf.MustWriteString(pstr)
 		p5.dbgPrint(buf)
 		return
 	}
 	buf.MustWriteString("verified ")
-	buf.MustWriteString(sock.Endpoint)
+	buf.MustWriteString(pstr)
 	buf.MustWriteString(" as ")
 	buf.MustWriteString(sock.protocol.Get().String())
 	buf.MustWriteString(" proxy")
@@ -184,9 +200,13 @@ func (p5 *ProxyEngine) msgBadProxRate(sock *Proxy) {
 	if !p5.DebugEnabled() {
 		return
 	}
+	sockString := sock.Endpoint
+	if p5.GetDebugRedactStatus() {
+		sockString = "(redacted)"
+	}
 	buf := strs.Get()
 	buf.MustWriteString("badProx ratelimited: ")
-	buf.MustWriteString(sock.Endpoint)
+	buf.MustWriteString(sockString)
 	p5.dbgPrint(buf)
 }
 

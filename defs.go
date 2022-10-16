@@ -128,7 +128,7 @@ type config struct {
 	// remove proxy from recycling after being marked bad this many times
 	removeafter int
 	// shuffle determines whether or not we shuffle proxies before we validate and dispense them.
-	shuffle bool
+	// shuffle bool
 
 	// TODO: make getters and setters for these
 	useProxConfig rl.Policy
@@ -193,6 +193,8 @@ func NewProxyEngine() *ProxyEngine {
 		ExpiryDuration: 2 * time.Minute,
 		PanicHandler:   pe.pondPanic,
 	}))
+
+	pe.scaler = scaler.NewAutoScaler(pe.opt.maxWorkers+100, 10)
 
 	if err != nil {
 		buf := strs.Get()

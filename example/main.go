@@ -2,59 +2,50 @@ package main
 
 import (
 	"fmt"
-	"io"
 	"os"
-	"os/signal"
-	"strconv"
-	"syscall"
 	"time"
 
+	"github.com/gdamore/tcell/v2"
 	"github.com/haxii/socks5"
-	"github.com/mattn/go-tty"
 
 	"git.tcp.direct/kayos/prox5"
+
+	"github.com/rivo/tview"
 )
 
-var (
-	swamp *prox5.Swamp
-	quit  chan bool
-	t     *tty.TTY
-)
+var swamp *prox5.Swamp
 
 type socksLogger struct{}
 
 var socklog = socksLogger{}
 
-// Printf is used to handle socks server logging.
-func (s socksLogger) Printf(format string, a ...interface{}) {
-	println(fmt.Sprintf(format, a...))
-}
-
 func StartUpstreamProxy(listen string) {
 	conf := &socks5.Config{Dial: swamp.DialContext, Logger: socklog}
 	server, err := socks5.New(conf)
 	if err != nil {
-		println(err.Error())
+		socklog.Printf(err.Error())
 		return
 	}
 
 	socklog.Printf("starting proxy server on %s", listen)
 	if err := server.ListenAndServe("tcp", listen); err != nil {
-		println(err.Error())
+		socklog.Printf(err.Error())
 		return
 	}
 }
 
 func init() {
-	quit = make(chan bool)
 	swamp = prox5.NewDefaultSwamp()
 	swamp.SetMaxWorkers(5)
 	swamp.EnableDebug()
+	swamp.SetDebugLogger(socklog)
+	swamp.EnableDebugRedaction()
+	swamp.EnableAutoScaler()
 	go StartUpstreamProxy("127.0.0.1:1555")
 
 	count := swamp.LoadProxyTXT(os.Args[1])
 	if count < 1 {
-		println("file contained no valid SOCKS host:port combos")
+		socklog.Printf("file contained no valid SOCKS host:port combos")
 		os.Exit(1)
 	}
 
@@ -62,119 +53,111 @@ func init() {
 		panic(err)
 	}
 
-	println("[USAGE] q: quit | d: debug | a: socks4 | b: socks4a | c: socks5 | p: pause/unpause")
+	socklog.Printf("[USAGE] q: quit | d: debug | p: pause/unpause")
 }
 
-func get(ver string) {
-	switch ver {
-	case "4":
-		println("retrieving SOCKS4...")
-		println(swamp.Socks4Str())
-	case "4a":
-		println("retrieving SOCKS4a...")
-		println(swamp.Socks4aStr())
-	case "5":
-		println("retrieving SOCKS5...")
-		println(swamp.Socks5Str())
-	default:
+const statsFmt = "Uptime: %s\n\nValidated: %d\nDispensed: %d\n\nMaximum Workers: %d\nActive  Workers: %d\nAsleep  Workers: %d\n\nAutoScale: %s\n----------\n%s"
 
+var (
+	background *tview.TextView
+	window     *tview.Modal
+	app        *tview.Application
+)
+
+func currentString(lastMessage string) string {
+	if swamp == nil {
+		return ""
 	}
+	stats := swamp.GetStatistics()
+	wMax, wRun, wIdle := swamp.GetWorkers()
+	return fmt.Sprintf(statsFmt,
+		stats.GetUptime().Round(time.Second), int(stats.Valid4+stats.Valid4a+stats.Valid5),
+		stats.Dispensed, wMax, wRun, wIdle, swamp.GetAutoScalerStateString(), lastMessage)
 }
 
-func watchKeyPresses() {
-	var err error
-	t, err = tty.Open()
-	if err != nil {
-		panic(err)
+func (s socksLogger) Printf(format string, a ...interface{}) {
+	if app == nil {
+		return
 	}
-	var done = false
+	msg := fmt.Sprintf(format, a...)
+	if msg == "" {
+		return
+	}
+	app.QueueUpdateDraw(func() {
+		window.SetText(currentString(msg))
+	})
+}
 
-	for {
-		r, err := t.ReadRune()
-		if err != nil {
-			panic(err)
-		}
-		switch string(r) {
-		case "d":
-			if swamp.DebugEnabled() {
-				println("disabling debug")
-				swamp.DisableDebug()
-			} else {
-				println("enabling debug")
-				swamp.EnableDebug()
-			}
-		case "+":
-			swamp.SetMaxWorkers(swamp.GetMaxWorkers() + 1)
-			println("New worker count: " + strconv.Itoa(swamp.GetMaxWorkers()))
-		case "-":
-			swamp.SetMaxWorkers(swamp.GetMaxWorkers() - 1)
-			println("New worker count: " + strconv.Itoa(swamp.GetMaxWorkers()))
-		case "a":
-			go get("4")
-		case "b":
-			go get("4a")
-		case "c":
-			go get("5")
-		case "p":
+func (s socksLogger) Print(str string) {
+	if app == nil {
+		return
+	}
+	app.QueueUpdateDraw(func() {
+		window.SetText(currentString(str))
+	})
+}
+
+func buttons(buttonIndex int, buttonLabel string) {
+	go func() {
+		switch buttonIndex {
+		case 0:
+			app.Stop()
+		case 1:
 			if swamp.IsRunning() {
 				err := swamp.Pause()
 				if err != nil {
-					println(err.Error())
+					socklog.Printf(err.Error())
 				}
 			} else {
 				if err := swamp.Resume(); err != nil {
-					println(err.Error())
+					socklog.Printf(err.Error())
 				}
 			}
-		case "q":
-			done = true
-			break
-		case "i":
-			go func() {
-				res, getErr := swamp.GetHTTPClient().Get("https://wtfismyip.com/text")
-				if getErr != nil {
-					println(getErr.Error())
-					return
-				}
-				_, _ = io.Copy(os.Stdout, res.Body)
-			}()
+		case 2:
+			swamp.SetMaxWorkers(swamp.GetMaxWorkers() + 1)
+		case 3:
+			swamp.SetMaxWorkers(swamp.GetMaxWorkers() - 1)
 		default:
-			//
+			app.Stop()
 		}
-		if done {
-			break
-		}
-	}
-	_ = t.Close()
-	quit <- true
-	return
-}
-
-func sigWatch() {
-	c := make(chan os.Signal, 5)
-	signal.Notify(c, os.Interrupt, syscall.SIGTERM)
-	for {
-		select {
-		case <-c:
-			if t != nil {
-				_ = t.Close()
-			}
-			os.Exit(9)
-		}
-	}
+	}()
 }
 
 func main() {
-	go watchKeyPresses()
-	go sigWatch()
+	app = tview.NewApplication()
 
+	window = tview.NewModal().
+		SetText(currentString("Initialize")).
+		AddButtons([]string{"Quit", "Pause", "+", "-"}).
+		SetDoneFunc(buttons).
+		SetBackgroundColor(tcell.ColorBlack).SetTextColor(tcell.ColorWhite)
+
+	modal := func(p tview.Primitive, width, height int) tview.Primitive {
+		return tview.NewFlex().
+			AddItem(nil, 0, 1, false).
+			AddItem(tview.NewFlex().SetDirection(tview.FlexRow).
+				AddItem(nil, 0, 1, false).
+				AddItem(p, height, 1, true).
+				AddItem(nil, 0, 1, false), width, 1, true).
+			AddItem(nil, 0, 1, false)
+	}
+
+	background = tview.NewTextView().
+		SetTextColor(tcell.ColorGray).SetTextAlign(tview.AlignLeft)
+
+	pages := tview.NewPages().
+		AddPage("background", background, true, true).
+		AddPage("window", modal(window, 150, 50), true, true)
+
+	if err := app.SetRoot(pages, false).Run(); err != nil {
+		panic(err)
+	}
+	swamp.SetDebugLogger(socklog)
 	go func() {
 		for {
-			stats := swamp.GetStatistics()
-			fmt.Printf("4: %d, 4a: %d, 5: %d \n", stats.Valid4, stats.Valid4a, stats.Valid5)
-			time.Sleep(5 * time.Second)
+			time.Sleep(time.Second)
+			app.Sync()
 		}
 	}()
-
-	<-quit
+	// Initialize()
 }

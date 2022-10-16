@@ -16,38 +16,83 @@ const (
 )
 
 type AutoScaler struct {
-	old                 *int64
-	max                 int
-	state               autoScalerState
-	differenceThreshold int
+	old       *int64
+	Max       int
+	state     autoScalerState
+	Threshold int
 }
 
 func NewAutoScaler(max int, differenceThreshold int) *AutoScaler {
+	zero := int64(0)
 	return &AutoScaler{
-		max:                 max,
-		differenceThreshold: differenceThreshold,
+		old:       &zero,
+		state:     stateDisabled,
+		Max:       max,
+		Threshold: differenceThreshold,
 	}
 }
 
-func (as AutoScaler) ScaleAnts(pool *ants.Pool, validated int, dispensed int64) bool {
+func (as *AutoScaler) Disable() {
+	atomic.StoreUint32((*uint32)(&as.state), uint32(stateDisabled))
+}
+
+func (as *AutoScaler) Enable() {
+	atomic.StoreUint32((*uint32)(&as.state), uint32(stateIdle))
+}
+
+func (as *AutoScaler) IsOn() bool {
+	return as.state != stateDisabled
+}
+
+func (as *AutoScaler) StateString() string {
+	switch autoScalerState(atomic.LoadUint32((*uint32)(&as.state))) {
+	case stateDisabled:
+		return "disabled"
+	case stateIdle:
+		return "idle"
+	case stateScalingUp:
+		return "scaling up"
+	case stateScalingDown:
+		return "scaling down"
+	default:
+		return "unknown"
+	}
+}
+
+// TODO: test cases
+
+func (as *AutoScaler) ScaleAnts(pool *ants.Pool, validated int, dispensed int64) bool {
 	if atomic.CompareAndSwapUint32((*uint32)(&as.state), uint32(stateDisabled), uint32(stateDisabled)) {
+		switch {
+		case atomic.LoadInt64(as.old) == 0:
+			// no-op
+		case atomic.LoadInt64(as.old) == int64(pool.Cap()):
+			atomic.StoreInt64(as.old, 0)
+		case pool.Cap() > int(atomic.LoadInt64(as.old)):
+			pool.Tune(pool.Cap() - 1)
+			return true
+		case pool.Cap() < int(atomic.LoadInt64(as.old)):
+			pool.Tune(pool.Cap() + 1)
+			return true
+		default:
+			// no-op
+		}
 		return false
 	}
 
 	sPtr := (*uint32)(&as.state)
 
-	old := atomic.LoadInt64(as.old)
-	fresh := old == 0
+	fresh := atomic.LoadInt64(as.old) == 0
 
 	idle := atomic.CompareAndSwapUint32(sPtr, uint32(stateIdle), uint32(stateIdle))
 
-	needScaleUp := (validated-int(dispensed) < as.differenceThreshold) && (pool.Cap() < as.max)
+	needScaleUp := (validated-int(dispensed) < as.Threshold) && (pool.Cap() < as.Max)
 
-	needScaleDown := !idle && !fresh &&
-		(validated-int(dispensed) > as.differenceThreshold) &&
+	needScaleDown := !fresh &&
+		((validated - int(dispensed)) > as.Threshold) &&
 		(int64(pool.Cap()) > atomic.LoadInt64(as.old))
 
-	noop := (idle && !needScaleUp) || (needScaleUp && pool.Cap() >= as.max)
+	noop := (idle && !needScaleUp && !needScaleDown) || (needScaleUp && pool.Cap() >= as.Max) || (validated < as.Threshold)
 
 	switch {
 	case noop:
@@ -57,7 +102,7 @@ func (as AutoScaler) ScaleAnts(pool *ants.Pool, validated int, dispensed int64) 
 		return false
 	case needScaleUp && atomic.CompareAndSwapUint32(sPtr, uint32(stateIdle), uint32(stateScalingUp)):
 		atomic.StoreInt64(as.old, int64(pool.Cap()))
-		pool.Tune(int(*as.old) + 1)
+		pool.Tune(pool.Cap() + 1)
 		return true
 	case needScaleUp && atomic.CompareAndSwapUint32(sPtr, uint32(stateScalingUp), uint32(stateScalingUp)):
 		pool.Tune(pool.Cap() + 1)
