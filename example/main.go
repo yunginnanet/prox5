@@ -136,7 +136,7 @@ func watchKeyPresses() {
 					println(getErr.Error())
 					return
 				}
-				io.Copy(os.Stdout, res.Body)
+				_, _ = io.Copy(os.Stdout, res.Body)
 			}()
 		default:
 			//
