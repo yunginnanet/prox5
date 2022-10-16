@@ -56,7 +56,7 @@ func init() {
 	socklog.Printf("[USAGE] q: quit | d: debug | p: pause/unpause")
 }
 
-const statsFmt = "Uptime: %s\n\nValidated: %d\nDispensed: %d\n\nMaximum Workers: %d\nActive  Workers: %d\nAsleep  Workers: %d\n\nAutoScale: %s\n----------\n%s"
+const statsFmt = ">>>>>-------<<<<<\n>>>>> Prox5 <<<<<\n>>>>>-------<<<<<\n\nUptime: %s\n\nValidated: %d\nDispensed: %d\n\nMaximum Workers: %d\nActive  Workers: %d\nAsleep  Workers: %d\n\nAutoScale: %s\n\n----------\n%s"
 
 var (
 	background *tview.TextView
