@@ -13,10 +13,11 @@ Notably it features interface compatible dialer functions that dial out from dif
 
 ---
 
-### Initial Validation Sequence
+### Validation Engine
 
 - TCP Dial to the endpoint
 - HTTPS GET request to a list of IP echo endpoints
+- Optional auto scaling of workers based on workload
 
 Prox5 will then store the endpoint's outward appearing IP address and mark it as valid for use.
 
