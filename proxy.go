@@ -1,12 +1,9 @@
 package prox5
 
 import (
-	"strings"
 	"time"
 
 	rl "github.com/yunginnanet/Rate5"
-
-	"git.tcp.direct/kayos/prox5/internal/pools"
 )
 
 // https://pkg.go.dev/github.com/yunginnanet/Rate5#Policy
@@ -57,23 +54,15 @@ func (sock *Proxy) GetProto() ProxyProtocol {
 
 // GetProto safely retrieves the protocol value of the Proxy.
 func (sock *Proxy) String() string {
-	tout := ""
+	buf := strs.Get()
+	defer strs.MustPut(buf)
+	buf.MustWriteString(sock.GetProto().String())
+	buf.MustWriteString("://")
+	buf.MustWriteString(sock.Endpoint)
 	if sock.parent.GetServerTimeoutStr() != "-1" {
-		tbuf := pools.CopABuffer.Get().(*strings.Builder)
-		tbuf.WriteString("?timeout=")
-		tbuf.WriteString(sock.parent.GetServerTimeoutStr())
-		tbuf.WriteString("s")
-		tout = tbuf.String()
-		pools.DiscardBuffer(tbuf)
+		buf.MustWriteString("?timeout=")
+		buf.MustWriteString(sock.parent.GetServerTimeoutStr())
+		buf.MustWriteString("s")
 	}
-	buf := pools.CopABuffer.Get().(*strings.Builder)
-	buf.WriteString(sock.GetProto().String())
-	buf.WriteString("://")
-	buf.WriteString(sock.Endpoint)
-	if tout != "" {
-		buf.WriteString(tout)
-	}
-	out := buf.String()
-	pools.DiscardBuffer(buf)
-	return out
+	return buf.String()
 }

@@ -14,8 +14,6 @@ import (
 
 	"git.tcp.direct/kayos/socks"
 	"golang.org/x/net/proxy"
-
-	"git.tcp.direct/kayos/prox5/internal/pools"
 )
 
 func (p5 *Swamp) prepHTTP() (*http.Client, *http.Transport, *http.Request, error) {
@@ -52,15 +50,15 @@ func (sock *Proxy) good() {
 }
 
 func (p5 *Swamp) bakeHTTP(hmd *HandMeDown) (client *http.Client, req *http.Request, err error) {
-	builder := pools.CopABuffer.Get().(*strings.Builder)
-	builder.WriteString(hmd.protoCheck.String())
-	builder.WriteString("://")
-	builder.WriteString(hmd.sock.Endpoint)
-	builder.WriteString("/?timeout=")
-	builder.WriteString(p5.GetValidationTimeoutStr())
-	builder.WriteString("s")
+	builder := strs.Get()
+	builder.MustWriteString(hmd.protoCheck.String())
+	builder.MustWriteString("://")
+	builder.MustWriteString(hmd.sock.Endpoint)
+	builder.MustWriteString("/?timeout=")
+	builder.MustWriteString(p5.GetValidationTimeoutStr())
+	builder.MustWriteString("s")
 	dialSocks := socks.DialWithConn(builder.String(), hmd.conn)
-	pools.DiscardBuffer(builder)
+	strs.MustPut(builder)
 
 	var (
 		purl      *url.URL

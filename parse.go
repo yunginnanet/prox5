@@ -6,8 +6,6 @@ import (
 
 	"github.com/miekg/dns"
 	ipa "inet.af/netaddr"
-
-	"git.tcp.direct/kayos/prox5/internal/pools"
 )
 
 func filterv6(in string) (filtered string, ok bool) {
@@ -44,22 +42,21 @@ func isNumber(s string) bool {
 }
 
 func buildProxyString(username, password, address, port string, v6 bool) (result string) {
-	builder := pools.CopABuffer.Get().(*strings.Builder)
+	builder := strs.Get()
+	defer strs.MustPut(builder)
 	if username != "" && password != "" {
-		builder.WriteString(username)
-		builder.WriteString(":")
-		builder.WriteString(password)
-		builder.WriteString("@")
+		builder.MustWriteString(username)
+		builder.MustWriteString(":")
+		builder.MustWriteString(password)
+		builder.MustWriteString("@")
 	}
-	builder.WriteString(address)
+	builder.MustWriteString(address)
 	if v6 {
-		builder.WriteString("]")
+		builder.MustWriteString("]")
 	}
-	builder.WriteString(":")
-	builder.WriteString(port)
-	result = builder.String()
-	pools.DiscardBuffer(builder)
-	return
+	builder.MustWriteString(":")
+	builder.MustWriteString(port)
+	return builder.String()
 }
 
 func filter(in string) (filtered string, ok bool) { //nolint:cyclop

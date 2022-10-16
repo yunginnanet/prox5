@@ -2,7 +2,6 @@ package prox5
 
 import (
 	"context"
-	"strings"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -10,7 +9,6 @@ import (
 	"github.com/panjf2000/ants/v2"
 	rl "github.com/yunginnanet/Rate5"
 
-	"git.tcp.direct/kayos/prox5/internal/pools"
 	"git.tcp.direct/kayos/prox5/logger"
 )
 
@@ -185,9 +183,9 @@ func NewProxyEngine() *Swamp {
 	}))
 
 	if err != nil {
-		buf := pools.CopABuffer.Get().(*strings.Builder)
-		buf.WriteString("CRITICAL: ")
-		buf.WriteString(err.Error())
+		buf := strs.Get()
+		buf.MustWriteString("CRITICAL: ")
+		buf.MustWriteString(err.Error())
 		pe.dbgPrint(buf)
 		panic(err)
 	}

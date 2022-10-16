@@ -3,11 +3,8 @@ package prox5
 import (
 	"errors"
 	"strconv"
-	"strings"
 	"sync"
 	"time"
-
-	"git.tcp.direct/kayos/prox5/internal/pools"
 )
 
 type swampMap struct {
@@ -65,7 +62,6 @@ func (sm swampMap) clear() {
 	}
 }
 
-
 func (p5 *Swamp) recycling() int {
 	if !p5.GetRecyclingStatus() {
 		return 0
@@ -118,10 +114,10 @@ func (p5 *Swamp) jobSpawner() {
 			default:
 				time.Sleep(500 * time.Millisecond)
 				count := p5.recycling()
-				buf := pools.CopABuffer.Get().(*strings.Builder)
-				buf.WriteString("recycled ")
-				buf.WriteString(strconv.Itoa(count))
-				buf.WriteString(" proxies from our map")
+				buf := strs.Get()
+				buf.MustWriteString("recycled ")
+				buf.MustWriteString(strconv.Itoa(count))
+				buf.MustWriteString(" proxies from our map")
 				p5.dbgPrint(buf)
 			}
 		}

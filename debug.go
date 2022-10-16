@@ -2,11 +2,10 @@ package prox5
 
 import (
 	"fmt"
-	"strings"
 	"sync"
 	"sync/atomic"
 
-	"git.tcp.direct/kayos/prox5/internal/pools"
+	"git.tcp.direct/kayos/common/pool"
 )
 
 var (
@@ -30,8 +29,8 @@ type SocksLogger struct {
 
 // Printf is used to handle socks server logging.
 func (s SocksLogger) Printf(format string, a ...interface{}) {
-	buf := pools.CopABuffer.Get().(*strings.Builder)
-	buf.WriteString(fmt.Sprintf(format, a...))
+	buf := strs.Get()
+	buf.MustWriteString(fmt.Sprintf(format, a...))
 	s.parent.dbgPrint(buf)
 }
 
@@ -72,14 +71,14 @@ func (p5 *Swamp) DisableDebug() {
 	atomic.StoreUint32(debugStatus, debugDisabled)
 }
 
-func simpleString(s string) *strings.Builder {
-	buf := pools.CopABuffer.Get().(*strings.Builder)
-	buf.WriteString(s)
+func simpleString(s string) *pool.String {
+	buf := strs.Get()
+	buf.MustWriteString(s)
 	return buf
 }
 
-func (p5 *Swamp) dbgPrint(builder *strings.Builder) {
-	defer pools.DiscardBuffer(builder)
+func (p5 *Swamp) dbgPrint(builder *pool.String) {
+	defer strs.MustPut(builder)
 	if !p5.DebugEnabled() {
 		return
 	}
@@ -91,20 +90,20 @@ func (p5 *Swamp) msgUnableToReach(socksString, target string, err error) {
 	if !p5.DebugEnabled() {
 		return
 	}
-	buf := pools.CopABuffer.Get().(*strings.Builder)
-	buf.WriteString("unable to reach ")
+	buf := strs.Get()
+	buf.MustWriteString("unable to reach ")
 	if p5.swampopt.redact {
-		buf.WriteString("[redacted]")
+		buf.MustWriteString("[redacted]")
 	} else {
-		buf.WriteString(target)
+		buf.MustWriteString(target)
 	}
-	buf.WriteString(" with ")
-	buf.WriteString(socksString)
+	buf.MustWriteString(" with ")
+	buf.MustWriteString(socksString)
 	if !p5.swampopt.redact {
-		buf.WriteString(": ")
-		buf.WriteString(err.Error())
+		buf.MustWriteString(": ")
+		buf.MustWriteString(err.Error())
 	}
-	buf.WriteString(", cycling...")
+	buf.MustWriteString(", cycling...")
 	p5.dbgPrint(buf)
 }
 
@@ -112,9 +111,9 @@ func (p5 *Swamp) msgUsingProxy(socksString string) {
 	if !p5.DebugEnabled() {
 		return
 	}
-	buf := pools.CopABuffer.Get().(*strings.Builder)
-	buf.WriteString("MysteryDialer using socks: ")
-	buf.WriteString(socksString)
+	buf := strs.Get()
+	buf.MustWriteString("MysteryDialer using socks: ")
+	buf.MustWriteString(socksString)
 	p5.dbgPrint(buf)
 }
 
@@ -122,10 +121,10 @@ func (p5 *Swamp) msgFailedMiddleware(socksString string) {
 	if !p5.DebugEnabled() {
 		return
 	}
-	buf := pools.CopABuffer.Get().(*strings.Builder)
-	buf.WriteString("failed middleware check, ")
-	buf.WriteString(socksString)
-	buf.WriteString(", cycling...")
+	buf := strs.Get()
+	buf.MustWriteString("failed middleware check, ")
+	buf.MustWriteString(socksString)
+	buf.MustWriteString(", cycling...")
 	p5.dbgPrint(buf)
 }
 
@@ -133,9 +132,9 @@ func (p5 *Swamp) msgTry(socksString string) {
 	if !p5.DebugEnabled() {
 		return
 	}
-	buf := pools.CopABuffer.Get().(*strings.Builder)
-	buf.WriteString("try dial with: ")
-	buf.WriteString(socksString)
+	buf := strs.Get()
+	buf.MustWriteString("try dial with: ")
+	buf.MustWriteString(socksString)
 	p5.dbgPrint(buf)
 }
 
@@ -143,11 +142,11 @@ func (p5 *Swamp) msgCantGetLock(socksString string, putback bool) {
 	if !p5.DebugEnabled() {
 		return
 	}
-	buf := pools.CopABuffer.Get().(*strings.Builder)
-	buf.WriteString("can't get lock for ")
-	buf.WriteString(socksString)
+	buf := strs.Get()
+	buf.MustWriteString("can't get lock for ")
+	buf.MustWriteString(socksString)
 	if putback {
-		buf.WriteString(", putting back in queue")
+		buf.MustWriteString(", putting back in queue")
 	}
 	p5.dbgPrint(buf)
 }
@@ -156,9 +155,9 @@ func (p5 *Swamp) msgGotLock(socksString string) {
 	if !p5.DebugEnabled() {
 		return
 	}
-	buf := pools.CopABuffer.Get().(*strings.Builder)
-	buf.WriteString("got lock for ")
-	buf.WriteString(socksString)
+	buf := strs.Get()
+	buf.MustWriteString("got lock for ")
+	buf.MustWriteString(socksString)
 	p5.dbgPrint(buf)
 }
 
@@ -166,18 +165,18 @@ func (p5 *Swamp) msgChecked(sock *Proxy, success bool) {
 	if !p5.DebugEnabled() {
 		return
 	}
-	buf := pools.CopABuffer.Get().(*strings.Builder)
+	buf := strs.Get()
 	if !success {
-		buf.WriteString("failed to verify: ")
-		buf.WriteString(sock.Endpoint)
+		buf.MustWriteString("failed to verify: ")
+		buf.MustWriteString(sock.Endpoint)
 		p5.dbgPrint(buf)
 		return
 	}
-	buf.WriteString("verified ")
-	buf.WriteString(sock.Endpoint)
-	buf.WriteString(" as ")
-	buf.WriteString(sock.protocol.Get().String())
-	buf.WriteString(" proxy")
+	buf.MustWriteString("verified ")
+	buf.MustWriteString(sock.Endpoint)
+	buf.MustWriteString(" as ")
+	buf.MustWriteString(sock.protocol.Get().String())
+	buf.MustWriteString(" proxy")
 	p5.dbgPrint(buf)
 }
 
@@ -185,9 +184,9 @@ func (p5 *Swamp) msgBadProxRate(sock *Proxy) {
 	if !p5.DebugEnabled() {
 		return
 	}
-	buf := pools.CopABuffer.Get().(*strings.Builder)
-	buf.WriteString("badProx ratelimited: ")
-	buf.WriteString(sock.Endpoint)
+	buf := strs.Get()
+	buf.MustWriteString("badProx ratelimited: ")
+	buf.MustWriteString(sock.Endpoint)
 	p5.dbgPrint(buf)
 }
 

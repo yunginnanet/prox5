@@ -4,13 +4,10 @@ import (
 	"context"
 	"fmt"
 	"net"
-	"strings"
 	"sync/atomic"
 	"time"
 
 	"git.tcp.direct/kayos/socks"
-
-	"git.tcp.direct/kayos/prox5/internal/pools"
 )
 
 // DialContext is a simple stub adapter to implement a net.Dialer.
@@ -34,13 +31,13 @@ func (p5 *Swamp) DialTimeout(network, addr string, timeout time.Duration) (net.C
 }
 
 func (p5 *Swamp) addTimeout(socksString string) string {
-	tout := pools.CopABuffer.Get().(*strings.Builder)
-	tout.WriteString(socksString)
-	tout.WriteString("?timeout=")
-	tout.WriteString(p5.GetServerTimeoutStr())
-	tout.WriteRune('s')
+	tout := strs.Get()
+	tout.MustWriteString(socksString)
+	tout.MustWriteString("?timeout=")
+	tout.MustWriteString(p5.GetServerTimeoutStr())
+	_, _ = tout.WriteRune('s')
 	socksString = tout.String()
-	pools.DiscardBuffer(tout)
+	strs.MustPut(tout)
 	return socksString
 }
 
