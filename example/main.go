@@ -6,7 +6,7 @@ import (
 	"time"
 
 	"github.com/gdamore/tcell/v2"
-	"github.com/haxii/socks5"
+	// "github.com/haxii/socks5"
 
 	"git.tcp.direct/kayos/prox5"
 
@@ -20,18 +20,21 @@ type socksLogger struct{}
 var socklog = socksLogger{}
 
 func StartUpstreamProxy(listen string) {
-	conf := &socks5.Config{Dial: swamp.DialContext, Logger: socklog}
-	server, err := socks5.New(conf)
-	if err != nil {
-		socklog.Printf(err.Error())
-		return
-	}
-
-	socklog.Printf("starting proxy server on %s", listen)
-	if err := server.ListenAndServe("tcp", listen); err != nil {
-		socklog.Printf(err.Error())
-		return
-	}
+	swamp.StartSOCKS5Server(listen, "", "")
+	// conf := &socks5.Config{Dial: swamp.DialContext, Logger: socklog}
+	// server, err := socks5.New(conf)
+	//
+	//	if err != nil {
+	//		socklog.Printf(err.Error())
+	//		return
+	//	}
+	//
+	// socklog.Printf("starting proxy server on %s", listen)
+	//
+	//	if err := server.ListenAndServe("tcp", listen); err != nil {
+	//		socklog.Printf(err.Error())
+	//		return
+	//	}
 }
 
 func init() {

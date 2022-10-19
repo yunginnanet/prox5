@@ -47,14 +47,17 @@ func (s socksCreds) Valid(username, password string) bool {
 // listen is standard Go listen string, e.g: "127.0.0.1:1080".
 // username and password are used for authenticatig to the SOCKS5 server.
 func (p5 *ProxyEngine) StartSOCKS5Server(listen, username, password string) error {
-	cator := socks5.UserPassAuthenticator{Credentials: socks5.StaticCredentials{username: password}}
-	server := socks5.NewServer(
+	opts := []socks5.Option{
 		socks5.WithBufferPool(bufs),
-		socks5.WithAuthMethods([]socks5.Authenticator{cator}),
 		socks5.WithLogger(p5.DebugLogger),
 		socks5.WithDial(p5.MysteryDialer),
-		// socks5.WithGPool(p5.pool),
-	)
+	}
+	if username != "" && password != "" {
+		cator := socks5.UserPassAuthenticator{Credentials: socks5.StaticCredentials{username: password}}
+		opts = append(opts, socks5.WithAuthMethods([]socks5.Authenticator{cator}))
+	}
+
+	server := socks5.NewServer(opts...)
 
 	buf := strs.Get()
 	buf.MustWriteString("listening for SOCKS5 connections on ")
