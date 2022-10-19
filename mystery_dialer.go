@@ -105,6 +105,16 @@ func (p5 *ProxyEngine) MysteryDialer(ctx context.Context, network, addr string) 
 			continue
 		}
 		p5.msgUsingProxy(socksString)
+		go func() {
+			select {
+			case <-ctx.Done():
+				_ = conn.Close()
+			case <-p5.conCtx.Done():
+				_ = conn.Close()
+			case <-p5.ctx.Done():
+				_ = conn.Close()
+			}
+		}()
 		return conn, nil
 	}
 }

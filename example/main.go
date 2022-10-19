@@ -75,6 +75,10 @@ func currentString(lastMessage string) string {
 		stats.Dispensed, wMax, wRun, wIdle, swamp.GetAutoScalerStateString(), lastMessage)
 }
 
+func (s socksLogger) Errorf(format string, a ...interface{}) {
+	s.Printf(format, a...)
+}
+
 func (s socksLogger) Printf(format string, a ...interface{}) {
 	if app == nil {
 		return

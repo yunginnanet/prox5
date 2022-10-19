@@ -53,6 +53,10 @@ func (b *basicPrinter) Printf(format string, items ...any) {
 	}
 }
 
+func (b *basicPrinter) Errorf(format string, items ...any) {
+	b.Printf(format, items...)
+}
+
 // DebugEnabled returns the current state of our debug switch.
 func (p5 *ProxyEngine) DebugEnabled() bool {
 	debugHardLock.RLock()

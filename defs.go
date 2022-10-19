@@ -93,7 +93,7 @@ func defOpt() *config {
 		dialerBailout:  defaultBailout,
 		stale:          defaultStaleTime,
 		maxWorkers:     defaultWorkerCount,
-		redact:         true,
+		redact:         false,
 	}
 	sm.validationTimeout = time.Duration(18) * time.Second
 	sm.serverTimeout = time.Duration(180) * time.Second
