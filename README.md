@@ -18,6 +18,7 @@ Notably it features interface compatible dialer functions that dial out from dif
 #### *You very well may end up causing denial of service when using this library with certain tools.*
 It is fairly easy to end up with a `slowloris` type effect with this library when paired with efficient tools that try to reuse http connections or that tend to use keepalive. Because the tool has no idea what the proxy server is doing (dialing with different connections often) you may end up leaving a ton of open connections from a website to the proxy servers. This is either a bug or a feature... That much is for you to decide.
 
+---
 
 ### Validation Engine
 
