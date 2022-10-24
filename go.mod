@@ -7,10 +7,9 @@ require (
 	git.tcp.direct/kayos/go-socks5 v0.0.0-20221017013929-681914fcfad0
 	git.tcp.direct/kayos/socks v0.0.0-20221016092341-00cb75cc613a
 	github.com/gdamore/tcell/v2 v2.4.1-0.20210905002822-f057f0a857a1
-	github.com/haxii/socks5 v1.0.0
 	github.com/miekg/dns v1.1.50
 	github.com/ooni/oohttp v0.3.0
-	github.com/panjf2000/ants/v2 v2.5.0
+	github.com/panjf2000/ants/v2 v2.6.0
 	github.com/refraction-networking/utls v1.1.3
 	github.com/rivo/tview v0.0.0-20220916081518-2e69b7385a37
 	github.com/yunginnanet/Rate5 v1.1.0
