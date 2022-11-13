@@ -6,7 +6,7 @@
 
 ### SOCKS5/4/4a validating proxy pool + SOCKS5 server
 
-  
+
 Prox5 is a golang library for managing, validating, and accessing thousands upon thousands of arbitrary SOCKS proxies.
 
 Notably it features interface compatible dialer functions that dial out from different proxies for every connection, and a SOCKS5 server that utilizes those functions.
@@ -31,6 +31,47 @@ It is fairly easy to end up with a `slowloris` type effect with this library whe
 ##### Auto Scaling
 
 The validation has an optional auto scale feature that allows for the automatic tuning of validation workers as more proxies are dispensed. This feature is brand new and is missing configuration, but works well. It can be enabled with `ProxyEngine.EnableAutoScaler()`.
+
+---
+
+##### Mullvad Users
+
+Take a look at [mullsox](https://git.tcp.direct/kayos/mullsox) for an easy way to access all of the mullvad proxies reachable from any one VPN endpoint. It is trivial to feed the results of `GetAndVerifySOCKS` into prox5. 
+
+Here's a snippet that should just about get you there:
+
+```golang
+p5 := NewProxyEngine()
+mc := mullsox.NewChecker()
+
+if err := mc.Update(); err != nil {
+	println(err.Error())
+        return
+}
+
+incoming, _ := mc.GetAndVerifySOCKS()
+
+var count = 0
+for line := range incoming {
+        if p5.LoadSingleProxy(line.String()) {
+                count++
+        }
+}
+
+if count == 0 {
+        println("failed to load any proxies")
+        return
+}
+
+if err := p5.Start(); err != nil {
+        println(err.Error())
+        return
+}
+```
+
+##### ProxyBonanza Users
+
+Take a look at [ProxyGonanza](https://git.tcp.direct/kayos/proxygonanza)
 
 ---
 
