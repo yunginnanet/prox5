@@ -21,6 +21,8 @@ func init() {
 const (
 	debugEnabled uint32 = iota
 	debugDisabled
+
+	stamp = "[prox5] "
 )
 
 type SocksLogger struct {
@@ -37,20 +39,19 @@ func (s SocksLogger) Printf(format string, a ...interface{}) {
 type basicPrinter struct{}
 
 func (b *basicPrinter) Print(str string) {
-	if !useDebugChannel {
-		println("[prox5] " + str)
-	} else {
+	if useDebugChannel {
 		debugChan <- str
+		return
 	}
+	buf := strs.Get()
+	buf.MustWriteString(stamp)
+	buf.MustWriteString(str)
+	println(buf.String())
+	strs.MustPut(buf)
 }
 
 func (b *basicPrinter) Printf(format string, items ...any) {
-	str := fmt.Sprintf("[prox5] "+format, items)
-	if !useDebugChannel {
-		println(str)
-	} else {
-		debugChan <- str
-	}
+	b.Print(fmt.Sprintf(format, items...))
 }
 
 func (b *basicPrinter) Errorf(format string, items ...any) {
