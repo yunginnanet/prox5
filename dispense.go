@@ -89,7 +89,7 @@ func (p5 *ProxyEngine) GetAnySOCKS() *Proxy {
 		if p5.stillGood(sock) {
 			return sock
 		}
-		continue
+		time.Sleep(50 * time.Millisecond)
 	}
 }
 
