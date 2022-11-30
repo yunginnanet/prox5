@@ -1,27 +1,22 @@
 package prox5
 
 import (
-	"context"
 	"crypto/tls"
-	"net"
 	"net/http"
 )
 
 // GetHTTPClient retrieves a pointer to an http.Client powered by MysteryDialer.
 func (p5 *ProxyEngine) GetHTTPClient() *http.Client {
-	var dctx func(ctx context.Context, network string, addr string) (net.Conn, error)
-	dctx = p5.DialContext
 	return &http.Client{
 		Transport: &http.Transport{
-			// Proxy:                 htp,
-			DialContext:           dctx,
-			TLSClientConfig:       &tls.Config{InsecureSkipVerify: true},
-			TLSHandshakeTimeout:   p5.GetServerTimeout(),
-			DisableKeepAlives:     true,
-			DisableCompression:    false,
-			MaxIdleConnsPerHost:   5,
-			IdleConnTimeout:       p5.GetServerTimeout(),
-			ResponseHeaderTimeout: p5.GetServerTimeout(),
+			DialContext:     p5.DialContext,
+			TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
+			// TLSHandshakeTimeout:   p5.GetServerTimeout(),
+			DisableKeepAlives:   true,
+			DisableCompression:  false,
+			MaxIdleConnsPerHost: 5,
+			// IdleConnTimeout:       p5.GetServerTimeout(),
+			// ResponseHeaderTimeout: p5.GetServerTimeout(),
 		},
 		Timeout: p5.GetServerTimeout(),
 	}
