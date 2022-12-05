@@ -57,9 +57,10 @@ func (p5 *ProxyEngine) SetServerTimeout(timeout time.Duration) {
 	p5.opt.Unlock()
 }
 
-// SetMaxWorkers set the maximum workers for proxy checking and clears the current proxy map and worker pool jobs.
+// SetMaxWorkers set the maximum workers for proxy checking.
 func (p5 *ProxyEngine) SetMaxWorkers(num int) {
 	p5.pool.Tune(num)
+	p5.scaler.SetBaseline(num)
 }
 
 // EnableRecycling enables recycling used proxies back into the pending channel for revalidation after dispensed.
@@ -112,12 +113,25 @@ func (p5 *ProxyEngine) SetDebugLogger(l logger.Logger) {
 	debugHardLock.Unlock()
 }
 
+// EnableAutoScaler enables the autoscaler.
+// This will automatically scale up the number of workers based on the threshold of dial attempts versus validated proxies.
 func (p5 *ProxyEngine) EnableAutoScaler() {
 	p5.scaler.Enable()
 }
 
+// DisableAutoScaler disables the autoscaler.
 func (p5 *ProxyEngine) DisableAutoScaler() {
 	p5.scaler.Disable()
+}
+
+// SetAutoScalerMaxScale sets the relative maximum amount that the autoscaler will scale up.
+func (p5 *ProxyEngine) SetAutoScalerMaxScale(max int) {
+	p5.scaler.SetMax(max)
+}
+
+// SetAutoScalerThreshold sets the threshold of validated proxies versus dials that will trigger the autoscaler.
+func (p5 *ProxyEngine) SetAutoScalerThreshold(threshold int) {
+	p5.scaler.SetThreshold(threshold)
 }
 
 func (p5 *ProxyEngine) EnableDebugRedaction() {
