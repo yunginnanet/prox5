@@ -13,7 +13,7 @@ require (
 	github.com/refraction-networking/utls v1.2.0
 	github.com/rivo/tview v0.0.0-20220916081518-2e69b7385a37
 	github.com/yunginnanet/Rate5 v1.1.0
-	golang.org/x/net v0.3.0
+	golang.org/x/net v0.4.0
 	inet.af/netaddr v0.0.0-20220811202034-502d2d690317
 )
 
