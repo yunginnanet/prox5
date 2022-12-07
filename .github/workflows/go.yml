@@ -1,4 +1,4 @@
-name: go-vet
+name: tests
 on:
   push:
     branches: [ "master", "dev" ]
