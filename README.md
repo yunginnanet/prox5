@@ -3,8 +3,10 @@
 ### SOCKS5/4/4a validating proxy pool + SOCKS5 server
 
 <img alt="Animated Screenshot of Prox5 Example" height=250 width=500 src="https://tcp.ac/i/3WRfz.gif" />
-	
+
 [![GoDoc](https://godoc.org/git.tcp.direct/kayos/prox5?status.svg)](https://pkg.go.dev/git.tcp.direct/kayos/prox5) [![Go Report Card](https://goreportcard.com/badge/github.com/yunginnanet/prox5)](https://goreportcard.com/report/github.com/yunginnanet/prox5) [![IRC](https://img.shields.io/badge/ircd.chat-%23tcpdirect-blue.svg)](ircs://ircd.chat:6697/#tcpdirect) [![Test Status](https://github.com/yunginnanet/prox5/actions/workflows/go.yml/badge.svg)](https://github.com/yunginnanet/prox5/actions/workflows/go.yml) ![five](https://img.shields.io/badge/fhjones-55555-blue)
+
+`import git.tcp.direct/kayos/prox5`
 
 Prox5 is a golang library for managing, validating, and utilizing a very large amount of arbitrary SOCKS proxies.
 
