@@ -36,3 +36,5 @@ require (
 	golang.org/x/tools v0.1.12 // indirect
 	nullprogram.com/x/rng v1.1.0 // indirect
 )
+
+retract v1.2.1
