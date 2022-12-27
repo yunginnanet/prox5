@@ -49,8 +49,8 @@ func (p5 *ProxyEngine) SetValidationTimeout(timeout time.Duration) {
 }
 
 // SetServerTimeout sets the serverTimeout option.
-// * serverTimeout defines the timeout for outgoing connections made with the MysteryDialer.
-// * To disable timeout on outgoing MysteryDialer connections, set this to time.Duration(0).
+// * serverTimeout defines the timeout for outgoing connections made with the mysteryDialer.
+// * To disable timeout on outgoing mysteryDialer connections, set this to time.Duration(0).
 func (p5 *ProxyEngine) SetServerTimeout(timeout time.Duration) {
 	p5.opt.Lock()
 	p5.opt.serverTimeout = timeout

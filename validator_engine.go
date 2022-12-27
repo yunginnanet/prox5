@@ -101,11 +101,12 @@ func (p5 *ProxyEngine) bakeHTTP(hmd *handMeDown) (client *http.Client, req *http
 		}
 		return
 	}
-	transport.Proxy = http.ProxyURL(purl)
+
+	transport.Proxy = proxyURL
 	return
 }
 
-func (p5 *ProxyEngine) validate(hmd *HandMeDown) (string, error) {
+func (p5 *ProxyEngine) validate(hmd *handMeDown) (string, error) {
 	var (
 		client *http.Client
 		req    *http.Request

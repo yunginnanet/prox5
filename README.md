@@ -1,4 +1,4 @@
-<div align="center"><h1>Prox5</h2>
+<div align="center"><h1>Prox5</h1>
 
 ### SOCKS5/4/4a validating proxy pool + SOCKS5 server
 
@@ -90,31 +90,54 @@ Take a look at [mullsox](https://git.tcp.direct/kayos/mullsox) for an easy way t
 Here's a snippet that should just about get you there:
 
 ```golang
-p5 := NewProxyEngine()
-mc := mullsox.NewChecker()
+package main
 
-if err := mc.Update(); err != nil {
-	println(err.Error())
-        return
-}
+import (
+    "os"
+    "time"
 
-incoming, _ := mc.GetAndVerifySOCKS()
+    "git.tcp.direct/kayos/mullsox"
+    "git.tcp.direct/kayos/prox5"
+)
 
-var count = 0
-for line := range incoming {
-        if p5.LoadSingleProxy(line.String()) {
-                count++
-        }
-}
+func main() {
+	p5 := prox5.NewProxyEngine()
+	mc := mullsox.NewChecker()
 
-if count == 0 {
-        println("failed to load any proxies")
-        return
-}
+	if err := mc.Update(); err != nil {
+		println(err.Error())
+		return
+	}
 
-if err := p5.Start(); err != nil {
-        println(err.Error())
-        return
+	incoming, _ := mc.GetAndVerifySOCKS()
+
+	var count = 0
+	for line := range incoming {
+		if p5.LoadSingleProxy(line.String()) {
+			count++
+		}
+	}
+
+	if count == 0 {
+		println("failed to load any proxies")
+		return
+	}
+
+	if err := p5.Start(); err != nil {
+		println(err.Error())
+		return
+	}
+	
+	go func() {
+		if err := p5.StartSOCKS5Server("127.0.0.1:42069", "", ""); err != nil {
+			println(err.Error())
+			os.Exit(1)
+		}
+	}()
+	
+	time.Sleep(time.Millisecond * 500)
+	
+	println("proxies loaded and socks server started")
 }
 ```
 </details>
@@ -150,6 +173,3 @@ Things like the amount of validation workers that are concurrently operating, ti
 # **Please see [the docs](https://pkg.go.dev/git.tcp.direct/kayos/prox5) and the [example](example/main.go) for more details.**
 	
 </div>
-
-
-
