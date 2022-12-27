@@ -37,4 +37,8 @@ require (
 	nullprogram.com/x/rng v1.1.0 // indirect
 )
 
-retract v1.2.1
+retract (
+	v1.2.1 // accident
+	v1.2.2 // cleanup
+)
+	
