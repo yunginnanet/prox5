@@ -34,7 +34,7 @@ func (p5 *ProxyEngine) prepHTTP() (*http.Client, *http.Transport, *http.Request,
 		return nil, nil, nil, err
 	}
 	headers := headerPool.Get().(http.Header)
-	headers["User-Agent"][0] = p5.RandomUserAgent()
+	headers["User-Agent"] = []string{p5.RandomUserAgent()}
 
 	var client = &http.Client{}
 	var transporter = &http.Transport{
