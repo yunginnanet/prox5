@@ -1,6 +1,7 @@
 package prox5
 
 import (
+	"sync/atomic"
 	"time"
 )
 
@@ -25,33 +26,37 @@ type Statistics struct {
 }
 
 func (stats *Statistics) dispense() {
-	stats.Dispensed++
+	atomic.AddInt64(&stats.Dispensed, 1)
 }
 
 func (stats *Statistics) stale() {
-	stats.Stale++
+	atomic.AddInt64(&stats.Stale, 1)
 }
 
 func (stats *Statistics) v4() {
-	stats.Valid4++
+	atomic.AddInt64(&stats.Valid4, 1)
 }
 
 func (stats *Statistics) v4a() {
-	stats.Valid4a++
+	atomic.AddInt64(&stats.Valid4a, 1)
 }
 
 func (stats *Statistics) v5() {
-	stats.Valid5++
+	atomic.AddInt64(&stats.Valid5, 1)
 }
 
 func (stats *Statistics) http() {
-	stats.ValidHTTP++
+	atomic.AddInt64(&stats.ValidHTTP, 1)
 }
 
 // GetTotalValidated retrieves our grand total validated proxy count.
 func (p5 *ProxyEngine) GetTotalValidated() int {
 	stats := p5.GetStatistics()
-	return int(stats.Valid4a + stats.Valid4 + stats.Valid5 + stats.ValidHTTP)
+	return int(atomic.LoadInt64(&stats.Valid4a) + stats.Valid4 + stats.Valid5 + stats.ValidHTTP)
+}
+
+func (p5 *ProxyEngine) GetTotalBad() int {
+	return p5.badProx.Patrons.ItemCount()
 }
 
 // GetUptime returns the total lifetime duration of our pool.

@@ -134,7 +134,7 @@ func (p5 *ProxyEngine) validate(hmd *handMeDown) (string, error) {
 }
 
 func (p5 *ProxyEngine) anothaOne() {
-	p5.stats.Checked++
+	atomic.AddInt64(&p5.stats.Checked, 1)
 }
 
 type handMeDown struct {
