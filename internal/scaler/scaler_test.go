@@ -21,7 +21,7 @@ func init() {
 // For now, this can serve as a sanity check.
 func TestNewAutoScaler(t *testing.T) {
 	// debugSwitch = true
-	as := NewAutoScaler(50, 10)
+	as := NewAutoScaler(5, 50, 10)
 	if as.IsOn() {
 		t.Errorf("AutoScaler should be off by default")
 	}

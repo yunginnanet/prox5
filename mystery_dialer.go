@@ -68,7 +68,6 @@ func (p5 *ProxyEngine) mysteryDialer(ctx context.Context, network, addr string) 
 	// pull down proxies from channel until we get a proxy good enough for our spoiled asses
 	var count = 0
 	for {
-		p5.scale()
 		max := p5.GetDialerBailout()
 		if count > max {
 			return nil, fmt.Errorf("giving up after %d tries", max)
@@ -81,6 +80,9 @@ func (p5 *ProxyEngine) mysteryDialer(ctx context.Context, network, addr string) 
 		}
 		var sock *Proxy
 		for {
+			if p5.scale() {
+				time.Sleep(2 * time.Millisecond)
+			}
 			var err error
 			sock, err = p5.popSockAndLockIt(ctx)
 			if err != nil {

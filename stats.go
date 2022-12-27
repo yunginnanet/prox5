@@ -23,6 +23,12 @@ type Statistics struct {
 	Checked int64
 	// birthday represents the time we started checking proxies with this pool
 	birthday time.Time
+
+	timesChannelFull      int64
+	fullChanAccounted     int64
+	lastWarnedChannelFull time.Time
+	badAccounted          int64
+	accountingLastDone    time.Time
 }
 
 func (stats *Statistics) dispense() {
@@ -55,8 +61,8 @@ func (p5 *ProxyEngine) GetTotalValidated() int {
 	return int(atomic.LoadInt64(&stats.Valid4a) + stats.Valid4 + stats.Valid5 + stats.ValidHTTP)
 }
 
-func (p5 *ProxyEngine) GetTotalBad() int {
-	return p5.badProx.Patrons.ItemCount()
+func (p5 *ProxyEngine) GetTotalBad() int64 {
+	return int64(p5.badProx.Patrons.ItemCount())
 }
 
 // GetUptime returns the total lifetime duration of our pool.

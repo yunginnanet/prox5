@@ -3,6 +3,7 @@ package prox5
 import (
 	"errors"
 	"strconv"
+	"sync/atomic"
 	"time"
 
 	cmap "github.com/orcaman/concurrent-map/v2"
@@ -56,10 +57,15 @@ func (p5 *ProxyEngine) recycling() int {
 		case p5.Pending <- tuple.Val:
 			count++
 		default:
+			atomic.AddInt64(&p5.stats.timesChannelFull, 1)
 			if !printedFull {
-				p5.DebugLogger.Print("recycling channel is full!")
-				printedFull = true
+				if time.Since(p5.stats.lastWarnedChannelFull) > 5*time.Second {
+					p5.DebugLogger.Print("can't recycle, channel full")
+					printedFull = true
+					p5.stats.lastWarnedChannelFull = time.Now()
+				}
 			}
+			time.Sleep(2 * time.Millisecond)
 			continue
 		}
 	}
@@ -84,13 +90,12 @@ func (p5 *ProxyEngine) jobSpawner() {
 				q <- true
 				return
 			case sock := <-p5.Pending:
-				p5.scale()
+				_ = p5.scale()
 				if err := p5.pool.Submit(sock.validate); err != nil {
 					p5.dbgPrint(simpleString(err.Error()))
 				}
 
 			default:
-				time.Sleep(500 * time.Millisecond)
 				count := p5.recycling()
 				buf := strs.Get()
 				buf.MustWriteString("recycled ")

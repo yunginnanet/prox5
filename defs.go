@@ -14,6 +14,7 @@ import (
 	"git.tcp.direct/kayos/prox5/logger"
 )
 
+// ProxyChannels will likely be unexported in the future.
 type ProxyChannels struct {
 	// SOCKS5 is a constant stream of verified SOCKS5 proxies
 	SOCKS5 chan *Proxy
@@ -53,9 +54,12 @@ type ProxyEngine struct {
 
 	// reaper sync.Pool
 
-	mu             *sync.RWMutex
-	pool           *ants.Pool
-	scaler         *scaler.AutoScaler
+	mu   *sync.RWMutex
+	pool *ants.Pool
+
+	scaler     *scaler.AutoScaler
+	scaleTimer *time.Ticker
+
 	opt            *config
 	runningdaemons int32
 	conductor      chan bool
@@ -195,7 +199,8 @@ func NewProxyEngine() *ProxyEngine {
 		PanicHandler:   pe.pondPanic,
 	}))
 
-	pe.scaler = scaler.NewAutoScaler(pe.opt.maxWorkers+100, 10)
+	pe.scaler = scaler.NewAutoScaler(pe.opt.maxWorkers, pe.opt.maxWorkers+100, 50)
+	pe.scaleTimer = time.NewTicker(200 * time.Millisecond)
 
 	if err != nil {
 		buf := strs.Get()

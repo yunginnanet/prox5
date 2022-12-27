@@ -47,7 +47,7 @@ func init() {
 	socklog.Printf("[USAGE] q: quit | d: debug | p: pause/unpause")
 }
 
-const statsFmt = ">>>>>-------<<<<<\n>>>>> Prox5 <<<<<\n>>>>>-------<<<<<\n\nUptime: %s\n\nValidated: %d\nDispensed: %d\n\nMaximum Workers: %d\nActive  Workers: %d\nAsleep  Workers: %d\n\nAutoScale: %s\n\n----------\n%s"
+const statsFmt = ">>>>>-----<<<<<\n>>>>>Prox5<<<<<\n>>>>>-----<<<<<\n\nUptime: %s\n\nValidated: %d\nDispensed: %d\n\nMaximum Workers: %d\nActive  Workers: %d\nAsleep  Workers: %d\n\nAutoScale: %s\n\n----------\n%s"
 
 var (
 	background *tview.TextView
@@ -150,7 +150,7 @@ func main() {
 	swamp.SetDebugLogger(socklog)
 	go func() {
 		for {
-			time.Sleep(time.Second)
+			time.Sleep(250 * time.Millisecond)
 			app.Sync()
 		}
 	}()
