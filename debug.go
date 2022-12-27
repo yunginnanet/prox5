@@ -120,7 +120,7 @@ func (p5 *ProxyEngine) msgUsingProxy(socksString string) {
 	if p5.GetDebugRedactStatus() {
 		socksString = "(redacted)"
 	}
-	buf.MustWriteString("MysteryDialer using socks: ")
+	buf.MustWriteString("mysteryDialer using socks: ")
 	buf.MustWriteString(socksString)
 	p5.dbgPrint(buf)
 }

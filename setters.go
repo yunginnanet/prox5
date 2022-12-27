@@ -87,7 +87,7 @@ func (p5 *ProxyEngine) SetRemoveAfter(timesfailed int) {
 	p5.opt.Unlock()
 }
 
-// SetDialerBailout sets the amount of times the MysteryDialer will dial out and fail before it bails out.
+// SetDialerBailout sets the amount of times the mysteryDialer will dial out and fail before it bails out.
 //   - The dialer will attempt to redial a destination with a different proxy a specified amount of times before it gives up
 func (p5 *ProxyEngine) SetDialerBailout(dialattempts int) {
 	p5.opt.Lock()
@@ -95,7 +95,7 @@ func (p5 *ProxyEngine) SetDialerBailout(dialattempts int) {
 	p5.opt.Unlock()
 }
 
-// SetDispenseMiddleware will add a function that sits within the dialing process of the MysteryDialer and anyhing using it.
+// SetDispenseMiddleware will add a function that sits within the dialing process of the mysteryDialer and anyhing using it.
 // This means this function will be called mid-dial during connections. Return true to approve proxy, false to skip it.
 // Take care modiying the proxy in-flight as it is a pointer.
 func (p5 *ProxyEngine) SetDispenseMiddleware(f func(*Proxy) (*Proxy, bool)) {

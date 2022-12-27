@@ -118,7 +118,7 @@ type config struct {
 	// validationTimeout defines the timeout for proxy validation operations.
 	// This will apply for both the initial quick check (dial), and the second check (HTTP GET).
 	validationTimeout time.Duration
-	// serverTimeout defines the timeout for outgoing connections made with the MysteryDialer.
+	// serverTimeout defines the timeout for outgoing connections made with the mysteryDialer.
 	serverTimeout time.Duration
 	// dialerBailout defines the amount of times a dial atttempt can fail before giving up and returning an error.
 	dialerBailout int

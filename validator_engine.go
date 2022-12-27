@@ -136,14 +136,14 @@ func (p5 *ProxyEngine) anothaOne() {
 	p5.stats.Checked++
 }
 
-type HandMeDown struct {
+type handMeDown struct {
 	sock       *Proxy
 	protoCheck ProxyProtocol
 	conn       net.Conn
 	under      proxy.Dialer
 }
 
-func (hmd *HandMeDown) Dial(network, addr string) (c net.Conn, err error) {
+func (hmd *handMeDown) Dial(network, addr string) (c net.Conn, err error) {
 	if hmd.conn.LocalAddr().Network() != network {
 		return hmd.under.Dial(network, addr)
 	}
@@ -165,7 +165,7 @@ func (p5 *ProxyEngine) singleProxyCheck(sock *Proxy, protocol ProxyProtocol) err
 		return err
 	}
 
-	hmd := &HandMeDown{sock: sock, conn: conn, under: proxy.Direct, protoCheck: protocol}
+	hmd := &handMeDown{sock: sock, conn: conn, under: proxy.Direct, protoCheck: protocol}
 
 	resp, err := p5.validate(hmd)
 	if err != nil {

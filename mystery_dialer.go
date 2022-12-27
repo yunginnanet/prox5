@@ -12,12 +12,12 @@ import (
 
 // DialContext is a simple stub adapter to implement a net.Dialer.
 func (p5 *ProxyEngine) DialContext(ctx context.Context, network, addr string) (net.Conn, error) {
-	return p5.MysteryDialer(ctx, network, addr)
+	return p5.mysteryDialer(ctx, network, addr)
 }
 
 // Dial is a simple stub adapter to implement a net.Dialer.
 func (p5 *ProxyEngine) Dial(network, addr string) (net.Conn, error) {
-	return p5.MysteryDialer(context.Background(), network, addr)
+	return p5.mysteryDialer(context.Background(), network, addr)
 }
 
 // DialTimeout is a simple stub adapter to implement a net.Dialer with a timeout.
@@ -27,7 +27,7 @@ func (p5 *ProxyEngine) DialTimeout(network, addr string, timeout time.Duration) 
 		<-ctx.Done()
 		cancel()
 	}()
-	return p5.MysteryDialer(ctx, network, addr)
+	return p5.mysteryDialer(ctx, network, addr)
 }
 
 func (p5 *ProxyEngine) addTimeout(socksString string) string {
@@ -62,8 +62,9 @@ func (p5 *ProxyEngine) popSockAndLockIt(ctx context.Context) (*Proxy, error) {
 	}
 }
 
-// MysteryDialer is a dialer function that will use a different proxy for every request.
-func (p5 *ProxyEngine) MysteryDialer(ctx context.Context, network, addr string) (net.Conn, error) {
+// mysteryDialer is a dialer function that will use a different proxy for every request.
+// If you're looking for this function, it has been unexported. Use Dial, DialTimeout, or DialContext instead.
+func (p5 *ProxyEngine) mysteryDialer(ctx context.Context, network, addr string) (net.Conn, error) {
 	// pull down proxies from channel until we get a proxy good enough for our spoiled asses
 	var count = 0
 	for {

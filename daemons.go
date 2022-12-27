@@ -40,18 +40,14 @@ func (sm proxyMap) clear() {
 }
 
 func (p5 *ProxyEngine) recycling() int {
-	if !p5.GetRecyclingStatus() {
+	switch {
+	case !p5.GetRecyclingStatus(), p5.proxyMap.plot.Count() < 1:
 		return 0
+	default:
 	}
 
-	if len(p5.proxyMap.plot) < 1 {
-		return 0
-	}
-
-	var count int
-
-	p5.proxyMap.mu.RLock()
-	defer p5.proxyMap.mu.RUnlock()
+	var count = 0
+	var printedFull = false
 
 	for tuple := range p5.proxyMap.plot.IterBuffered() {
 		select {

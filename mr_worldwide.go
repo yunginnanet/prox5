@@ -5,7 +5,7 @@ import (
 	"net/http"
 )
 
-// GetHTTPClient retrieves a pointer to an http.Client powered by MysteryDialer.
+// GetHTTPClient retrieves a pointer to an http.Client powered by mysteryDialer.
 func (p5 *ProxyEngine) GetHTTPClient() *http.Client {
 	return &http.Client{
 		Transport: &http.Transport{

@@ -30,19 +30,6 @@ func (c cpool) Put(cc []byte) {
 	c.Pool.Put(cc)
 }
 
-type socksCreds struct {
-	username string
-	password string
-}
-
-// Valid implements the socks5.CredentialStore interface.
-func (s socksCreds) Valid(username, password string) bool {
-	if s.username == username && s.password == password {
-		return true
-	}
-	return false
-}
-
 // StartSOCKS5Server starts our rotating proxy SOCKS5 server.
 // listen is standard Go listen string, e.g: "127.0.0.1:1080".
 // username and password are used for authenticatig to the SOCKS5 server.
@@ -50,7 +37,7 @@ func (p5 *ProxyEngine) StartSOCKS5Server(listen, username, password string) erro
 	opts := []socks5.Option{
 		socks5.WithBufferPool(bufs),
 		socks5.WithLogger(p5.DebugLogger),
-		socks5.WithDial(p5.MysteryDialer),
+		socks5.WithDial(p5.mysteryDialer),
 	}
 	if username != "" && password != "" {
 		cator := socks5.UserPassAuthenticator{Credentials: socks5.StaticCredentials{username: password}}
