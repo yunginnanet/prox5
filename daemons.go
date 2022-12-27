@@ -71,25 +71,6 @@ func (p5 *ProxyEngine) recycling() int {
 	return count
 }
 
-var ScaleTimer = time.NewTicker(250 * time.Millisecond)
-
-func (p5 *ProxyEngine) scale() {
-	select {
-	case <-ScaleTimer.C:
-		if p5.pool.IsClosed() {
-			return
-		}
-		if p5.scaler.ScaleAnts(p5.pool, p5.GetTotalValidated(), p5.GetStatistics().Dispensed) {
-			msg := strs.Get()
-			msg.MustWriteString("job spawner auto scaling, new count: ")
-			msg.MustWriteString(strconv.Itoa(p5.pool.Cap()))
-			p5.dbgPrint(msg)
-		}
-	default:
-		return
-	}
-}
-
 func (p5 *ProxyEngine) jobSpawner() {
 	if p5.pool.IsClosed() {
 		p5.pool.Reboot()
