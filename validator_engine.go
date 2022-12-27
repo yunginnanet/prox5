@@ -9,6 +9,7 @@ import (
 	"net/http"
 	"net/url"
 	"strings"
+	"sync"
 	"sync/atomic"
 	"time"
 
@@ -16,20 +17,25 @@ import (
 	"golang.org/x/net/proxy"
 )
 
+var headerPool = sync.Pool{
+	New: func() interface{} {
+		hdr := make(http.Header)
+		hdr["User-Agent"] = []string{""}
+		hdr["Accept"] = []string{"text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,image/apng,*/*;q=0.8"}
+		hdr["Accept-Language"] = []string{"en-US,en;q=0.5"}
+		hdr["Accept-Encoding"] = []string{"gzip, deflate, br"}
+		return hdr
+	},
+}
+
 func (p5 *ProxyEngine) prepHTTP() (*http.Client, *http.Transport, *http.Request, error) {
 	req, err := http.NewRequest("GET", p5.GetRandomEndpoint(), bytes.NewBuffer([]byte("")))
 	if err != nil {
 		return nil, nil, nil, err
 	}
-	headers := make(map[string]string)
-	headers["User-Agent"] = p5.RandomUserAgent()
-	headers["Accept"] = "text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,image/apng,*/*;q=0.8"
-	headers["Accept-Language"] = "en-US,en;q=0.5"
-	headers["'Accept-Encoding'"] = "gzip, deflate, br"
-	// headers["Connection"] = "keep-alive"
-	for header, value := range headers {
-		req.Header.Set(header, value)
-	}
+	headers := headerPool.Get().(http.Header)
+	headers["User-Agent"][0] = p5.RandomUserAgent()
+
 	var client = &http.Client{}
 	var transporter = &http.Transport{
 		DisableKeepAlives:   true,
@@ -49,7 +55,19 @@ func (sock *Proxy) good() {
 	sock.lastValidated = time.Now()
 }
 
-func (p5 *ProxyEngine) bakeHTTP(hmd *HandMeDown) (client *http.Client, req *http.Request, err error) {
+func httpEndpoint(hmd *handMeDown) (func(r *http.Request) (*url.URL, error), error) {
+	s := strs.Get()
+	defer strs.MustPut(s)
+	s.MustWriteString("http://")
+	s.MustWriteString(hmd.sock.Endpoint)
+	purl, err := url.Parse(s.String())
+	if err != nil {
+		return nil, err
+	}
+	return http.ProxyURL(purl), nil
+}
+
+func (p5 *ProxyEngine) bakeHTTP(hmd *handMeDown) (client *http.Client, req *http.Request, err error) {
 	builder := strs.Get()
 	builder.MustWriteString(hmd.protoCheck.String())
 	builder.MustWriteString("://")
@@ -60,12 +78,13 @@ func (p5 *ProxyEngine) bakeHTTP(hmd *HandMeDown) (client *http.Client, req *http
 	dialSocks := socks.DialWithConn(builder.String(), hmd.conn)
 	strs.MustPut(builder)
 
-	var (
-		purl      *url.URL
-		transport *http.Transport
-	)
+	var transport *http.Transport
 
-	if client, transport, req, err = p5.prepHTTP(); err != nil {
+	client, transport, req, err = p5.prepHTTP()
+	if err != nil {
+		if req != nil && req.Header != nil {
+			headerPool.Put(req.Header)
+		}
 		return
 	}
 
@@ -74,7 +93,12 @@ func (p5 *ProxyEngine) bakeHTTP(hmd *HandMeDown) (client *http.Client, req *http
 		client.Transport = transport
 		return
 	}
-	if purl, err = url.Parse("http://" + hmd.sock.Endpoint); err != nil {
+
+	proxyURL, err := httpEndpoint(hmd)
+	if err != nil {
+		if req != nil && req.Header != nil {
+			headerPool.Put(req.Header)
+		}
 		return
 	}
 	transport.Proxy = http.ProxyURL(purl)
@@ -94,6 +118,11 @@ func (p5 *ProxyEngine) validate(hmd *HandMeDown) (string, error) {
 	}
 
 	resp, err := client.Do(req)
+	defer func() {
+		if req != nil && req.Header != nil {
+			headerPool.Put(req.Header)
+		}
+	}()
 	if err != nil {
 		return "", err
 	}
