@@ -81,7 +81,7 @@ func (p5 *ProxyEngine) mysteryDialer(ctx context.Context, network, addr string) 
 		var sock *Proxy
 		for {
 			if p5.scale() {
-				time.Sleep(2 * time.Millisecond)
+				time.Sleep(1 * time.Millisecond)
 			}
 			var err error
 			sock, err = p5.popSockAndLockIt(ctx)
