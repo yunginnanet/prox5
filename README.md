@@ -12,7 +12,7 @@ Prox5 is a golang library for managing, validating, and utilizing a very large a
 
 Notably it features interface compatible dialer functions that dial out from different proxies for every connection, and a SOCKS5 server that utilizes those functions.
 
-***Note:*** `v1.2.1` was an accidental release, it has been retracted but goproxy seems to be lagging behind. Latest version is `v0.8.1`: `go get -u -v git.tcp.direct/kayos/prox5@v0.8.1`
+***Note:*** `v1.2.1` was an accidental release, it has been retracted but goproxy seems to be lagging behind. Latest version is `v0.8.2`: `go get -u -v git.tcp.direct/kayos/prox5@v0.8.2`
 
 ---
 
