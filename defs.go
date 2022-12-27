@@ -6,6 +6,7 @@ import (
 	"sync/atomic"
 	"time"
 
+	cmap "github.com/orcaman/concurrent-map/v2"
 	"github.com/panjf2000/ants/v2"
 	rl "github.com/yunginnanet/Rate5"
 
@@ -209,8 +210,7 @@ func NewProxyEngine() *ProxyEngine {
 
 func newProxyMap(pe *ProxyEngine) proxyMap {
 	return proxyMap{
-		plot:   make(map[string]*Proxy),
-		mu:     &sync.RWMutex{},
+		plot:   cmap.New[*Proxy](),
 		parent: pe,
 	}
 }

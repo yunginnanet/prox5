@@ -3,25 +3,18 @@ package prox5
 import (
 	"errors"
 	"strconv"
-	"sync"
 	"time"
+
+	cmap "github.com/orcaman/concurrent-map/v2"
 )
 
 type proxyMap struct {
-	plot   map[string]*Proxy
-	mu     *sync.RWMutex
+	plot   cmap.ConcurrentMap[string, *Proxy]
 	parent *ProxyEngine
 }
 
 func (sm proxyMap) add(sock string) (*Proxy, bool) {
-	sm.mu.Lock()
-	defer sm.mu.Unlock()
-
-	if sm.exists(sock) {
-		return nil, false
-	}
-
-	sm.plot[sock] = &Proxy{
+	sm.plot.SetIfAbsent(sock, &Proxy{
 		Endpoint:       sock,
 		protocol:       newImmutableProto(),
 		lastValidated:  time.UnixMilli(0),
@@ -29,37 +22,21 @@ func (sm proxyMap) add(sock string) (*Proxy, bool) {
 		timesBad:       0,
 		parent:         sm.parent,
 		lock:           stateUnlocked,
-	}
+	})
 
-	return sm.plot[sock], true
-}
-
-func (sm proxyMap) exists(sock string) bool {
-	if _, ok := sm.plot[sock]; !ok {
-		return false
-	}
-	return true
+	return sm.plot.Get(sock)
 }
 
 func (sm proxyMap) delete(sock string) error {
-	sm.mu.Lock()
-	defer sm.mu.Unlock()
-
-	if !sm.exists(sock) {
-		return errors.New("proxy does not exist in map")
+	if _, ok := sm.plot.Get(sock); !ok {
+		return errors.New("proxy not found")
 	}
-
-	sm.plot[sock] = nil
-	delete(sm.plot, sock)
+	sm.plot.Remove(sock)
 	return nil
 }
 
 func (sm proxyMap) clear() {
-	sm.mu.Lock()
-	defer sm.mu.Unlock()
-	for key := range sm.plot {
-		delete(sm.plot, key)
-	}
+	sm.plot.Clear()
 }
 
 func (p5 *ProxyEngine) recycling() int {
@@ -76,13 +53,17 @@ func (p5 *ProxyEngine) recycling() int {
 	p5.proxyMap.mu.RLock()
 	defer p5.proxyMap.mu.RUnlock()
 
-	for _, sock := range p5.proxyMap.plot {
+	for tuple := range p5.proxyMap.plot.IterBuffered() {
 		select {
 		case <-p5.ctx.Done():
 			return 0
-		case p5.Pending <- sock:
+		case p5.Pending <- tuple.Val:
 			count++
 		default:
+			if !printedFull {
+				p5.DebugLogger.Print("recycling channel is full!")
+				printedFull = true
+			}
 			continue
 		}
 	}
