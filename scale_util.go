@@ -24,7 +24,7 @@ func (p5 *ProxyEngine) scale() (sleep bool) {
 		totalChanFullNow := atomic.LoadInt64(&p5.stats.timesChannelFull)
 		accountedFor := atomic.LoadInt64(&p5.stats.badAccounted) + atomic.LoadInt64(&p5.stats.fullChanAccounted)
 		netFactors := (totalBadNow + totalChanFullNow) - accountedFor
-		if time.Since(p5.stats.accountingLastDone) > 400*time.Millisecond && netFactors > 0 {
+		if time.Since(p5.stats.accountingLastDone) > 600*time.Millisecond && netFactors > 0 {
 			bad = int64(netFactors)
 			if p5.DebugEnabled() {
 				p5.DebugLogger.Printf("accounting: %d bad, %d full, %d accounted, %d net factors",
