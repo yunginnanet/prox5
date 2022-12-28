@@ -41,11 +41,11 @@ It is fairly easy to end up with a `slowloris` type effect with this library whe
 
 ### Validation Engine
 
-  1) TCP Dial to the endpoint
+  1) TCP Dial to the endpoint, if successful, reuse net.Conn down for step 2
   2) HTTPS GET request to a list of IP echo endpoints
   3) Store the IP address discovered during step 2
-  4) Instantiate a pointer to a `prox5.Proxy` type
-  5) Enqueue the pointer for future use
+  4) Allocate a new `prox5.Proxy` type || update an existing one, store latest info
+  5) Enqueue a pointer to this `proxy.Proxy` instance, instantiating it for further use
 
 ### Auto Scaler
 
@@ -70,7 +70,7 @@ Using [Rate5](https://github.com/yunginnanet/Rate5), prox5 naturally reduces the
 
 ### The Secret Sauce
 
-What makes Prox5 special is largely the Mystery Dialer. This dialer satisfies the net.Dialer interface. Upon using the dialer to connect to and endpoint, Prox5:
+What makes Prox5 special is largely the Mystery Dialer. This dialer satisfies the net.Dialer and ContextDialer interfaces. The implementation is a little bit different from your average dialer. Here's roughly what happens when you dial out with a ProxyEngine;
 
 - Loads up a previously verified proxy
 - Attempts to make connection with the dial endpoint using said proxy
