@@ -109,11 +109,13 @@ func (p5 *ProxyEngine) jobSpawner() {
 
 			default:
 				count := p5.recycling()
-				buf := strs.Get()
-				buf.MustWriteString("recycled ")
-				buf.MustWriteString(strconv.Itoa(count))
-				buf.MustWriteString(" proxies from our map")
-				p5.dbgPrint(buf)
+				if count > 0 {
+					buf := strs.Get()
+					buf.MustWriteString("recycled ")
+					buf.MustWriteString(strconv.Itoa(count))
+					buf.MustWriteString(" proxies from our map")
+					p5.dbgPrint(buf)
+				}
 			}
 		}
 	}()
