@@ -3,6 +3,7 @@ package prox5
 import (
 	"errors"
 	"strconv"
+	"sync"
 	"sync/atomic"
 	"time"
 
@@ -45,10 +46,18 @@ func (p5 *ProxyEngine) recycling() int {
 	case !p5.GetRecyclingStatus(), p5.proxyMap.plot.Count() < 1:
 		return 0
 	default:
+		select {
+		case <-p5.recyleTimer.C:
+			break
+		default:
+			return 0
+		}
 	}
 
 	var count = 0
 	var printedFull = false
+
+	var o = &sync.Once{}
 
 	for tuple := range p5.proxyMap.plot.IterBuffered() {
 		select {
@@ -57,9 +66,12 @@ func (p5 *ProxyEngine) recycling() int {
 		case p5.Pending <- tuple.Val:
 			count++
 		default:
-			atomic.AddInt64(&p5.stats.timesChannelFull, 1)
+			o.Do(func() {
+				atomic.AddInt64(&p5.stats.timesChannelFull, 1)
+			})
 			if !printedFull {
 				if time.Since(p5.stats.lastWarnedChannelFull) > 5*time.Second {
+					p5.scale()
 					p5.DebugLogger.Print("can't recycle, channel full")
 					printedFull = true
 					p5.stats.lastWarnedChannelFull = time.Now()

@@ -30,8 +30,6 @@ func (p5 *ProxyEngine) scale() (sleep bool) {
 				p5.DebugLogger.Printf("accounting: %d bad, %d full, %d accounted, %d net factors",
 					totalBadNow, totalChanFullNow, accountedFor, netFactors)
 			}
-			atomic.AddInt64(&p5.stats.badAccounted, 1)
-			atomic.AddInt64(&p5.stats.fullChanAccounted, 1)
 			p5.stats.accountingLastDone = time.Now()
 		}
 		// this shouldn't happen..?
@@ -47,9 +45,9 @@ func (p5 *ProxyEngine) scale() (sleep bool) {
 
 		// if we are considering more than we have validated, cap it at validated so that it registers properly.
 		// additionally, signal the dialer to slow down a little.
-		if totalConsidered > totalValidated {
+		if totalConsidered >= totalValidated {
 			sleep = true
-			totalConsidered = totalValidated
+			totalConsidered = totalValidated - atomic.LoadInt64(p5.scaler.Threshold)/2
 		}
 
 		if p5.scaler.ScaleAnts(
@@ -57,6 +55,7 @@ func (p5 *ProxyEngine) scale() (sleep bool) {
 			totalValidated,
 			totalConsidered,
 		) {
+			atomic.AddInt64(&p5.stats.fullChanAccounted, 1)
 			p5.scaleDbg()
 		}
 	default:

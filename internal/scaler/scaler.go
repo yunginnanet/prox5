@@ -1,6 +1,7 @@
 package scaler
 
 import (
+	"fmt"
 	"os"
 	"sync/atomic"
 
@@ -22,6 +23,14 @@ func debug(msg string) {
 	if debugSwitch {
 		println(msg)
 	}
+}
+
+func noopMsg(validated, dispensed int64, as *AutoScaler) string {
+	if !debugSwitch {
+		return ""
+	}
+	return fmt.Sprintf("noop: validated: %d, dispensed: %d, mod: %d, max: %d, threshold: %d",
+		validated, dispensed, atomic.LoadInt64(as.mod), atomic.LoadInt64(as.Max), atomic.LoadInt64(as.Threshold))
 }
 
 const (
@@ -94,6 +103,11 @@ func (as *AutoScaler) SetBaseline(baseline int) {
 
 // ScaleAnts scales the pool, it returns true if the pool scale has been changed, and false if not.
 func (as *AutoScaler) ScaleAnts(pool *ants.Pool, validated int64, dispensed int64) bool {
+	if dispensed > validated {
+		// consider panicing here...
+		debug("dispensed > validated (FUBAR)")
+		dispensed = validated
+	}
 	if atomic.LoadInt64(as.mod) < 0 {
 		panic("scaler.go: scaler mod is negative")
 	}
@@ -138,7 +152,7 @@ func (as *AutoScaler) ScaleAnts(pool *ants.Pool, validated int64, dispensed int6
 
 	switch {
 	case noop:
-		debug("noop")
+		debug(noopMsg(validated, dispensed, as))
 		return false
 	case ((!needScaleUp && !needScaleDown) || atomic.LoadInt64(as.mod) == 0) && !idle:
 		debug("not scaling up or down or mod is 0, and not idle, setting idle")

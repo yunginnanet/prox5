@@ -60,6 +60,8 @@ type ProxyEngine struct {
 	scaler     *scaler.AutoScaler
 	scaleTimer *time.Ticker
 
+	recyleTimer *time.Ticker
+
 	opt            *config
 	runningdaemons int32
 	conductor      chan bool
@@ -200,7 +202,8 @@ func NewProxyEngine() *ProxyEngine {
 	}))
 
 	pe.scaler = scaler.NewAutoScaler(pe.opt.maxWorkers, pe.opt.maxWorkers+100, 50)
-	pe.scaleTimer = time.NewTicker(200 * time.Millisecond)
+	pe.scaleTimer = time.NewTicker(750 * time.Millisecond)
+	pe.recyleTimer = time.NewTicker(100 * time.Millisecond)
 
 	if err != nil {
 		buf := strs.Get()
