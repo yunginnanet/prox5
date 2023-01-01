@@ -62,6 +62,7 @@ func (p5 *ProxyEngine) GetTotalValidated() int {
 }
 
 func (p5 *ProxyEngine) GetTotalBad() int64 {
+	p5.badProx.Patrons.DeleteExpired()
 	return int64(p5.badProx.Patrons.ItemCount())
 }
 
