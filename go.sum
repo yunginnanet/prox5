@@ -23,8 +23,8 @@ github.com/mattn/go-runewidth v0.0.14 h1:+xnbZSEeDbOIg5/mE6JF0w6n9duR1l3/WmbinWV
 github.com/mattn/go-runewidth v0.0.14/go.mod h1:Jdepj2loyihRzMpdS35Xk/zdY8IAYHsh153qUoGf23w=
 github.com/miekg/dns v1.1.50 h1:DQUfb9uc6smULcREF09Uc+/Gd46YWqJd5DbpPE9xkcA=
 github.com/miekg/dns v1.1.50/go.mod h1:e3IlAVfNqAllflbibAZEWOXOQ+Ynzk/dDozDxY7XnME=
-github.com/ooni/oohttp v0.3.0 h1:75OsZKelkLXl6p2UD53dTJyIv+9owWqaL6sMT26LN8w=
-github.com/ooni/oohttp v0.3.0/go.mod h1:fgNDPYw+nsgEKCDBpT/4R06bgnrCRtvgNmAWOCmm4JE=
+github.com/ooni/oohttp v0.4.0 h1:I8ZJ1nxf+JTwvINlqgcOSR4aLc2avOGX63bS11mb/qk=
+github.com/ooni/oohttp v0.4.0/go.mod h1:XRJVx6aCswQrE7Fp3j4d8SjHNh1rPEdhpTyPu3zkyBw=
 github.com/orcaman/concurrent-map/v2 v2.0.1 h1:jOJ5Pg2w1oeB6PeDurIYf6k9PQ+aTITr/6lP/L/zp6c=
 github.com/orcaman/concurrent-map/v2 v2.0.1/go.mod h1:9Eq3TG2oBe5FirmYWQfYO5iH1q0Jv47PLaNK++uCdOM=
 github.com/panjf2000/ants/v2 v2.7.1 h1:qBy5lfSdbxvrR0yUnZfaEDjf0FlCw4ufsbcsxmE7r+M=
