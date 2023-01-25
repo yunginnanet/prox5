@@ -4,6 +4,8 @@ git.tcp.direct/kayos/go-socks5 v0.3.0 h1:nCsYM0ttPZHGAVVG8zFEy2ZTxoSyPp5ld1YSy3z
 git.tcp.direct/kayos/go-socks5 v0.3.0/go.mod h1:6Dw8lhiA+dqCY6CvPBtMyXMug9+spSAXC7+lrqItXf0=
 git.tcp.direct/kayos/go-socks5 v1.0.3 h1:oXz0Uv9OYt9b2N/mM0uarU+320ZDX5Aa3S7r2s522es=
 git.tcp.direct/kayos/go-socks5 v1.0.3/go.mod h1:OUpGQQzCqJLMzc008+f2BY4bWGgxUKDUOV/chWXMUBQ=
+git.tcp.direct/kayos/go-socks5 v1.0.4 h1:2x2H0TnKfOc7sat12WNF+uqZLKvPCoKkWdxPfJXUKJM=
+git.tcp.direct/kayos/go-socks5 v1.0.4/go.mod h1:smPlQaSGcQR+Kf6wfJkI2nskxWPgtxGIh1beMD+cwB8=
 git.tcp.direct/kayos/socks v0.1.1 h1:2xcHVHA2u4sSEPq+wIV6qmb/fgxEfFHdRAh5hTPL0NM=
 git.tcp.direct/kayos/socks v0.1.1/go.mod h1:BqyM/QDPRsHOOQe9PQigNtYU+vHeVu3ayYHMuMAScdE=
 github.com/andybalholm/brotli v1.0.4 h1:V7DdXeJtZscaqfNuAdSRuRFzuiKlHSC/Zh3zl9qY3JY=
