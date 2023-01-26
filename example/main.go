@@ -13,7 +13,7 @@ import (
 	"github.com/rivo/tview"
 )
 
-var swamp *prox5.Swamp
+var swamp *prox5.ProxyEngine
 
 type socksLogger struct{}
 
@@ -26,11 +26,12 @@ func StartUpstreamProxy(listen string) {
 }
 
 func init() {
-	swamp = prox5.NewDefaultSwamp()
+	swamp = prox5.NewProxyEngine()
 	swamp.SetMaxWorkers(5)
 	swamp.EnableDebug()
 	swamp.SetDebugLogger(socklog)
-	swamp.EnableDebugRedaction()
+	swamp.DisableDebugRedaction()
+	// swamp.EnableDebugRedaction()
 	swamp.EnableAutoScaler()
 	go StartUpstreamProxy("127.0.0.1:1555")
 
@@ -55,7 +56,15 @@ var (
 	app        *tview.Application
 )
 
+var last string
+
 func currentString(lastMessage string) string {
+	if lastMessage != last && lastMessage != "" {
+		last = lastMessage
+	}
+	if lastMessage == "" {
+		lastMessage = last
+	}
 	if swamp == nil {
 		return ""
 	}
@@ -121,6 +130,16 @@ func buttons(buttonIndex int, buttonLabel string) {
 func main() {
 	app = tview.NewApplication()
 
+	go func() {
+		for {
+			time.Sleep(250 * time.Millisecond)
+			app.QueueUpdateDraw(func() {
+				window.SetText(currentString(""))
+			})
+			app.Sync()
+		}
+	}()
+
 	window = tview.NewModal().
 		SetText(currentString("Initialize")).
 		AddButtons([]string{"Quit", "Pause", "+", "-"}).
@@ -148,11 +167,6 @@ func main() {
 		panic(err)
 	}
 	swamp.SetDebugLogger(socklog)
-	go func() {
-		for {
-			time.Sleep(250 * time.Millisecond)
-			app.Sync()
-		}
-	}()
+
 	// Initialize()
 }
