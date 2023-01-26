@@ -70,14 +70,14 @@ func (p5 *ProxyEngine) recycling() int {
 				atomic.AddInt64(&p5.stats.timesChannelFull, 1)
 			})
 			if !printedFull {
-				if time.Since(p5.stats.lastWarnedChannelFull) > 5*time.Second {
+				if time.Since(p5.stats.lastWarnedChannelFull) > 20*time.Second {
 					p5.scale()
 					p5.DebugLogger.Print("can't recycle, channel full")
 					printedFull = true
 					p5.stats.lastWarnedChannelFull = time.Now()
 				}
 			}
-			time.Sleep(2 * time.Millisecond)
+			time.Sleep(1 * time.Second)
 			continue
 		}
 	}
