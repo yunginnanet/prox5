@@ -84,6 +84,7 @@ func (p5 *ProxyEngine) GetAnySOCKS() *Proxy {
 		case sock = <-p5.Valids.SOCKS5:
 			break
 		default:
+			time.Sleep(250 * time.Millisecond)
 			p5.recycling()
 		}
 		if p5.stillGood(sock) {
@@ -101,7 +102,7 @@ func (p5 *ProxyEngine) stillGood(sock *Proxy) bool {
 	}
 	defer atomic.StoreUint32(&sock.lock, stateUnlocked)
 
-	if atomic.LoadInt64(&sock.timesBad) > int64(p5.GetRemoveAfter()) && p5.GetRemoveAfter() != -1 {
+	if p5.GetRemoveAfter() != -1 && atomic.LoadInt64(&sock.timesBad) > int64(p5.GetRemoveAfter()) {
 		buf := strs.Get()
 		buf.MustWriteString("deleting from map (too many failures): ")
 		buf.MustWriteString(sock.Endpoint)
