@@ -115,6 +115,7 @@ func (p5 *ProxyEngine) mysteryDialer(ctx context.Context, network, addr string) 
 		conn, err := dialSocks(network, addr)
 		if err != nil {
 			count++
+			atomic.StoreUint32(&sock.lock, stateUnlocked)
 			p5.msgUnableToReach(socksString, addr, err)
 			continue
 		}
@@ -129,6 +130,7 @@ func (p5 *ProxyEngine) mysteryDialer(ctx context.Context, network, addr string) 
 				_ = conn.Close()
 			}
 		}()
+		atomic.StoreUint32(&sock.lock, stateUnlocked)
 		return conn, nil
 	}
 }
