@@ -10,7 +10,7 @@ func (p5 *ProxyEngine) newHTTPClient() any {
 	return &http.Client{
 		Transport: &http.Transport{
 			DialContext:     p5.DialContext,
-			TLSClientConfig: &tls.Config{InsecureSkipVerify: p5.GetHTTPTLSVerificationStatus()},
+			TLSClientConfig: &tls.Config{InsecureSkipVerify: p5.GetHTTPTLSVerificationStatus() == false}, //nolint:gosec
 			// TLSHandshakeTimeout:   p5.GetServerTimeout(),
 			DisableKeepAlives:  true,
 			DisableCompression: false,
