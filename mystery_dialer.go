@@ -95,7 +95,7 @@ func (p5 *ProxyEngine) mysteryDialer(ctx context.Context, network, addr string) 
 			var err error
 			sock, err = p5.popSockAndLockIt(ctx)
 			if err != nil {
-				println(err.Error())
+				// println(err.Error())
 				return nil, err
 			}
 			if sock != nil {
@@ -119,16 +119,16 @@ func (p5 *ProxyEngine) mysteryDialer(ctx context.Context, network, addr string) 
 			continue
 		}
 		p5.msgUsingProxy(socksString)
-		/*		go func() {
-				select {
-				case <-ctx.Done():
-					_ = conn.Close()
-				case <-p5.conCtx.Done():
-					_ = conn.Close()
-				case <-p5.ctx.Done():
-					_ = conn.Close()
-				}
-			}()*/
+		go func() {
+			select {
+			case <-ctx.Done():
+				_ = conn.Close()
+			case <-p5.conCtx.Done():
+				_ = conn.Close()
+			case <-p5.ctx.Done():
+				_ = conn.Close()
+			}
+		}()
 		return conn, nil
 	}
 }
