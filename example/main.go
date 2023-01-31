@@ -48,7 +48,7 @@ func init() {
 	socklog.Printf("[USAGE] q: quit | d: debug | p: pause/unpause")
 }
 
-const statsFmt = ">>>>>-----<<<<<\n>>>>>Prox5<<<<<\n>>>>>-----<<<<<\n\nUptime: %s\n\nValidated: %d\nDispensed: %d\n\nMaximum Workers: %d\nActive  Workers: %d\nAsleep  Workers: %d\n\nAutoScale: %s\n\n----------\n%s"
+const statsFmt = ">>>>>-----<<<<<\n>>>>>Prox5<<<<<\n>>>>>-----<<<<<\n\nUptime: %s\n\nValidated: %d\nDispensed: %d\n\nMaximum Workers: %d\nActive  Workers: %d\nAsleep  Workers: %d\n\nAutoScale: %s\nSOCKS5 listening on 127.0.0.1:1555\n\n----------\n%s"
 
 var (
 	background *tview.TextView
@@ -102,29 +102,27 @@ func (s socksLogger) Print(str string) {
 }
 
 func buttons(buttonIndex int, buttonLabel string) {
-	go func() {
-		switch buttonIndex {
-		case 0:
-			app.Stop()
-		case 1:
-			if swamp.IsRunning() {
-				err := swamp.Pause()
-				if err != nil {
-					socklog.Printf(err.Error())
-				}
-			} else {
-				if err := swamp.Resume(); err != nil {
-					socklog.Printf(err.Error())
-				}
+	switch buttonIndex {
+	case 0:
+		app.Stop()
+	case 1:
+		if swamp.IsRunning() {
+			err := swamp.Pause()
+			if err != nil {
+				socklog.Printf(err.Error())
 			}
-		case 2:
-			swamp.SetMaxWorkers(swamp.GetMaxWorkers() + 1)
-		case 3:
-			swamp.SetMaxWorkers(swamp.GetMaxWorkers() - 1)
-		default:
-			app.Stop()
+		} else {
+			if err := swamp.Resume(); err != nil {
+				socklog.Printf(err.Error())
+			}
 		}
-	}()
+	case 2:
+		swamp.SetMaxWorkers(swamp.GetMaxWorkers() + 1)
+	case 3:
+		swamp.SetMaxWorkers(swamp.GetMaxWorkers() - 1)
+	default:
+		app.Stop()
+	}
 }
 
 func main() {
@@ -132,7 +130,7 @@ func main() {
 
 	go func() {
 		for {
-			time.Sleep(250 * time.Millisecond)
+			time.Sleep(500 * time.Millisecond)
 			app.QueueUpdateDraw(func() {
 				window.SetText(currentString(""))
 			})

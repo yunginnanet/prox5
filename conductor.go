@@ -10,17 +10,18 @@ import (
 type engineState uint32
 
 const (
-	// StateRunning means the proxy pool is currently taking in proxys and validating them, and is available to dispense proxies.
-	StateRunning engineState = iota
-	// StatePaused means the proxy pool has been with ProxyEngine.Pause() and may be resumed with ProxyEngine.Resume()
-	StatePaused
-	// StateNew means the proxy pool has never been started.
-	StateNew
+	// stateRunning means the proxy pool is currently taking in proxys and validating them, and is available to dispense proxies.
+	stateRunning engineState = iota
+	// statePaused means the proxy pool has been with ProxyEngine.Pause() and may be resumed with ProxyEngine.Resume()
+	statePaused
+	// stateNew means the proxy pool has never been started.
+	stateNew
 )
 
 // Start starts our proxy pool operations. Trying to start a running ProxyEngine will return an error.
 func (p5 *ProxyEngine) Start() error {
-	if atomic.LoadUint32(&p5.Status) != uint32(StateNew) {
+	if atomic.LoadUint32(&p5.Status) != uint32(stateNew) {
+		p5.dbgPrint(simpleString("proxy pool has been started before, resuming instead"))
 		return p5.Resume()
 	}
 	p5.startDaemons()
@@ -43,13 +44,13 @@ func (p5 *ProxyEngine) Pause() error {
 
 	p5.quit()
 
-	atomic.StoreUint32(&p5.Status, uint32(StatePaused))
+	atomic.StoreUint32(&p5.Status, uint32(statePaused))
 	return nil
 }
 
 func (p5 *ProxyEngine) startDaemons() {
 	go p5.jobSpawner()
-	atomic.StoreUint32(&p5.Status, uint32(StateRunning))
+	atomic.StoreUint32(&p5.Status, uint32(stateRunning))
 }
 
 // Resume will resume pause proxy pool operations, attempting to resume a running ProxyEngine is returns an error.
@@ -60,4 +61,10 @@ func (p5 *ProxyEngine) Resume() error {
 	p5.ctx, p5.quit = context.WithCancel(context.Background())
 	p5.startDaemons()
 	return nil
+}
+
+// CloseAllConns will close all connections in progress by the dialers (including the SOCKS server if in use).
+// Note this does not effect the proxy pool, it will continue to operate as normal.
+func (p5 *ProxyEngine) CloseAllConns() {
+	p5.killConns()
 }

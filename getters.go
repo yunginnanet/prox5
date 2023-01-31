@@ -121,13 +121,11 @@ func (p5 *ProxyEngine) GetDispenseMiddleware() func(*Proxy) (*Proxy, bool) {
 	return p5.dispenseMiddleware
 }
 
-// TODO: List shuffling
-
-/*func (p5 *ProxyEngine) GetShuffleStatus() bool {
+func (p5 *ProxyEngine) GetRecyclerShuffleStatus() bool {
 	p5.mu.RLock()
 	defer p5.mu.RUnlock()
 	return p5.opt.shuffle
-}*/
+}
 
 func (p5 *ProxyEngine) GetAutoScalerStatus() bool {
 	return p5.scaler.IsOn()
@@ -141,4 +139,10 @@ func (p5 *ProxyEngine) GetDebugRedactStatus() bool {
 	p5.mu.RLock()
 	defer p5.mu.RUnlock()
 	return p5.opt.redact
+}
+
+func (p5 *ProxyEngine) GetHTTPTLSVerificationStatus() bool {
+	p5.mu.RLock()
+	defer p5.mu.RUnlock()
+	return p5.opt.tlsVerify
 }

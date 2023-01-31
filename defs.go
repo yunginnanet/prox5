@@ -1,11 +1,13 @@
 package prox5
 
 import (
+	"container/list"
 	"context"
 	"sync"
 	"sync/atomic"
 	"time"
 
+	"git.tcp.direct/kayos/common/entropy"
 	cmap "github.com/orcaman/concurrent-map/v2"
 	"github.com/panjf2000/ants/v2"
 	rl "github.com/yunginnanet/Rate5"
@@ -14,16 +16,47 @@ import (
 	"git.tcp.direct/kayos/prox5/logger"
 )
 
+type proxyList struct {
+	*list.List
+	*sync.RWMutex
+}
+
+func (pl proxyList) add(p *Proxy) {
+	pl.Lock()
+	defer pl.Unlock()
+	pl.PushBack(p)
+}
+
+func (pl proxyList) pop() *Proxy {
+	pl.Lock()
+	if pl.Len() < 1 {
+		pl.Unlock()
+		return nil
+	}
+	p := pl.Remove(pl.Front()).(*Proxy)
+	pl.Unlock()
+	return p
+}
+
 // ProxyChannels will likely be unexported in the future.
 type ProxyChannels struct {
 	// SOCKS5 is a constant stream of verified SOCKS5 proxies
-	SOCKS5 chan *Proxy
+	SOCKS5 proxyList
 	// SOCKS4 is a constant stream of verified SOCKS4 proxies
-	SOCKS4 chan *Proxy
+	SOCKS4 proxyList
 	// SOCKS4a is a constant stream of verified SOCKS5 proxies
-	SOCKS4a chan *Proxy
+	SOCKS4a proxyList
 	// HTTP is a constant stream of verified SOCKS5 proxies
-	HTTP chan *Proxy
+	HTTP proxyList
+}
+
+// Slice returns a slice of all proxyLists in ProxyChannels, note that HTTP is not included.
+func (pc ProxyChannels) Slice() []*proxyList {
+	lists := []*proxyList{&pc.SOCKS5, &pc.SOCKS4, &pc.SOCKS4a}
+	entropy.GetOptimizedRand().Shuffle(3, func(i, j int) {
+		lists[i], lists[j] = lists[j], lists[i]
+	})
+	return lists
 }
 
 // ProxyEngine represents a proxy pool
@@ -37,7 +70,7 @@ type ProxyEngine struct {
 	Status uint32
 
 	// Pending is a constant stream of proxy strings to be verified
-	Pending chan *Proxy
+	Pending proxyList
 
 	// see: https://pkg.go.dev/github.com/yunginnanet/Rate5
 	useProx *rl.Limiter
@@ -50,17 +83,21 @@ type ProxyEngine struct {
 	ctx       context.Context
 	quit      context.CancelFunc
 
+	httpOptsDirty *atomic.Bool
+	httpClients   *sync.Pool
+
 	proxyMap proxyMap
 
 	// reaper sync.Pool
 
-	mu   *sync.RWMutex
-	pool *ants.Pool
+	recycleMu *sync.Mutex
+	mu        *sync.RWMutex
+	pool      *ants.Pool
 
 	scaler     *scaler.AutoScaler
 	scaleTimer *time.Ticker
 
-	recyleTimer *time.Ticker
+	recycleTimer *time.Ticker
 
 	opt            *config
 	runningdaemons int32
@@ -101,6 +138,8 @@ func defOpt() *config {
 		stale:          defaultStaleTime,
 		maxWorkers:     defaultWorkerCount,
 		redact:         false,
+		tlsVerify:      false,
+		shuffle:        true,
 	}
 	sm.validationTimeout = time.Duration(18) * time.Second
 	sm.serverTimeout = time.Duration(180) * time.Second
@@ -134,8 +173,10 @@ type config struct {
 	recycle bool
 	// remove proxy from recycling after being marked bad this many times
 	removeafter int
-	// shuffle determines whether or not we shuffle proxies before we validate and dispense them.
-	// shuffle bool
+	// shuffle determines whether or not we shuffle proxies when we recycle them.
+	shuffle bool
+	// tlsVerify determines whether or not we verify the TLS certificate of the endpoints the http client connects to.
+	tlsVerify bool
 
 	// TODO: make getters and setters for these
 	useProxConfig rl.Policy
@@ -167,19 +208,27 @@ func NewProxyEngine() *ProxyEngine {
 
 		opt: defOpt(),
 
-		conductor: make(chan bool),
-		mu:        &sync.RWMutex{},
-		Status:    uint32(StateNew),
+		conductor:     make(chan bool),
+		mu:            &sync.RWMutex{},
+		recycleMu:     &sync.Mutex{},
+		httpOptsDirty: &atomic.Bool{},
+		Status:        uint32(stateNew),
 	}
+
+	pe.httpOptsDirty.Store(false)
+	pe.httpClients = &sync.Pool{New: func() interface{} { return pe.newHTTPClient() }}
 
 	stats := []int64{pe.stats.Valid4, pe.stats.Valid4a, pe.stats.Valid5, pe.stats.ValidHTTP, pe.stats.Dispensed}
 	for i := range stats {
 		atomic.StoreInt64(&stats[i], 0)
 	}
 
-	chans := []*chan *Proxy{&pe.Valids.SOCKS5, &pe.Valids.SOCKS4, &pe.Valids.SOCKS4a, &pe.Valids.HTTP, &pe.Pending}
-	for _, c := range chans {
-		*c = make(chan *Proxy, 10000)
+	lists := []*proxyList{&pe.Valids.SOCKS5, &pe.Valids.SOCKS4, &pe.Valids.SOCKS4a, &pe.Valids.HTTP, &pe.Pending}
+	for _, c := range lists {
+		*c = proxyList{
+			List:    &list.List{},
+			RWMutex: &sync.RWMutex{},
+		}
 	}
 
 	pe.dispenseMiddleware = func(p *Proxy) (*Proxy, bool) {
@@ -189,7 +238,7 @@ func NewProxyEngine() *ProxyEngine {
 	pe.conCtx, pe.killConns = context.WithCancel(context.Background())
 	pe.proxyMap = newProxyMap(pe)
 
-	atomic.StoreUint32(&pe.Status, uint32(StateNew))
+	atomic.StoreUint32(&pe.Status, uint32(stateNew))
 	atomic.StoreInt32(&pe.runningdaemons, 0)
 
 	pe.useProx = rl.NewCustomLimiter(pe.opt.useProxConfig)
@@ -203,7 +252,7 @@ func NewProxyEngine() *ProxyEngine {
 
 	pe.scaler = scaler.NewAutoScaler(pe.opt.maxWorkers, pe.opt.maxWorkers+100, 50)
 	pe.scaleTimer = time.NewTicker(750 * time.Millisecond)
-	pe.recyleTimer = time.NewTicker(100 * time.Millisecond)
+	pe.recycleTimer = time.NewTicker(100 * time.Millisecond)
 
 	if err != nil {
 		buf := strs.Get()

@@ -24,11 +24,8 @@ type Statistics struct {
 	// birthday represents the time we started checking proxies with this pool
 	birthday time.Time
 
-	timesChannelFull      int64
-	fullChanAccounted     int64
-	lastWarnedChannelFull time.Time
-	badAccounted          int64
-	accountingLastDone    time.Time
+	badAccounted       int64
+	accountingLastDone time.Time
 }
 
 func (stats *Statistics) dispense() {

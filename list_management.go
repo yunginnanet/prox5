@@ -59,9 +59,11 @@ func (p5 *ProxyEngine) LoadSingleProxy(sock string) bool {
 }
 
 func (p5 *ProxyEngine) loadSingleProxy(sock string) error {
-	if _, ok := p5.proxyMap.add(sock); !ok {
+	p, ok := p5.proxyMap.add(sock)
+	if !ok {
 		return errors.New("proxy already exists")
 	}
+	p5.Pending.add(p)
 	return nil
 }
 
