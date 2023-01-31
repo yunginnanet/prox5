@@ -190,6 +190,12 @@ func (sock *Proxy) validate() {
 	}
 	defer atomic.StoreUint32(&sock.lock, stateUnlocked)
 
+	select {
+	case <-sock.parent.ctx.Done():
+		return
+	default:
+	}
+
 	pe := sock.parent
 	if pe.useProx.Check(sock) {
 		// s.dbgPrint("useProx ratelimited: " + sock.Endpoint )
@@ -204,7 +210,8 @@ func (sock *Proxy) validate() {
 
 	// TODO: consider giving the option for verbose logging of this stuff?
 
-	if sock.timesValidated == 0 || sock.protocol.Get() == ProtoNull {
+	switch {
+	case sock.timesValidated == 0, sock.protocol.Get() == ProtoNull:
 		// try to use the proxy with all 3 SOCKS versions
 		for tryProto := range protoMap {
 			if tryProto == ProtoNull {
@@ -222,7 +229,7 @@ func (sock *Proxy) validate() {
 				break
 			}
 		}
-	} else {
+	default:
 		if err := pe.singleProxyCheck(sock, sock.GetProto()); err != nil {
 			sock.bad()
 			pe.badProx.Check(sock)
@@ -245,7 +252,7 @@ func (sock *Proxy) validate() {
 }
 
 func (p5 *ProxyEngine) tally(sock *Proxy) bool {
-	var target chan *Proxy
+	var target proxyList
 	switch sock.protocol.Get() {
 	case ProtoSOCKS4:
 		p5.stats.v4()
@@ -262,8 +269,8 @@ func (p5 *ProxyEngine) tally(sock *Proxy) bool {
 	default:
 		return false
 	}
-	select {
-	case target <- sock:
-		return true
-	}
+	target.Lock()
+	target.PushBack(sock)
+	target.Unlock()
+	return true
 }

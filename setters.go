@@ -146,14 +146,26 @@ func (p5 *ProxyEngine) DisableDebugRedaction() {
 	p5.opt.Unlock()
 }
 
-/*func (p5 *ProxyEngine) EnableListShuffle() {
+func (p5 *ProxyEngine) EnableRecyclerShuffling() {
 	p5.opt.Lock()
 	p5.opt.shuffle = true
 	p5.opt.Unlock()
 }
 
-func (p5 *ProxyEngine) DisableListShuffle() {
+func (p5 *ProxyEngine) DisableRecyclerShuffling() {
 	p5.opt.Lock()
 	p5.opt.shuffle = false
 	p5.opt.Unlock()
-}*/
+}
+
+func (p5 *ProxyEngine) EnableHTTPClientTLSVerification() {
+	p5.opt.Lock()
+	p5.opt.tlsVerify = true
+	p5.opt.Unlock()
+}
+
+func (p5 *ProxyEngine) DisableHTTPClientTLSVerification() {
+	p5.opt.Lock()
+	p5.opt.tlsVerify = false
+	p5.opt.Unlock()
+}

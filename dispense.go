@@ -5,90 +5,96 @@ import (
 	"time"
 )
 
+func (p5 *ProxyEngine) getSocksStr(proto ProxyProtocol) string {
+	var sock *Proxy
+	var list *proxyList
+	switch proto {
+	case ProtoSOCKS4:
+		list = &p5.Valids.SOCKS4
+	case ProtoSOCKS4a:
+		list = &p5.Valids.SOCKS4a
+	case ProtoSOCKS5:
+		list = &p5.Valids.SOCKS5
+	case ProtoHTTP:
+		list = &p5.Valids.HTTP
+	}
+	for {
+		if list.Len() == 0 {
+			p5.recycling()
+			time.Sleep(250 * time.Millisecond)
+			continue
+		}
+		list.Lock()
+		sock = list.Remove(list.Front()).(*Proxy)
+		list.Unlock()
+		switch {
+		case sock == nil:
+			p5.recycling()
+			time.Sleep(250 * time.Millisecond)
+			continue
+		case !p5.stillGood(sock):
+			sock = nil
+			continue
+		default:
+			p5.stats.dispense()
+			return sock.Endpoint
+		}
+	}
+}
+
 // Socks5Str gets a SOCKS5 proxy that we have fully verified (dialed and then retrieved our IP address from a what-is-my-ip endpoint.
 // Will block if one is not available!
 func (p5 *ProxyEngine) Socks5Str() string {
-	for {
-		select {
-		case sock := <-p5.Valids.SOCKS5:
-			if !p5.stillGood(sock) {
-				continue
-			}
-			p5.stats.dispense()
-			return sock.Endpoint
-		default:
-			p5.recycling()
-		}
-	}
+	return p5.getSocksStr(ProtoSOCKS5)
 }
 
 // Socks4Str gets a SOCKS4 proxy that we have fully verified.
 // Will block if one is not available!
 func (p5 *ProxyEngine) Socks4Str() string {
-	defer p5.stats.dispense()
-	for {
-		select {
-		case sock := <-p5.Valids.SOCKS4:
-			if !p5.stillGood(sock) {
-				continue
-			}
-			return sock.Endpoint
-		default:
-			p5.recycling()
-		}
-	}
+	return p5.getSocksStr(ProtoSOCKS4)
 }
 
 // Socks4aStr gets a SOCKS4 proxy that we have fully verified.
 // Will block if one is not available!
 func (p5 *ProxyEngine) Socks4aStr() string {
-	defer p5.stats.dispense()
-	for {
-		select {
-		case sock := <-p5.Valids.SOCKS4a:
-			if !p5.stillGood(sock) {
-				continue
-			}
-			return sock.Endpoint
-		default:
-			p5.recycling()
-		}
-	}
+	return p5.getSocksStr(ProtoSOCKS4a)
 }
 
 // GetHTTPTunnel checks for an available HTTP CONNECT proxy in our pool.
-// For now, this function does not loop forever like the GetAnySOCKS does.
-// Alternatively it can be included within the for loop by passing true to GetAnySOCKS.
-// If there is an HTTP proxy available, ok will be true. If not, it will return false without delay.
-func (p5 *ProxyEngine) GetHTTPTunnel() (p *Proxy, ok bool) {
-	select {
-	case httptunnel := <-p5.Valids.HTTP:
-		return httptunnel, true
-	default:
-		return nil, false
-	}
+func (p5 *ProxyEngine) GetHTTPTunnel() string {
+	return p5.getSocksStr(ProtoHTTP)
 }
 
 // GetAnySOCKS retrieves any version SOCKS proxy as a Proxy type
 // Will block if one is not available!
 func (p5 *ProxyEngine) GetAnySOCKS() *Proxy {
-
+	var sock *Proxy
 	defer p5.stats.dispense()
+
 	for {
-		var sock *Proxy
 		select {
-		case sock = <-p5.Valids.SOCKS4:
-			break
-		case sock = <-p5.Valids.SOCKS4a:
-			break
-		case sock = <-p5.Valids.SOCKS5:
-			break
+		case <-p5.ctx.Done():
+			return nil
 		default:
-			time.Sleep(250 * time.Millisecond)
-			p5.recycling()
+			//
 		}
-		if p5.stillGood(sock) {
-			return sock
+		for _, list := range p5.Valids.Slice() {
+			list.RLock()
+			if list.Len() > 0 {
+				list.RUnlock()
+				sock = list.pop()
+				switch {
+				case sock == nil:
+					p5.recycling()
+					time.Sleep(50 * time.Millisecond)
+				case p5.stillGood(sock):
+					return sock
+				default:
+					sock = nil
+				}
+				continue
+			}
+			list.RUnlock()
 		}
 	}
 }
@@ -125,7 +131,7 @@ func (p5 *ProxyEngine) stillGood(sock *Proxy) bool {
 		buf.MustWriteString("proxy stale: ")
 		buf.MustWriteString(sock.Endpoint)
 		p5.dbgPrint(buf)
-		go p5.stats.stale()
+		p5.stats.stale()
 		return false
 	}
 

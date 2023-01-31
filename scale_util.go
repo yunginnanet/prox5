@@ -21,14 +21,13 @@ func (p5 *ProxyEngine) scale() (sleep bool) {
 	case <-p5.scaleTimer.C:
 		bad := int64(0)
 		totalBadNow := p5.GetTotalBad()
-		totalChanFullNow := atomic.LoadInt64(&p5.stats.timesChannelFull)
-		accountedFor := atomic.LoadInt64(&p5.stats.badAccounted) + atomic.LoadInt64(&p5.stats.fullChanAccounted)
-		netFactors := (totalBadNow + totalChanFullNow) - accountedFor
-		if time.Since(p5.stats.accountingLastDone) > 600*time.Millisecond && netFactors > 0 {
+		accountedFor := atomic.LoadInt64(&p5.stats.badAccounted)
+		netFactors := totalBadNow - accountedFor
+		if time.Since(p5.stats.accountingLastDone) > 5*time.Second && netFactors > 0 {
 			bad = int64(netFactors)
 			if p5.DebugEnabled() {
-				p5.DebugLogger.Printf("accounting: %d bad, %d full, %d accounted, %d net factors",
-					totalBadNow, totalChanFullNow, accountedFor, netFactors)
+				p5.DebugLogger.Printf("accounting: %d bad - %d accounted for = %d net factors",
+					totalBadNow, accountedFor, netFactors)
 			}
 			p5.stats.accountingLastDone = time.Now()
 		}
@@ -55,7 +54,6 @@ func (p5 *ProxyEngine) scale() (sleep bool) {
 			totalValidated,
 			totalConsidered,
 		) {
-			atomic.AddInt64(&p5.stats.fullChanAccounted, 1)
 			p5.scaleDbg()
 		}
 	default:

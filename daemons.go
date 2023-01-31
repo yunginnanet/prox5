@@ -3,10 +3,9 @@ package prox5
 import (
 	"errors"
 	"strconv"
-	"sync"
-	"sync/atomic"
 	"time"
 
+	"git.tcp.direct/kayos/common/entropy"
 	cmap "github.com/orcaman/concurrent-map/v2"
 )
 
@@ -42,12 +41,17 @@ func (sm proxyMap) clear() {
 }
 
 func (p5 *ProxyEngine) recycling() int {
+	if !p5.recycleMu.TryLock() {
+		return 0
+	}
+	defer p5.recycleMu.Unlock()
+
 	switch {
 	case !p5.GetRecyclingStatus(), p5.proxyMap.plot.Count() < 1:
 		return 0
 	default:
 		select {
-		case <-p5.recyleTimer.C:
+		case <-p5.recycleTimer.C:
 			break
 		default:
 			return 0
@@ -55,43 +59,49 @@ func (p5 *ProxyEngine) recycling() int {
 	}
 
 	var count = 0
-	var printedFull = false
 
-	var o = &sync.Once{}
+	tpls := make(chan cmap.Tuple[string, *Proxy], p5.proxyMap.plot.Count())
 
-	for tuple := range p5.proxyMap.plot.IterBuffered() {
-		select {
-		case <-p5.ctx.Done():
-			return 0
-		case p5.Pending <- tuple.Val:
-			count++
-		default:
-			o.Do(func() {
-				atomic.AddInt64(&p5.stats.timesChannelFull, 1)
-			})
-			if !printedFull {
-				if time.Since(p5.stats.lastWarnedChannelFull) > 20*time.Second {
-					p5.scale()
-					p5.DebugLogger.Print("can't recycle, channel full")
-					printedFull = true
-					p5.stats.lastWarnedChannelFull = time.Now()
-				}
+	recycleTuples := func(items chan cmap.Tuple[string, *Proxy]) {
+		for tuple := range items {
+			select {
+			case <-p5.ctx.Done():
+				return
+			default:
+				//
 			}
-			time.Sleep(1 * time.Second)
-			continue
+			p5.Pending.add(tuple.Val)
+			count++
 		}
 	}
+
+	switch p5.GetRecyclerShuffleStatus() {
+	case true:
+		var tuples []cmap.Tuple[string, *Proxy]
+		for tuple := range p5.proxyMap.plot.IterBuffered() {
+			tuples = append(tuples, tuple)
+		}
+		entropy.GetOptimizedRand().Shuffle(len(tuples), func(i, j int) {
+			tuples[i], tuples[j] = tuples[j], tuples[i]
+		})
+		for _, tuple := range tuples {
+			tpls <- tuple
+		}
+	case false:
+		for tuple := range p5.proxyMap.plot.IterBuffered() {
+			tpls <- tuple
+		}
+	}
+
+	recycleTuples(tpls)
 
 	return count
 }
 
 func (p5 *ProxyEngine) jobSpawner() {
-	if p5.pool.IsClosed() {
-		p5.pool.Reboot()
-	}
+	p5.pool.Reboot()
 
 	p5.dbgPrint(simpleString("job spawner started"))
-	defer p5.dbgPrint(simpleString("job spawner paused"))
 
 	q := make(chan bool)
 
@@ -101,13 +111,12 @@ func (p5 *ProxyEngine) jobSpawner() {
 			case <-p5.ctx.Done():
 				q <- true
 				return
-			case sock := <-p5.Pending:
-				_ = p5.scale()
-				if err := p5.pool.Submit(sock.validate); err != nil {
-					p5.dbgPrint(simpleString(err.Error()))
-				}
-
 			default:
+			}
+
+			p5.Pending.RLock()
+			if p5.Pending.Len() < 1 {
+				p5.Pending.RUnlock()
 				count := p5.recycling()
 				if count > 0 {
 					buf := strs.Get()
@@ -116,10 +125,24 @@ func (p5 *ProxyEngine) jobSpawner() {
 					buf.MustWriteString(" proxies from our map")
 					p5.dbgPrint(buf)
 				}
+				time.Sleep(time.Millisecond * 500)
+				continue
 			}
+			p5.Pending.RUnlock()
+
+			p5.Pending.Lock()
+			sock := p5.Pending.Remove(p5.Pending.Front()).(*Proxy)
+			p5.Pending.Unlock()
+
+			_ = p5.scale()
+			if err := p5.pool.Submit(sock.validate); err != nil {
+				p5.dbgPrint(simpleString(err.Error()))
+			}
+
 		}
 	}()
 
 	<-q
+	p5.dbgPrint(simpleString("job spawner paused"))
 	p5.pool.Release()
 }

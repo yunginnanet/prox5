@@ -23,11 +23,9 @@ func (p5 *ProxyEngine) Dial(network, addr string) (net.Conn, error) {
 // DialTimeout is a simple stub adapter to implement a net.Dialer with a timeout.
 func (p5 *ProxyEngine) DialTimeout(network, addr string, timeout time.Duration) (net.Conn, error) {
 	ctx, cancel := context.WithDeadline(context.Background(), time.Now().Add(timeout))
-	go func() { // this is a goroutine that calls cancel() upon the deadline expiring to avoid context leaks
-		<-ctx.Done()
-		cancel()
-	}()
-	return p5.mysteryDialer(ctx, network, addr)
+	nc, err := p5.mysteryDialer(ctx, network, addr)
+	cancel()
+	return nc, err
 }
 
 func (p5 *ProxyEngine) addTimeout(socksString string) string {
@@ -47,19 +45,29 @@ func (p5 *ProxyEngine) popSockAndLockIt(ctx context.Context) (*Proxy, error) {
 	case <-ctx.Done():
 		return nil, fmt.Errorf("context done: %w", ctx.Err())
 	default:
-		if atomic.CompareAndSwapUint32(&sock.lock, stateUnlocked, stateLocked) {
-			// p5.msgGotLock(socksString)
-			return sock, nil
-		}
-		select {
-		case p5.Pending <- sock:
-			// p5.msgCantGetLock(socksString, true)
-			return nil, nil
-		default:
-			p5.msgCantGetLock(sock.String(), false)
-			return nil, nil
-		}
+		//
 	}
+	if sock == nil {
+		return nil, nil
+	}
+	if atomic.CompareAndSwapUint32(&sock.lock, stateUnlocked, stateLocked) {
+		// p5.msgGotLock(socksString)
+		return sock, nil
+	}
+	switch sock.GetProto() {
+	case ProtoSOCKS5:
+		p5.Valids.SOCKS5.add(sock)
+	case ProtoSOCKS4:
+		p5.Valids.SOCKS4.add(sock)
+	case ProtoSOCKS4a:
+		p5.Valids.SOCKS4a.add(sock)
+	case ProtoHTTP:
+		p5.Valids.HTTP.add(sock)
+	default:
+		return nil, fmt.Errorf("unknown protocol: %s", sock.GetProto())
+	}
+
+	return nil, nil
 }
 
 // mysteryDialer is a dialer function that will use a different proxy for every request.
@@ -69,23 +77,25 @@ func (p5 *ProxyEngine) mysteryDialer(ctx context.Context, network, addr string) 
 	var count = 0
 	for {
 		max := p5.GetDialerBailout()
-		if count > max {
+		switch {
+		case count > max:
 			return nil, fmt.Errorf("giving up after %d tries", max)
-		}
-		if err := ctx.Err(); err != nil {
-			return nil, fmt.Errorf("context error: %w", err)
-		}
-		if p5.conCtx.Err() != nil {
+		case ctx.Err() != nil:
+			return nil, fmt.Errorf("context error: %w", ctx.Err())
+		case p5.conCtx.Err() != nil:
 			return nil, fmt.Errorf("context closed")
+		default:
+			//
 		}
 		var sock *Proxy
 		for {
 			if p5.scale() {
-				time.Sleep(1 * time.Millisecond)
+				time.Sleep(5 * time.Millisecond)
 			}
 			var err error
 			sock, err = p5.popSockAndLockIt(ctx)
 			if err != nil {
+				println(err.Error())
 				return nil, err
 			}
 			if sock != nil {
@@ -109,16 +119,16 @@ func (p5 *ProxyEngine) mysteryDialer(ctx context.Context, network, addr string) 
 			continue
 		}
 		p5.msgUsingProxy(socksString)
-		go func() {
-			select {
-			case <-ctx.Done():
-				_ = conn.Close()
-			case <-p5.conCtx.Done():
-				_ = conn.Close()
-			case <-p5.ctx.Done():
-				_ = conn.Close()
-			}
-		}()
+		/*		go func() {
+				select {
+				case <-ctx.Done():
+					_ = conn.Close()
+				case <-p5.conCtx.Done():
+					_ = conn.Close()
+				case <-p5.ctx.Done():
+					_ = conn.Close()
+				}
+			}()*/
 		return conn, nil
 	}
 }

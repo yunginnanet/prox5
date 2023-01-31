@@ -37,7 +37,7 @@ func (p5 *ProxyEngine) StartSOCKS5Server(listen, username, password string) erro
 	opts := []socks5.Option{
 		socks5.WithBufferPool(bufs),
 		socks5.WithLogger(p5.DebugLogger),
-		socks5.WithDial(p5.mysteryDialer),
+		socks5.WithDial(p5.DialContext),
 	}
 	if username != "" && password != "" {
 		cator := socks5.UserPassAuthenticator{Credentials: socks5.StaticCredentials{username: password}}
