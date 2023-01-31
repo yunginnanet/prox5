@@ -53,7 +53,7 @@ type ProxyChannels struct {
 // Slice returns a slice of all proxyLists in ProxyChannels, note that HTTP is not included.
 func (pc ProxyChannels) Slice() []*proxyList {
 	lists := []*proxyList{&pc.SOCKS5, &pc.SOCKS4, &pc.SOCKS4a}
-	entropy.GetOptimizedRand().Shuffle(len(pc.Slice()), func(i, j int) {
+	entropy.GetOptimizedRand().Shuffle(3, func(i, j int) {
 		lists[i], lists[j] = lists[j], lists[i]
 	})
 	return lists
