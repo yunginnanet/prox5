@@ -251,8 +251,8 @@ func NewProxyEngine() *ProxyEngine {
 	}))
 
 	pe.scaler = scaler.NewAutoScaler(pe.opt.maxWorkers, pe.opt.maxWorkers+100, 50)
-	pe.scaleTimer = time.NewTicker(750 * time.Millisecond)
-	pe.recycleTimer = time.NewTicker(100 * time.Millisecond)
+	pe.scaleTimer = time.NewTicker(1 * time.Second)
+	pe.recycleTimer = time.NewTicker(500 * time.Millisecond)
 
 	if err != nil {
 		buf := strs.Get()

@@ -64,12 +64,6 @@ func (p5 *ProxyEngine) recycling() int {
 
 	recycleTuples := func(items chan cmap.Tuple[string, *Proxy]) {
 		for tuple := range items {
-			select {
-			case <-p5.ctx.Done():
-				return
-			default:
-				//
-			}
 			p5.Pending.add(tuple.Val)
 			count++
 		}
@@ -103,7 +97,7 @@ func (p5 *ProxyEngine) jobSpawner() {
 
 	p5.dbgPrint(simpleString("job spawner started"))
 
-	q := make(chan bool)
+	q := make(chan bool, 1)
 
 	go func() {
 		for {
@@ -114,21 +108,20 @@ func (p5 *ProxyEngine) jobSpawner() {
 			default:
 			}
 
-			p5.Pending.RLock()
 			if p5.Pending.Len() < 1 {
-				p5.Pending.RUnlock()
 				count := p5.recycling()
-				if count > 0 {
+				switch {
+				case count > 0:
 					buf := strs.Get()
 					buf.MustWriteString("recycled ")
 					buf.MustWriteString(strconv.Itoa(count))
 					buf.MustWriteString(" proxies from our map")
 					p5.dbgPrint(buf)
+				default:
+					time.Sleep(time.Millisecond * 100)
 				}
-				time.Sleep(time.Millisecond * 500)
 				continue
 			}
-			p5.Pending.RUnlock()
 
 			p5.Pending.Lock()
 			sock := p5.Pending.Remove(p5.Pending.Front()).(*Proxy)
