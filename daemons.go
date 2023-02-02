@@ -101,13 +101,14 @@ func (p5 *ProxyEngine) jobSpawner() {
 
 	go func() {
 		for {
-			select {
-			case <-p5.ctx.Done():
+			if !p5.IsRunning() {
 				q <- true
 				return
-			default:
 			}
-
+			// select {
+			// case <-p5.ctx.Done():
+			// default:
+			// }
 			if p5.Pending.Len() < 1 {
 				count := p5.recycling()
 				switch {
