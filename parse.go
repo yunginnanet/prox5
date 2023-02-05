@@ -5,7 +5,7 @@ import (
 	"strings"
 
 	"github.com/miekg/dns"
-	ipa "inet.af/netaddr"
+	"net/netip"
 )
 
 func filterv6(in string) (filtered string, ok bool) {
@@ -17,18 +17,18 @@ func filterv6(in string) (filtered string, ok bool) {
 	split2 := strings.Split(split[1], ":")
 	switch len(split2) {
 	case 0:
-		combo, err := ipa.ParseIPPort(buildProxyString("", "", split[0], split2[0], true))
+		combo, err := netip.ParseAddrPort(buildProxyString("", "", split[0], split2[0], true))
 		if err == nil {
 			return combo.String(), true
 		}
 	case 1:
 		concat := buildProxyString("", "", split[0], split2[0], true)
-		combo, err := ipa.ParseIPPort(concat)
+		combo, err := netip.ParseAddrPort(concat)
 		if err == nil {
 			return combo.String(), true
 		}
 	default:
-		_, err := ipa.ParseIPPort(buildProxyString("", "", split[0], split2[0], true))
+		_, err := netip.ParseAddrPort(buildProxyString("", "", split[0], split2[0], true))
 		if err == nil {
 			return buildProxyString(split2[1], split2[2], split[0], split2[0], true), true
 		}
@@ -74,7 +74,7 @@ func filter(in string) (filtered string, ok bool) { //nolint:cyclop
 		if isDomain && isNumber(split[1]) {
 			return in, true
 		}
-		combo, err := ipa.ParseIPPort(in)
+		combo, err := netip.ParseAddrPort(in)
 		if err != nil {
 			return "", false
 		}
@@ -94,7 +94,7 @@ func filter(in string) (filtered string, ok bool) { //nolint:cyclop
 			return buildProxyString(splitAuth[0], splitAuth[1],
 				splitServ[0], splitServ[1], false), true
 		}
-		if _, err := ipa.ParseIPPort(split[1]); err == nil {
+		if _, err := netip.ParseAddrPort(split[1]); err == nil {
 			return buildProxyString(splitAuth[0], splitAuth[1],
 				splitServ[0], splitServ[1], false), true
 		}
@@ -107,10 +107,10 @@ func filter(in string) (filtered string, ok bool) { //nolint:cyclop
 		if isDomain && isNumber(split[3]) {
 			return buildProxyString(split[0], split[1], split[2], split[3], false), true
 		}
-		if _, err := ipa.ParseIPPort(split[2] + ":" + split[3]); err == nil {
+		if _, err := netip.ParseAddrPort(split[2] + ":" + split[3]); err == nil {
 			return buildProxyString(split[0], split[1], split[2], split[3], false), true
 		}
-		if _, err := ipa.ParseIPPort(split[0] + ":" + split[1]); err == nil {
+		if _, err := netip.ParseAddrPort(split[0] + ":" + split[1]); err == nil {
 			return buildProxyString(split[2], split[3], split[0], split[1], false), true
 		}
 	default:
