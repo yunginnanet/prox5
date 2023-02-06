@@ -1,5 +1,5 @@
-git.tcp.direct/kayos/common v0.8.0 h1:7Nl44HAKQU5jvHb2eJgU5cwbOLfft3P/XTxZHTMPfyo=
-git.tcp.direct/kayos/common v0.8.0/go.mod h1:r7lZuKTQz0uf/jNm61sz1XaMgK/RYRr7wtqr/cNYd8o=
+git.tcp.direct/kayos/common v0.8.1 h1:gxcCaa7QlQzkvBPzcwoVyP89mexrxKvnmlnvh4PGu4o=
+git.tcp.direct/kayos/common v0.8.1/go.mod h1:r7lZuKTQz0uf/jNm61sz1XaMgK/RYRr7wtqr/cNYd8o=
 git.tcp.direct/kayos/go-socks5 v1.0.4 h1:2x2H0TnKfOc7sat12WNF+uqZLKvPCoKkWdxPfJXUKJM=
 git.tcp.direct/kayos/go-socks5 v1.0.4/go.mod h1:smPlQaSGcQR+Kf6wfJkI2nskxWPgtxGIh1beMD+cwB8=
 git.tcp.direct/kayos/socks v0.1.1 h1:2xcHVHA2u4sSEPq+wIV6qmb/fgxEfFHdRAh5hTPL0NM=
