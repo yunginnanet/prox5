@@ -124,8 +124,15 @@ func (p5 *ProxyEngine) jobSpawner() {
 				continue
 			}
 
+			var sock *Proxy
+
 			p5.Pending.Lock()
-			sock := p5.Pending.Remove(p5.Pending.Front()).(*Proxy)
+			switch p5.GetRecyclingStatus() {
+			case true:
+				el := p5.Pending.Front()
+				p5.Pending.MoveToBack(el)
+				sock = el.Value.(*Proxy)
+			}
 			p5.Pending.Unlock()
 
 			_ = p5.scale()

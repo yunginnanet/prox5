@@ -68,7 +68,7 @@ type ProxyEngine struct {
 	stats *Statistics
 
 	Status uint32
-
+	
 	// Pending is a constant stream of proxy strings to be verified
 	Pending proxyList
 

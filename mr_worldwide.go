@@ -32,9 +32,10 @@ func (p5 *ProxyEngine) newHTTPClient() any {
 		},
 	}
 
-	if timeout != time.Unix(0, 0) {
+	if timeout != time.Duration(0) {
 		hc.Timeout = timeout
 	}
+	return hc
 }
 
 // GetHTTPClient retrieves a pointer to an http.Client powered by mysteryDialer.
