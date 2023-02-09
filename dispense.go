@@ -33,7 +33,6 @@ func (p5 *ProxyEngine) getSocksStr(proto ProxyProtocol) string {
 			time.Sleep(250 * time.Millisecond)
 			continue
 		case !p5.stillGood(sock):
-			sock = nil
 			continue
 		default:
 			p5.stats.dispense()
@@ -68,10 +67,10 @@ func (p5 *ProxyEngine) GetHTTPTunnel() string {
 // GetAnySOCKS retrieves any version SOCKS proxy as a Proxy type
 // Will block if one is not available!
 func (p5 *ProxyEngine) GetAnySOCKS() *Proxy {
-	var sock *Proxy
 	defer p5.stats.dispense()
 
 	for {
+		var sock *Proxy
 		select {
 		case <-p5.ctx.Done():
 			return nil
@@ -90,7 +89,6 @@ func (p5 *ProxyEngine) GetAnySOCKS() *Proxy {
 				case p5.stillGood(sock):
 					return sock
 				default:
-					sock = nil
 				}
 				continue
 			}

@@ -1,7 +1,6 @@
 package prox5
 
 import (
-	"context"
 	"errors"
 	"sync/atomic"
 )
@@ -42,9 +41,10 @@ func (p5 *ProxyEngine) Pause() error {
 
 	p5.dbgPrint(simpleString("pausing proxy pool"))
 
-	p5.quit()
+	// p5.quit()
 
 	atomic.StoreUint32(&p5.Status, uint32(statePaused))
+
 	return nil
 }
 
@@ -58,7 +58,7 @@ func (p5 *ProxyEngine) Resume() error {
 	if p5.IsRunning() {
 		return errors.New("already running")
 	}
-	p5.ctx, p5.quit = context.WithCancel(context.Background())
+	// p5.ctx, p5.quit = context.WithCancel(context.Background())
 	p5.startDaemons()
 	return nil
 }

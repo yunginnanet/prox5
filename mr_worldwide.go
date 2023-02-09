@@ -4,10 +4,13 @@ import (
 	"crypto/tls"
 	"net/http"
 	"sync"
+	"time"
 )
 
 func (p5 *ProxyEngine) newHTTPClient() any {
-	return &http.Client{
+	timeout := p5.GetServerTimeout()
+
+	hc := &http.Client{
 		Transport: &http.Transport{
 			DialContext:     p5.DialContext,
 			TLSClientConfig: &tls.Config{InsecureSkipVerify: p5.GetHTTPTLSVerificationStatus() == false}, //nolint:gosec
@@ -15,20 +18,24 @@ func (p5 *ProxyEngine) newHTTPClient() any {
 			DisableKeepAlives:  true,
 			DisableCompression: false,
 			// MaxIdleConnsPerHost:    5,
-			MaxConnsPerHost:        0,
-			IdleConnTimeout:        0,
-			ResponseHeaderTimeout:  0,
-			ExpectContinueTimeout:  0,
-			TLSNextProto:           nil,
-			ProxyConnectHeader:     nil,
-			GetProxyConnectHeader:  nil,
-			MaxResponseHeaderBytes: 0,
-			WriteBufferSize:        0,
-			ReadBufferSize:         0,
-			ForceAttemptHTTP2:      false,
+			// MaxConnsPerHost:        0,
+			// IdleConnTimeout:        0,
+			// ResponseHeaderTimeout:  0,
+			// ExpectContinueTimeout:  0,
+			// TLSNextProto:           nil,
+			// ProxyConnectHeader:     nil,
+			// GetProxyConnectHeader:  nil,
+			// MaxResponseHeaderBytes: 0,
+			// WriteBufferSize:        0,
+			// ReadBufferSize:         0,
+			// ForceAttemptHTTP2:      false,
 		},
-		Timeout: p5.GetServerTimeout(),
 	}
+
+	if timeout != time.Duration(0) {
+		hc.Timeout = timeout
+	}
+	return hc
 }
 
 // GetHTTPClient retrieves a pointer to an http.Client powered by mysteryDialer.

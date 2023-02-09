@@ -12,10 +12,9 @@ require (
 	github.com/orcaman/concurrent-map/v2 v2.0.1
 	github.com/panjf2000/ants/v2 v2.7.1
 	github.com/refraction-networking/utls v1.2.1
-	github.com/rivo/tview v0.0.0-20230130130022-4a1b7a76c01c
+	github.com/rivo/tview v0.0.0-20230208211350-7dfff1ce7854
 	github.com/yunginnanet/Rate5 v1.2.1
 	golang.org/x/net v0.5.0
-	inet.af/netaddr v0.0.0-20220811202034-502d2d690317
 )
 
 require (
@@ -26,8 +25,6 @@ require (
 	github.com/mattn/go-runewidth v0.0.14 // indirect
 	github.com/patrickmn/go-cache v2.1.0+incompatible // indirect
 	github.com/rivo/uniseg v0.4.2 // indirect
-	go4.org/intern v0.0.0-20211027215823-ae77deb06f29 // indirect
-	go4.org/unsafe/assume-no-moving-gc v0.0.0-20220617031537-928513b29760 // indirect
 	golang.org/x/crypto v0.5.0 // indirect
 	golang.org/x/mod v0.6.0-dev.0.20220419223038-86c51ed26bb4 // indirect
 	golang.org/x/sys v0.4.0 // indirect

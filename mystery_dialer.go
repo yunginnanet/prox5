@@ -23,8 +23,8 @@ func (p5 *ProxyEngine) Dial(network, addr string) (net.Conn, error) {
 // DialTimeout is a simple stub adapter to implement a net.Dialer with a timeout.
 func (p5 *ProxyEngine) DialTimeout(network, addr string, timeout time.Duration) (net.Conn, error) {
 	ctx, cancel := context.WithDeadline(context.Background(), time.Now().Add(timeout))
+	defer cancel()
 	nc, err := p5.mysteryDialer(ctx, network, addr)
-	cancel()
 	return nc, err
 }
 
