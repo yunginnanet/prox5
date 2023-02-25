@@ -94,9 +94,8 @@ func (p5 *ProxyEngine) GetAnySOCKS() *Proxy {
 				return sock
 			default:
 			}
-			continue
-
 			list.RUnlock()
+			continue
 		}
 	}
 }

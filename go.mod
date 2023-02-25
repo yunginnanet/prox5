@@ -4,7 +4,7 @@ go 1.19
 
 require (
 	git.tcp.direct/kayos/common v0.8.1
-	git.tcp.direct/kayos/go-socks5 v1.0.4
+	git.tcp.direct/kayos/go-socks5 v0.3.0
 	git.tcp.direct/kayos/socks v0.1.1
 	github.com/gdamore/tcell/v2 v2.6.0
 	github.com/miekg/dns v1.1.50
