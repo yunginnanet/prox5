@@ -81,6 +81,7 @@ func (p5 *ProxyEngine) GetAnySOCKS() *Proxy {
 			list.RLock()
 			if list.Len() < 1 {
 				time.Sleep(15 * time.Millisecond)
+				list.RUnlock()
 				continue
 			}
 
@@ -91,6 +92,7 @@ func (p5 *ProxyEngine) GetAnySOCKS() *Proxy {
 				p5.recycling()
 				time.Sleep(50 * time.Millisecond)
 			case p5.stillGood(sock):
+				list.RUnlock()
 				return sock
 			default:
 			}
