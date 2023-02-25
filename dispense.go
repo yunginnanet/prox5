@@ -75,23 +75,27 @@ func (p5 *ProxyEngine) GetAnySOCKS() *Proxy {
 		case <-p5.ctx.Done():
 			return nil
 		default:
-			//
+			time.Sleep(2 * time.Millisecond)
 		}
 		for _, list := range p5.Valids.Slice() {
 			list.RLock()
-			if list.Len() > 0 {
-				list.RUnlock()
-				sock = list.pop()
-				switch {
-				case sock == nil:
-					p5.recycling()
-					time.Sleep(50 * time.Millisecond)
-				case p5.stillGood(sock):
-					return sock
-				default:
-				}
+			if list.Len() < 1 {
+				time.Sleep(15 * time.Millisecond)
 				continue
 			}
+
+			list.RUnlock()
+			sock = list.pop()
+			switch {
+			case sock == nil:
+				p5.recycling()
+				time.Sleep(50 * time.Millisecond)
+			case p5.stillGood(sock):
+				return sock
+			default:
+			}
+			continue
+
 			list.RUnlock()
 		}
 	}
