@@ -79,7 +79,7 @@ func (p5 *ProxyEngine) recycling() int {
 			count++
 		}
 	}
-	redu
+
 	return count
 }
 
