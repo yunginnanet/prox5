@@ -60,15 +60,6 @@ func (p5 *ProxyEngine) recycling() int {
 
 	var count = 0
 
-	tpls := make(chan cmap.Tuple[string, *Proxy], p5.proxyMap.plot.Count())
-
-	recycleTuples := func(items chan cmap.Tuple[string, *Proxy]) {
-		for tuple := range items {
-			p5.Pending.add(tuple.Val)
-			count++
-		}
-	}
-
 	switch p5.GetRecyclerShuffleStatus() {
 	case true:
 		var tuples []cmap.Tuple[string, *Proxy]
@@ -79,16 +70,16 @@ func (p5 *ProxyEngine) recycling() int {
 			tuples[i], tuples[j] = tuples[j], tuples[i]
 		})
 		for _, tuple := range tuples {
-			tpls <- tuple
+			p5.Pending.add(tuple.Val)
+			count++
 		}
 	case false:
 		for tuple := range p5.proxyMap.plot.IterBuffered() {
-			tpls <- tuple
+			p5.Pending.add(tuple.Val)
+			count++
 		}
 	}
-
-	recycleTuples(tpls)
-
+	redu
 	return count
 }
 
