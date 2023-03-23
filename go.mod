@@ -3,7 +3,7 @@ module git.tcp.direct/kayos/prox5
 go 1.19
 
 require (
-	git.tcp.direct/kayos/common v0.8.1
+	git.tcp.direct/kayos/common v0.8.2
 	git.tcp.direct/kayos/go-socks5 v0.3.0
 	git.tcp.direct/kayos/socks v0.1.1
 	github.com/gdamore/tcell/v2 v2.6.0
@@ -25,7 +25,7 @@ require (
 	github.com/mattn/go-runewidth v0.0.14 // indirect
 	github.com/patrickmn/go-cache v2.1.0+incompatible // indirect
 	github.com/rivo/uniseg v0.4.3 // indirect
-	golang.org/x/crypto v0.5.0 // indirect
+	golang.org/x/crypto v0.7.0 // indirect
 	golang.org/x/mod v0.8.0 // indirect
 	golang.org/x/sys v0.6.0 // indirect
 	golang.org/x/term v0.6.0 // indirect
