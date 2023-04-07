@@ -117,6 +117,7 @@ func (p5 *ProxyEngine) stillGood(sock *Proxy) bool {
 		if err := p5.proxyMap.delete(sock.Endpoint); err != nil {
 			p5.dbgPrint(simpleString(err.Error()))
 		}
+		return false
 	}
 
 	if p5.badProx.Peek(sock) {
