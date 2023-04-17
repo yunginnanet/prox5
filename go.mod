@@ -10,7 +10,7 @@ require (
 	github.com/miekg/dns v1.1.53
 	github.com/ooni/oohttp v0.5.2
 	github.com/orcaman/concurrent-map/v2 v2.0.1
-	github.com/panjf2000/ants/v2 v2.7.2
+	github.com/panjf2000/ants/v2 v2.7.3
 	github.com/refraction-networking/utls v1.3.2
 	github.com/rivo/tview v0.0.0-20230208211350-7dfff1ce7854
 	github.com/yunginnanet/Rate5 v1.2.1
