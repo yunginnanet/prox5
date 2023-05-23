@@ -1,5 +1,5 @@
-git.tcp.direct/kayos/common v0.8.4 h1:g+rHzQI3y+tgjtFzX1GEyziMntwa+PWKTU4z2STfVr8=
-git.tcp.direct/kayos/common v0.8.4/go.mod h1:7tnGqOr1QJUZt9Ha67ws4qB3lOB1UTPe7VVx+Aob4CY=
+git.tcp.direct/kayos/common v0.8.5 h1:W/bLp95p2aLjCk/6ykVZJ5z7Upy4EF+nqfy8bKh1Qp4=
+git.tcp.direct/kayos/common v0.8.5/go.mod h1:QGGn7d2l4xBG7Cs/g84JzItPpHWjtfiyy+PSMnf6TzE=
 git.tcp.direct/kayos/go-socks5 v0.3.0 h1:nCsYM0ttPZHGAVVG8zFEy2ZTxoSyPp5ld1YSy3zyWDQ=
 git.tcp.direct/kayos/go-socks5 v0.3.0/go.mod h1:6Dw8lhiA+dqCY6CvPBtMyXMug9+spSAXC7+lrqItXf0=
 git.tcp.direct/kayos/socks v0.1.1 h1:2xcHVHA2u4sSEPq+wIV6qmb/fgxEfFHdRAh5hTPL0NM=
@@ -54,8 +54,8 @@ github.com/yunginnanet/Rate5 v1.2.1 h1:6G8j0RLZofS76l6cMvqa8v6yeGbn2yPNk0xqH6EXc
 github.com/yunginnanet/Rate5 v1.2.1/go.mod h1:f0r66kVQZojRqUgVdLC/CKexMlF0nUDAmd01tBeF4Ms=
 golang.org/x/crypto v0.0.0-20190308221718-c2843e01d9a2/go.mod h1:djNgcEr1/C05ACkg1iLfiJU5Ep61QUkGW8qpdssI0+w=
 golang.org/x/crypto v0.0.0-20210921155107-089bfa567519/go.mod h1:GvvjBRRGRdwPK5ydBHafDWAxML/pGHZbMvKqRZ5+Abc=
-golang.org/x/crypto v0.8.0 h1:pd9TJtTueMTVQXzk8E2XESSMQDj/U7OUu0PqJqPXQjQ=
-golang.org/x/crypto v0.8.0/go.mod h1:mRqEX+O9/h5TFCrQhkgjo2yKi0yYA+9ecGkdQoHrywE=
+golang.org/x/crypto v0.9.0 h1:LF6fAI+IutBocDJ2OT0Q1g8plpYljMZ4+lty+dsqw3g=
+golang.org/x/crypto v0.9.0/go.mod h1:yrmDGqONDYtNj3tH8X9dzUun2m2lzPa9ngI6/RUPGR0=
 golang.org/x/mod v0.6.0-dev.0.20220419223038-86c51ed26bb4/go.mod h1:jJ57K6gSWd91VN4djpZkiMVwK6gcyfeH4XE8wZrZaV4=
 golang.org/x/mod v0.8.0 h1:LUYupSeNrTNCGzR/hVBk2NHZO4hXcVaW1k4Qx7rjPx8=
 golang.org/x/mod v0.8.0/go.mod h1:iBbtSCu2XBx23ZKBPSOrRkjjQPZFPuis4dIYUhu/chs=
