@@ -93,9 +93,9 @@ func (p5 *ProxyEngine) announceDial(network, addr string) {
 	s.MustWriteString(network)
 	s.MustWriteString("://")
 	if p5.opt.redact {
-		buf.MustWriteString("[redacted]")
+		s.MustWriteString("[redacted]")
 	} else {
-		buf.MustWriteString(addr)
+		s.MustWriteString(addr)
 	}
 	s.MustWriteString(addr)
 	s.MustWriteString("...")
