@@ -220,6 +220,7 @@ func (p5 *ProxyEngine) msgBadProxRate(sock *Proxy) {
 	buf.MustWriteString("badProx ratelimited: ")
 	buf.MustWriteString(sockString)
 	p5.dbgPrint(buf)
+	p5.lastBadProxAnnnounced.Store(sock.Endpoint)
 }
 
 // ------------

@@ -58,7 +58,7 @@ func newDummyHTTPSServer(t *testing.T, port int) {
 	}
 	go func() {
 		if err = http.Serve(dtcp, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			time.Sleep(time.Duration(entropy.RNG(500)) * time.Millisecond)
+			time.Sleep(time.Duration(entropy.RNG(300)) * time.Millisecond)
 			if _, err = w.Write(timeNowJSON()); err != nil {
 				t.Error("[FAIL] http server failed to write JSON: " + err.Error())
 			}
@@ -88,7 +88,7 @@ func dummySOCKSServer(t *testing.T, port int, rf ...*randomFail) {
 		if failure.fail() {
 			return nil, ErrRandomFail
 		}
-		time.Sleep(time.Duration(entropy.RNG(250)) * time.Millisecond)
+		time.Sleep(time.Duration(entropy.RNG(300)) * time.Millisecond)
 		return net.Dial(network, addr)
 	}
 
@@ -128,9 +128,10 @@ func TestProx5(t *testing.T) {
 	time.Sleep(time.Millisecond * 350)
 	p5 := NewProxyEngine()
 	p5.SetAndEnableDebugLogger(p5TestLogger{t: t})
-	p5.SetMaxWorkers(1)
+	p5.SetMaxWorkers(10)
 	p5.EnableAutoScaler()
-	p5.SetAutoScalerThreshold(1)
+	p5.SetAutoScalerThreshold(10)
+	p5.SetAutoScalerMaxScale(100)
 	// p5.DisableRecycling()
 	p5.SetRemoveAfter(2)
 	var index = 5555
@@ -172,11 +173,12 @@ func TestProx5(t *testing.T) {
 	}
 
 	ticker := time.NewTicker(time.Millisecond * 100)
-	loadTicker := time.NewTicker(time.Millisecond * 5)
 
 	if err := p5.Start(); err != nil {
 		t.Fatal(err)
 	}
+
+	wait := 0
 
 testLoop:
 	for {
@@ -189,9 +191,13 @@ testLoop:
 			t.Logf("total successful requests: %d", successCountFinal)
 			break testLoop
 		case <-ticker.C:
-			go makeReq()
-		case <-loadTicker.C:
-			go load()
+			// pre-warm
+			wait++
+			if wait >= 50 {
+				go makeReq()
+			}
+		default:
+			load()
 		}
 	}
 	cancel()
