@@ -159,7 +159,7 @@ func TestProx5(t *testing.T) {
 		}
 		resp, err := p5.GetHTTPClient().Get("http://127.0.0.1:8055")
 		if err != nil && !errors.Is(err, ErrNoProxies) {
-			t.Fatal(err)
+			t.Error(err)
 		}
 		if errors.Is(err, ErrNoProxies) {
 			return
