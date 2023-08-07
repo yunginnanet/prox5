@@ -19,7 +19,7 @@ const (
 )
 
 var protoMap = map[ProxyProtocol]string{
-	ProtoSOCKS5: "socks5", ProtoNull: "", ProtoSOCKS4: "socks4", ProtoSOCKS4a: "socks4a",
+	ProtoSOCKS5: "socks5", ProtoNull: "unknown", ProtoSOCKS4: "socks4", ProtoSOCKS4a: "socks4a",
 }
 
 func (p ProxyProtocol) String() string {

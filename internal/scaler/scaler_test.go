@@ -4,13 +4,18 @@ import (
 	"testing"
 
 	"github.com/panjf2000/ants/v2"
+	"github.com/ysmood/gotrace"
 )
+
+func checkLeak(t *testing.T) {
+	gotrace.CheckLeak(t, 0)
+}
 
 var dummyPool *ants.Pool
 
 func init() {
 	var err error
-	dummyPool, err = ants.NewPool(5, ants.WithNonblocking(true))
+	dummyPool, err = ants.NewPool(5, ants.WithNonblocking(false))
 	if err != nil {
 		panic(err)
 	}
@@ -20,6 +25,7 @@ func init() {
 // With that being said, this test could be much more exhaustive.
 // For now, this can serve as a sanity check.
 func TestNewAutoScaler(t *testing.T) {
+	checkLeak(t)
 	// debugSwitch = true
 	as := NewAutoScaler(5, 50, 10)
 	if as.IsOn() {

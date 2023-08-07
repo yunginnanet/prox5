@@ -154,6 +154,19 @@ func (hmd *handMeDown) Dial(network, addr string) (c net.Conn, err error) {
 	return hmd.conn, nil
 }
 
+func (p5 *ProxyEngine) announceValidating(sock *Proxy, presplit string) {
+	if sock == nil {
+		return
+	}
+	s := strs.Get()
+	s.MustWriteString("validating ")
+	s.MustWriteString(sock.GetProto().String())
+	s.MustWriteString("://")
+	s.MustWriteString(presplit)
+	p5.dbgPrint(s)
+
+}
+
 func (p5 *ProxyEngine) singleProxyCheck(sock *Proxy, protocol ProxyProtocol) error {
 	defer p5.anothaOne()
 	split := strings.Split(sock.Endpoint, "@")
@@ -161,6 +174,9 @@ func (p5 *ProxyEngine) singleProxyCheck(sock *Proxy, protocol ProxyProtocol) err
 	if len(split) == 2 {
 		endpoint = split[1]
 	}
+
+	// p5.announceValidating(sock, endpoint)
+
 	conn, err := net.DialTimeout("tcp", endpoint, p5.GetValidationTimeout())
 	if err != nil {
 		return err
@@ -185,6 +201,9 @@ func (p5 *ProxyEngine) singleProxyCheck(sock *Proxy, protocol ProxyProtocol) err
 }
 
 func (sock *Proxy) validate() {
+	if sock == nil || sock.parent == nil {
+		return
+	}
 	if !atomic.CompareAndSwapUint32(&sock.lock, stateUnlocked, stateLocked) {
 		return
 	}

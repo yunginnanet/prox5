@@ -68,7 +68,7 @@ type ProxyEngine struct {
 	stats *Statistics
 
 	Status uint32
-	
+
 	// Pending is a constant stream of proxy strings to be verified
 	Pending proxyList
 
@@ -98,6 +98,8 @@ type ProxyEngine struct {
 	scaleTimer *time.Ticker
 
 	recycleTimer *time.Ticker
+
+	lastBadProxAnnnounced *atomic.Value
 
 	opt            *config
 	runningdaemons int32
@@ -141,8 +143,8 @@ func defOpt() *config {
 		tlsVerify:      false,
 		shuffle:        true,
 	}
-	sm.validationTimeout = time.Duration(18) * time.Second
-	sm.serverTimeout = time.Duration(180) * time.Second
+	sm.validationTimeout = time.Duration(9) * time.Second
+	sm.serverTimeout = time.Duration(15) * time.Second
 	return sm
 }
 
@@ -202,11 +204,12 @@ type Swamp struct {
 // NewProxyEngine returns a ProxyEngine with default options.
 // After calling this you may use the various "setters" to change the options before calling ProxyEngine.Start().
 func NewProxyEngine() *ProxyEngine {
-	pe := &ProxyEngine{
+	p5 := &ProxyEngine{
 		stats:       &Statistics{birthday: time.Now()},
 		DebugLogger: &basicPrinter{},
 
-		opt: defOpt(),
+		opt:                   defOpt(),
+		lastBadProxAnnnounced: &atomic.Value{},
 
 		conductor:     make(chan bool),
 		mu:            &sync.RWMutex{},
@@ -215,15 +218,16 @@ func NewProxyEngine() *ProxyEngine {
 		Status:        uint32(stateNew),
 	}
 
-	pe.httpOptsDirty.Store(false)
-	pe.httpClients = &sync.Pool{New: func() interface{} { return pe.newHTTPClient() }}
+	p5.lastBadProxAnnnounced.Store("")
+	p5.httpOptsDirty.Store(false)
+	p5.httpClients = &sync.Pool{New: func() interface{} { return p5.newHTTPClient() }}
 
-	stats := []int64{pe.stats.Valid4, pe.stats.Valid4a, pe.stats.Valid5, pe.stats.ValidHTTP, pe.stats.Dispensed}
+	stats := []int64{p5.stats.Valid4, p5.stats.Valid4a, p5.stats.Valid5, p5.stats.ValidHTTP, p5.stats.Dispensed}
 	for i := range stats {
 		atomic.StoreInt64(&stats[i], 0)
 	}
 
-	lists := []*proxyList{&pe.Valids.SOCKS5, &pe.Valids.SOCKS4, &pe.Valids.SOCKS4a, &pe.Valids.HTTP, &pe.Pending}
+	lists := []*proxyList{&p5.Valids.SOCKS5, &p5.Valids.SOCKS4, &p5.Valids.SOCKS4a, &p5.Valids.HTTP, &p5.Pending}
 	for _, c := range lists {
 		*c = proxyList{
 			List:    &list.List{},
@@ -231,38 +235,38 @@ func NewProxyEngine() *ProxyEngine {
 		}
 	}
 
-	pe.dispenseMiddleware = func(p *Proxy) (*Proxy, bool) {
+	p5.dispenseMiddleware = func(p *Proxy) (*Proxy, bool) {
 		return p, true
 	}
-	pe.ctx, pe.quit = context.WithCancel(context.Background())
-	pe.conCtx, pe.killConns = context.WithCancel(context.Background())
-	pe.proxyMap = newProxyMap(pe)
+	p5.ctx, p5.quit = context.WithCancel(context.Background())
+	p5.conCtx, p5.killConns = context.WithCancel(context.Background())
+	p5.proxyMap = newProxyMap(p5)
 
-	atomic.StoreUint32(&pe.Status, uint32(stateNew))
-	atomic.StoreInt32(&pe.runningdaemons, 0)
+	atomic.StoreUint32(&p5.Status, uint32(stateNew))
+	atomic.StoreInt32(&p5.runningdaemons, 0)
 
-	pe.useProx = rl.NewCustomLimiter(pe.opt.useProxConfig)
-	pe.badProx = rl.NewCustomLimiter(pe.opt.badProxConfig)
+	p5.useProx = rl.NewCustomLimiter(p5.opt.useProxConfig)
+	p5.badProx = rl.NewCustomLimiter(p5.opt.badProxConfig)
 
 	var err error
-	pe.pool, err = ants.NewPool(pe.opt.maxWorkers, ants.WithOptions(ants.Options{
+	p5.pool, err = ants.NewPool(p5.opt.maxWorkers, ants.WithOptions(ants.Options{
 		ExpiryDuration: 2 * time.Minute,
-		PanicHandler:   pe.pondPanic,
+		PanicHandler:   p5.pondPanic,
 	}))
 
-	pe.scaler = scaler.NewAutoScaler(pe.opt.maxWorkers, pe.opt.maxWorkers+100, 50)
-	pe.scaleTimer = time.NewTicker(1 * time.Second)
-	pe.recycleTimer = time.NewTicker(500 * time.Millisecond)
+	p5.scaler = scaler.NewAutoScaler(p5.opt.maxWorkers, p5.opt.maxWorkers+100, 50)
+	p5.scaleTimer = time.NewTicker(1 * time.Second)
+	p5.recycleTimer = time.NewTicker(500 * time.Millisecond)
 
 	if err != nil {
 		buf := strs.Get()
 		buf.MustWriteString("CRITICAL: ")
 		buf.MustWriteString(err.Error())
-		pe.dbgPrint(buf)
+		p5.dbgPrint(buf)
 		panic(err)
 	}
 
-	return pe
+	return p5
 }
 
 func newProxyMap(pe *ProxyEngine) proxyMap {
@@ -279,24 +283,60 @@ func (p5 *ProxyEngine) pondPanic(p interface{}) {
 
 // defaultUserAgents is a small list of user agents to use during validation.
 var defaultUserAgents = []string{
-	"Mozilla/5.0 (Macintosh; Intel Mac OS X 10.12; rv:60.0) Gecko/20100101 Firefox/60.0",
-	"Mozilla/5.0 (Windows NT 6.2; WOW64; rv:34.0) Gecko/20100101 Firefox/34.0",
-	"Mozilla/5.0 (Windows NT 6.2; Win64; x64; rv:24.0) Gecko/20140419 Firefox/24.0 PaleMoon/24.5.0",
-	"Mozilla/5.0 (X11; Ubuntu; Linux i686; rv:44.0) Gecko/20100101 Firefox/44.0",
-	"Mozilla/5.0 (Macintosh; Intel Mac OS X 10.9; rv:49.0) Gecko/20100101 Firefox/49.0",
-	"Mozilla/5.0 (X11; Ubuntu; Linux i686; rv:55.0) Gecko/20100101 Firefox/55.0",
-	"Mozilla/5.0 (Macintosh; Intel Mac OS X 10.11; rv:47.0) Gecko/20100101 Firefox/--.0",
-	"Mozilla/5.0 (Windows NT 6.0; rv:19.0) Gecko/20100101 Firefox/19.0",
-	"Mozilla/5.0 (X11; Ubuntu; Linux i686; rv:45.0) Gecko/20100101 Firefox/45.0",
-	"Mozilla/5.0 (Windows NT 6.0; WOW64; rv:45.0) Gecko/20100101 Firefox/45.0",
-	"Mozilla/5.0 (FreeBSD; Viera; rv:34.0) Gecko/20100101 Firefox/34.0",
-	"Mozilla/5.0 (Macintosh; Intel Mac OS X 10.7; rv:20.0) Gecko/20100101 Firefox/20.0",
-	"Mozilla/5.0 (Android 6.0; Mobile; rv:60.0) Gecko/20100101 Firefox/60.0",
-	"Mozilla/5.0 (Windows NT 5.1; rv:37.0) Gecko/20100101 Firefox/37.0",
-	"Mozilla/5.0 (Windows NT 6.1; WOW64; rv:35.0) Gecko/20100101 Firefox/35.0 evaliant",
-	"Mozilla/5.0 (Windows NT 6.1; WOW64; rv:28.0) Gecko/20100101 Firefox/28.0",
-	"Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:58.0) Gecko/20100101 Firefox/58.0",
-	"Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:60.0) Gecko/20100101 Firefox/60.0",
-	"Mozilla/5.0 (Windows NT 10.0; WOW64; rv:45.0) Gecko/20100101 Firefox/45.0",
-	"Mozilla/5.0 (Windows NT 6.2; WOW64; rv:41.0) Gecko/20100101 Firefox/41.0",
+	"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/114.0.0.0 Safari/537.36",
+	"Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/114.0.0.0 Safari/537.36",
+	"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/115.0.0.0 Safari/537.36",
+	"Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv109.0) Gecko/20100101 Firefox/115.0",
+	"Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/115.0.0.0 Safari/537.36",
+	"Mozilla/5.0 (X11; Linux x86_64; rv109.0) Gecko/20100101 Firefox/115.0",
+	"Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/114.0.0.0 Safari/537.36",
+	"Mozilla/5.0 (Macintosh; Intel Mac OS X 10.15; rv109.0) Gecko/20100101 Firefox/115.0",
+	"Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/115.0.0.0 Safari/537.36",
+	"Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/16.5.2 Safari/605.1.15",
+	"Mozilla/5.0 (Windows NT 10.0; rv109.0) Gecko/20100101 Firefox/115.0",
+	"Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv109.0) Gecko/20100101 Firefox/116.0",
+	"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/114.0.0.0 Safari/537.36 Edg/114.0.1823.82",
+	"Mozilla/5.0 (X11; Ubuntu; Linux x86_64; rv109.0) Gecko/20100101 Firefox/115.0",
+	"Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/16.5.1 Safari/605.1.15",
+	"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/115.0.0.0 Safari/537.36 Edg/115.0.1901.188",
+	"Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv109.0) Gecko/20100101 Firefox/114.0",
+	"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/109.0.0.0 Safari/537.36",
+	"Mozilla/5.0 (X11; Linux x86_64; rv102.0) Gecko/20100101 Firefox/102.0",
+	"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/115.0.0.0 Safari/537.36 Edg/115.0.1901.183",
+	"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/114.0.0.0 Safari/537.36 Edg/114.0.1823.67",
+	"Mozilla/5.0 (X11; Linux x86_64; rv109.0) Gecko/20100101 Firefox/114.0",
+	"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/114.0.0.0 Safari/537.36 OPR/100.0.0.0",
+	"Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv102.0) Gecko/20100101 Firefox/102.0",
+	"Mozilla/5.0 (Macintosh; Intel Mac OS X 10.15; rv109.0) Gecko/20100101 Firefox/114.0",
+	"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/114.0.0.0 Safari/537.36 Edg/114.0.1823.79",
+	"Mozilla/5.0 (X11; Linux x86_64; rv109.0) Gecko/20100101 Firefox/116.0",
+	"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/113.0.0.0 Safari/537.36",
+	"Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/16.6 Safari/605.1.15",
+	"Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/77.0.3865.75 Safari/537.36",
+	"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/113.0.0.0 Safari/537.36 OPR/99.0.0.0",
+	"Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/16.5 Safari/605.1.15",
+	"Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/16.4 Safari/605.1.15",
+	"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/111.0.0.0 Safari/537.36",
+	"Mozilla/5.0 (X11; CrOS x86_64 14541.0.0) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/114.0.0.0 Safari/537.36",
+	"Mozilla/5.0 (Windows NT 10.0; rv102.0) Gecko/20100101 Firefox/102.0",
+	"Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/113.0.0.0 Safari/537.36",
+	"Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/16.2 Safari/605.1.15",
+	"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/108.0.0.0 Safari/537.36",
+	"Mozilla/5.0 (Windows NT 10.0; WOW64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/113.0.5666.197 Safari/537.36",
+	"Mozilla/5.0 (Windows NT 10.0; rv109.0) Gecko/20100101 Firefox/116.0",
+	"Mozilla/5.0 (Windows NT 10.0; rv114.0) Gecko/20100101 Firefox/114.0",
+	"Mozilla/5.0 (X11; Ubuntu; Linux x86_64; rv109.0) Gecko/20100101 Firefox/114.0",
+	"Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_2) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/79.0.3945.88 Safari/537.36",
+	"Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/15.6.1 Safari/605.1.15",
+	"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/112.0.0.0 Safari/537.36",
+	"Mozilla/5.0 (Macintosh; Intel Mac OS X 10.15; rv109.0) Gecko/20100101 Firefox/116.0",
+	"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/114.0.0.0 Safari/537.36 Edg/114.0.1823.86",
+	"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/99.0.4844.51 Safari/537.36",
+	"Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv109.0) Gecko/20100101 Firefox/113.0",
+	"Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/113.0.0.0 Safari/537.36",
+	"Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/16.3 Safari/605.1.15",
+	"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/112.0.0.0 YaBrowser/23.5.4.674 Yowser/2.5 Safari/537.36",
+	"Mozilla/5.0 (X11; Ubuntu; Linux x86_64; rv109.0) Gecko/20100101 Firefox/116.0",
+	"Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/112.0.0.0 Safari/537.36",
+	"Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/112.0.0.0 Safari/537.36",
 }

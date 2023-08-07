@@ -121,10 +121,7 @@ func (p5 *ProxyEngine) stillGood(sock *Proxy) bool {
 	}
 
 	if p5.badProx.Peek(sock) {
-		buf := strs.Get()
-		buf.MustWriteString("badProx dial ratelimited: ")
-		buf.MustWriteString(sock.Endpoint)
-		p5.dbgPrint(buf)
+		p5.msgBadProxRate(sock)
 		return false
 	}
 
