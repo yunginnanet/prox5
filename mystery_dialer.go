@@ -87,19 +87,28 @@ func (p5 *ProxyEngine) popSockAndLockIt(ctx context.Context) (*Proxy, error) {
 	return nil, nil
 }
 
-// mysteryDialer is a dialer function that will use a different proxy for every request.
-// If you're looking for this function, it has been unexported. Use Dial, DialTimeout, or DialContext instead.
-func (p5 *ProxyEngine) mysteryDialer(ctx context.Context, network, addr string) (net.Conn, error) {
+func (p5 *ProxyEngine) announceDial(network, addr string) {
 	s := strs.Get()
 	s.MustWriteString("prox5 dialing: ")
 	s.MustWriteString(network)
 	s.MustWriteString("://")
+	if p5.opt.redact {
+		buf.MustWriteString("[redacted]")
+	} else {
+		buf.MustWriteString(addr)
+	}
 	s.MustWriteString(addr)
 	s.MustWriteString("...")
 	p5.dbgPrint(s)
+}
+
+// mysteryDialer is a dialer function that will use a different proxy for every request.
+// If you're looking for this function, it has been unexported. Use Dial, DialTimeout, or DialContext instead.
+func (p5 *ProxyEngine) mysteryDialer(ctx context.Context, network, addr string) (net.Conn, error) {
+	p5.announceDial(network, addr)
 
 	if p5.isEmpty() {
-		p5.dbgPrint(simpleString("prox5: no proxies available"))
+		// p5.dbgPrint(simpleString("prox5: no proxies available"))
 		return nil, ErrNoProxies
 	}
 
