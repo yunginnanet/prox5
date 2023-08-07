@@ -20,9 +20,10 @@ const (
 // Start starts our proxy pool operations. Trying to start a running ProxyEngine will return an error.
 func (p5 *ProxyEngine) Start() error {
 	if atomic.LoadUint32(&p5.Status) != uint32(stateNew) {
-		p5.dbgPrint(simpleString("proxy pool has been started before, resuming instead"))
+		p5.DebugLogger.Printf("proxy pool has been started before, resuming instead")
 		return p5.Resume()
 	}
+	p5.DebugLogger.Printf("starting prox5")
 	p5.startDaemons()
 	return nil
 }
@@ -51,6 +52,7 @@ func (p5 *ProxyEngine) Pause() error {
 func (p5 *ProxyEngine) startDaemons() {
 	go p5.jobSpawner()
 	atomic.StoreUint32(&p5.Status, uint32(stateRunning))
+	p5.DebugLogger.Printf("prox5 started")
 }
 
 // Resume will resume pause proxy pool operations, attempting to resume a running ProxyEngine is returns an error.

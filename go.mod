@@ -5,7 +5,7 @@ go 1.19
 require (
 	git.tcp.direct/kayos/common v0.8.1
 	git.tcp.direct/kayos/go-socks5 v0.3.0
-	git.tcp.direct/kayos/socks v0.1.1
+	git.tcp.direct/kayos/socks v0.1.3
 	github.com/gdamore/tcell/v2 v2.6.0
 	github.com/miekg/dns v1.1.50
 	github.com/ooni/oohttp v0.5.2
@@ -13,6 +13,7 @@ require (
 	github.com/panjf2000/ants/v2 v2.7.1
 	github.com/refraction-networking/utls v1.2.2
 	github.com/rivo/tview v0.0.0-20230208211350-7dfff1ce7854
+	github.com/ysmood/gotrace v0.6.0
 	github.com/yunginnanet/Rate5 v1.2.1
 	golang.org/x/net v0.7.0
 )

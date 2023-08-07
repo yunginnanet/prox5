@@ -39,7 +39,24 @@ func (p5 *ProxyEngine) addTimeout(socksString string) string {
 	return socksString
 }
 
+func (p5 *ProxyEngine) isEmpty() bool {
+	stats := p5.GetStatistics()
+	if stats.Checked == 0 {
+		return true
+	}
+	if stats.Valid5+stats.Valid4+stats.Valid4a+stats.ValidHTTP == 0 {
+		return true
+	}
+	return false
+}
+
+var ErrNoProxies = fmt.Errorf("no proxies available")
+
 func (p5 *ProxyEngine) popSockAndLockIt(ctx context.Context) (*Proxy, error) {
+	if p5.isEmpty() {
+		p5.scale()
+		return nil, ErrNoProxies
+	}
 	sock := p5.GetAnySOCKS()
 	select {
 	case <-ctx.Done():
@@ -73,6 +90,19 @@ func (p5 *ProxyEngine) popSockAndLockIt(ctx context.Context) (*Proxy, error) {
 // mysteryDialer is a dialer function that will use a different proxy for every request.
 // If you're looking for this function, it has been unexported. Use Dial, DialTimeout, or DialContext instead.
 func (p5 *ProxyEngine) mysteryDialer(ctx context.Context, network, addr string) (net.Conn, error) {
+	s := strs.Get()
+	s.MustWriteString("prox5 dialing: ")
+	s.MustWriteString(network)
+	s.MustWriteString("://")
+	s.MustWriteString(addr)
+	s.MustWriteString("...")
+	p5.dbgPrint(s)
+
+	if p5.isEmpty() {
+		p5.dbgPrint(simpleString("prox5: no proxies available"))
+		return nil, ErrNoProxies
+	}
+
 	// pull down proxies from channel until we get a proxy good enough for our spoiled asses
 	var count = 0
 	for {

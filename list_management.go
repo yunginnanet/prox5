@@ -50,11 +50,14 @@ func (p5 *ProxyEngine) LoadProxyTXT(seedFile string) (count int) {
 func (p5 *ProxyEngine) LoadSingleProxy(sock string) bool {
 	var ok bool
 	if sock, ok = filter(sock); !ok {
+		p5.dbgPrint(simpleString("invalid proxy format"))
 		return false
 	}
 	if err := p5.loadSingleProxy(sock); err != nil {
+		p5.dbgPrint(simpleString(err.Error()))
 		return false
 	}
+	// p5.dbgPrint(simpleString("loaded proxy " + sock))
 	return true
 }
 
