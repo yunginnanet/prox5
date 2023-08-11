@@ -11,7 +11,7 @@ require (
 	github.com/ooni/oohttp v0.5.2
 	github.com/orcaman/concurrent-map/v2 v2.0.1
 	github.com/panjf2000/ants/v2 v2.8.1
-	github.com/refraction-networking/utls v1.3.3
+	github.com/refraction-networking/utls v1.4.2
 	github.com/rivo/tview v0.0.0-20230208211350-7dfff1ce7854
 	github.com/yunginnanet/Rate5 v1.2.1
 	golang.org/x/net v0.14.0
@@ -25,13 +25,14 @@ require (
 	github.com/lucasb-eyer/go-colorful v1.2.0 // indirect
 	github.com/mattn/go-runewidth v0.0.14 // indirect
 	github.com/patrickmn/go-cache v2.1.0+incompatible // indirect
+	github.com/quic-go/quic-go v0.37.0 // indirect
 	github.com/rivo/uniseg v0.4.3 // indirect
 	golang.org/x/crypto v0.12.0 // indirect
-	golang.org/x/mod v0.8.0 // indirect
+	golang.org/x/mod v0.10.0 // indirect
 	golang.org/x/sys v0.11.0 // indirect
 	golang.org/x/term v0.11.0 // indirect
 	golang.org/x/text v0.12.0 // indirect
-	golang.org/x/tools v0.6.0 // indirect
+	golang.org/x/tools v0.9.1 // indirect
 	nullprogram.com/x/rng v1.1.0 // indirect
 )
 
