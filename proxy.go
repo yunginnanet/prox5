@@ -14,7 +14,7 @@ var defaultUseProxyRatelimiter = rl.Policy{
 
 var defaultBadProxyRateLimiter = rl.Policy{
 	Window: 55,
-	Burst:  5,
+	Burst:  10,
 }
 
 const (

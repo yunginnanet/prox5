@@ -38,7 +38,11 @@ func (s SocksLogger) Printf(format string, a ...interface{}) {
 
 type basicPrinter struct{}
 
-func (b *basicPrinter) Print(str string) {
+func (b *basicPrinter) Print(a ...any) {
+	if len(a) == 0 {
+		return
+	}
+	str := fmt.Sprint(a...)
 	if useDebugChannel {
 		debugChan <- str
 		return
@@ -46,7 +50,6 @@ func (b *basicPrinter) Print(str string) {
 	buf := strs.Get()
 	buf.MustWriteString(stamp)
 	buf.MustWriteString(str)
-	println(buf.String())
 	strs.MustPut(buf)
 }
 
@@ -68,6 +71,7 @@ func (p5 *ProxyEngine) DebugEnabled() bool {
 // EnableDebug enables printing of verbose messages during operation
 func (p5 *ProxyEngine) EnableDebug() {
 	atomic.StoreUint32(debugStatus, debugEnabled)
+	p5.dbgPrint(simpleString("prox5 debug enabled"))
 }
 
 // DisableDebug enables printing of verbose messages during operation.
@@ -87,7 +91,7 @@ func (p5 *ProxyEngine) dbgPrint(builder *pool.String) {
 	if !p5.DebugEnabled() {
 		return
 	}
-	p5.DebugLogger.Print(builder.String())
+	p5.DebugLogger.Printf(builder.String())
 	return
 }
 
@@ -205,6 +209,9 @@ func (p5 *ProxyEngine) msgBadProxRate(sock *Proxy) {
 	if !p5.DebugEnabled() {
 		return
 	}
+	if p5.lastBadProxAnnnounced.Load().(string) == sock.Endpoint {
+		return
+	}
 	sockString := sock.Endpoint
 	if p5.GetDebugRedactStatus() {
 		sockString = "(redacted)"
@@ -213,6 +220,7 @@ func (p5 *ProxyEngine) msgBadProxRate(sock *Proxy) {
 	buf.MustWriteString("badProx ratelimited: ")
 	buf.MustWriteString(sockString)
 	p5.dbgPrint(buf)
+	p5.lastBadProxAnnnounced.Store(sock.Endpoint)
 }
 
 // ------------

@@ -10,7 +10,7 @@ var dummyPool *ants.Pool
 
 func init() {
 	var err error
-	dummyPool, err = ants.NewPool(5, ants.WithNonblocking(true))
+	dummyPool, err = ants.NewPool(5, ants.WithNonblocking(false))
 	if err != nil {
 		panic(err)
 	}
