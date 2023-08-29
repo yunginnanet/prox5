@@ -1,6 +1,7 @@
 package prox5
 
 import (
+	"context"
 	"errors"
 	"sync/atomic"
 )
@@ -69,4 +70,6 @@ func (p5 *ProxyEngine) Resume() error {
 // Note this does not effect the proxy pool, it will continue to operate as normal.
 func (p5 *ProxyEngine) CloseAllConns() {
 	p5.killConns()
+	p5.mu.Lock()
+	p5.ctx, p5.killConns = context.WithCancel(context.Background())
 }

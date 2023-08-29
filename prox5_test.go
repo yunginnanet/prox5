@@ -6,6 +6,7 @@ import (
 	"io"
 	"net"
 	"net/http"
+	"os"
 	"strconv"
 	"sync/atomic"
 	"testing"
@@ -27,7 +28,9 @@ func (rf *randomFail) fail() bool {
 	if rf.failOneOutOf == 0 {
 		return false
 	}
-	doFail := entropy.OneInA(rf.failOneOutOf)
+
+	doFail := entropy.GetOptimizedRand().Intn(rf.failOneOutOf) == 1
+
 	if !doFail {
 		return false
 	}
@@ -88,7 +91,7 @@ func dummySOCKSServer(t *testing.T, port int, rf ...*randomFail) {
 		if failure.fail() {
 			return nil, ErrRandomFail
 		}
-		time.Sleep(time.Duration(entropy.RNG(300)) * time.Millisecond)
+		time.Sleep(time.Duration(entropy.GetOptimizedRand().Intn(300)) * time.Millisecond)
 		return net.Dial(network, addr)
 	}
 
@@ -115,11 +118,19 @@ func (tl p5TestLogger) Print(args ...interface{}) {
 	tl.t.Log(args...)
 }
 func TestProx5(t *testing.T) {
-	for i := 0; i < 100; i++ {
+	numTest := 100
+	if envCount := os.Getenv("PROX5_TEST_COUNT"); envCount != "" {
+		n, e := strconv.Atoi(envCount)
+		if e != nil {
+			t.Skip(e.Error())
+		}
+		numTest = n
+	}
+	for i := 0; i < numTest; i++ {
 		dummySOCKSServer(t, 5555+i, &randomFail{
 			t:            t,
 			failedCount:  int64(0),
-			failOneOutOf: entropy.RNG(100),
+			failOneOutOf: entropy.RNG(200),
 			maxFail:      50,
 		})
 		time.Sleep(time.Millisecond * 5)
@@ -140,7 +151,7 @@ func TestProx5(t *testing.T) {
 	defer cancel()
 
 	load := func() {
-		if index > 5655 {
+		if index > 5555+numTest {
 			return
 		}
 		time.Sleep(time.Millisecond * 100)
