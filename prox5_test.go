@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"os"
 	"strconv"
+	"sync"
 	"sync/atomic"
 	"testing"
 	"time"
@@ -19,6 +20,8 @@ import (
 func init() {
 	os.Setenv("PROX5_SCALER_DEBUG", "1")
 }
+
+var failures int64 = 0
 
 type randomFail struct {
 	t           *testing.T
@@ -43,6 +46,8 @@ func (rf *randomFail) fail() bool {
 	if rf.maxFail > 0 && atomic.LoadInt64(&rf.failedCount) > rf.maxFail {
 		rf.t.Errorf("[FAIL] random SOCKS failure triggered too many times, total fail count: %d", rf.failedCount)
 	}
+
+	atomic.AddInt64(&failures, 1)
 	return true
 }
 
@@ -154,13 +159,26 @@ func TestProx5(t *testing.T) {
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second*30)
 	defer cancel()
 
+	var once = &sync.Once{}
+
+	check5 := func() {
+		time.Sleep(time.Millisecond * 200)
+		if p5.GetTotalValidated() != 5-int(atomic.LoadInt64(&failures)) {
+			t.Errorf("total validated proxies does not match expected, got: %d, expected: %d",
+				p5.GetTotalValidated(), 5-int(atomic.LoadInt64(&failures)))
+		}
+	}
+
 	load := func() {
 		if index > 5555+numTest {
 			return
 		}
-		time.Sleep(time.Millisecond * 100)
+		entropy.RandSleepMS(150)
 		index++
 		p5.LoadSingleProxy("127.0.0.1:" + strconv.Itoa(index))
+		if index == 5555+5 {
+			once.Do(check5)
+		}
 	}
 
 	var successCount int64 = 0
