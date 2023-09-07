@@ -172,7 +172,7 @@ func TestProx5(t *testing.T) {
 		if err != nil && !errors.Is(err, ErrNoProxies) {
 			t.Error(err)
 		}
-		if errors.Is(err, ErrNoProxies) {
+		if err != nil && errors.Is(err, ErrNoProxies) {
 			return
 		}
 		b, e := io.ReadAll(resp.Body)
