@@ -100,7 +100,10 @@ func (p5 *ProxyEngine) jobSpawner() {
 			// case <-p5.ctx.Done():
 			// default:
 			// }
-			if p5.Pending.Len() < 1 {
+			p5.Pending.RLock()
+			pendingLen := p5.Pending.Len()
+			p5.Pending.RUnlock()
+			if pendingLen < 1 {
 				count := p5.recycling()
 				switch {
 				case count > 0:
