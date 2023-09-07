@@ -39,4 +39,5 @@ retract (
 	v1.2.2 // cleanup
 	v1.2.1 // accident
 	v0.8.4
+	v0.9.5 // premature
 )
