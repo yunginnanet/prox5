@@ -6,7 +6,9 @@ import (
 	"io"
 	"net"
 	"net/http"
+	"os"
 	"strconv"
+	"sync"
 	"sync/atomic"
 	"testing"
 	"time"
@@ -14,6 +16,12 @@ import (
 	"git.tcp.direct/kayos/common/entropy"
 	"git.tcp.direct/kayos/go-socks5"
 )
+
+func init() {
+	os.Setenv("PROX5_SCALER_DEBUG", "1")
+}
+
+var failures int64 = 0
 
 type randomFail struct {
 	t           *testing.T
@@ -27,7 +35,9 @@ func (rf *randomFail) fail() bool {
 	if rf.failOneOutOf == 0 {
 		return false
 	}
-	doFail := entropy.OneInA(rf.failOneOutOf)
+
+	doFail := entropy.GetOptimizedRand().Intn(rf.failOneOutOf) == 1
+
 	if !doFail {
 		return false
 	}
@@ -36,6 +46,8 @@ func (rf *randomFail) fail() bool {
 	if rf.maxFail > 0 && atomic.LoadInt64(&rf.failedCount) > rf.maxFail {
 		rf.t.Errorf("[FAIL] random SOCKS failure triggered too many times, total fail count: %d", rf.failedCount)
 	}
+
+	atomic.AddInt64(&failures, 1)
 	return true
 }
 
@@ -88,7 +100,7 @@ func dummySOCKSServer(t *testing.T, port int, rf ...*randomFail) {
 		if failure.fail() {
 			return nil, ErrRandomFail
 		}
-		time.Sleep(time.Duration(entropy.RNG(300)) * time.Millisecond)
+		time.Sleep(time.Duration(entropy.GetOptimizedRand().Intn(300)) * time.Millisecond)
 		return net.Dial(network, addr)
 	}
 
@@ -115,11 +127,19 @@ func (tl p5TestLogger) Print(args ...interface{}) {
 	tl.t.Log(args...)
 }
 func TestProx5(t *testing.T) {
-	for i := 0; i < 100; i++ {
+	numTest := 100
+	if envCount := os.Getenv("PROX5_TEST_COUNT"); envCount != "" {
+		n, e := strconv.Atoi(envCount)
+		if e != nil {
+			t.Skip(e.Error())
+		}
+		numTest = n
+	}
+	for i := 0; i < numTest; i++ {
 		dummySOCKSServer(t, 5555+i, &randomFail{
 			t:            t,
 			failedCount:  int64(0),
-			failOneOutOf: entropy.RNG(100),
+			failOneOutOf: entropy.RNG(200),
 			maxFail:      50,
 		})
 		time.Sleep(time.Millisecond * 5)
@@ -139,13 +159,26 @@ func TestProx5(t *testing.T) {
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second*30)
 	defer cancel()
 
+	var once = &sync.Once{}
+
+	check5 := func() {
+		time.Sleep(time.Millisecond * 200)
+		if p5.GetTotalValidated() != 5-int(atomic.LoadInt64(&failures)) {
+			t.Errorf("total validated proxies does not match expected, got: %d, expected: %d",
+				p5.GetTotalValidated(), 5-int(atomic.LoadInt64(&failures)))
+		}
+	}
+
 	load := func() {
-		if index > 5655 {
+		if index > 5555+numTest {
 			return
 		}
-		time.Sleep(time.Millisecond * 100)
+		entropy.RandSleepMS(150)
 		index++
 		p5.LoadSingleProxy("127.0.0.1:" + strconv.Itoa(index))
+		if index == 5555+5 {
+			once.Do(check5)
+		}
 	}
 
 	var successCount int64 = 0
@@ -161,7 +194,7 @@ func TestProx5(t *testing.T) {
 		if err != nil && !errors.Is(err, ErrNoProxies) {
 			t.Error(err)
 		}
-		if errors.Is(err, ErrNoProxies) {
+		if err != nil && errors.Is(err, ErrNoProxies) {
 			return
 		}
 		b, e := io.ReadAll(resp.Body)
