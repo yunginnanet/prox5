@@ -16,6 +16,10 @@ import (
 	"git.tcp.direct/kayos/go-socks5"
 )
 
+func init() {
+	os.Setenv("PROX5_SCALER_DEBUG", "1")
+}
+
 type randomFail struct {
 	t           *testing.T
 	failedCount int64
