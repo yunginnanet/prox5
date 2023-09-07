@@ -21,13 +21,13 @@ type proxyList struct {
 	*sync.RWMutex
 }
 
-func (pl proxyList) add(p *Proxy) {
+func (pl *proxyList) add(p *Proxy) {
 	pl.Lock()
 	defer pl.Unlock()
 	pl.PushBack(p)
 }
 
-func (pl proxyList) pop() *Proxy {
+func (pl *proxyList) pop() *Proxy {
 	pl.Lock()
 	if pl.Len() < 1 {
 		pl.Unlock()
@@ -86,7 +86,7 @@ type ProxyEngine struct {
 	httpOptsDirty *atomic.Bool
 	httpClients   *sync.Pool
 
-	proxyMap proxyMap
+	proxyMap *proxyMap
 
 	// reaper sync.Pool
 
@@ -269,8 +269,8 @@ func NewProxyEngine() *ProxyEngine {
 	return p5
 }
 
-func newProxyMap(pe *ProxyEngine) proxyMap {
-	return proxyMap{
+func newProxyMap(pe *ProxyEngine) *proxyMap {
+	return &proxyMap{
 		plot:   cmap.New[*Proxy](),
 		parent: pe,
 	}
