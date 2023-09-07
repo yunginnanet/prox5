@@ -55,7 +55,13 @@ func (stats *Statistics) http() {
 // GetTotalValidated retrieves our grand total validated proxy count.
 func (p5 *ProxyEngine) GetTotalValidated() int {
 	stats := p5.GetStatistics()
-	return int(atomic.LoadInt64(&stats.Valid4a) + stats.Valid4 + stats.Valid5 + stats.ValidHTTP)
+
+	total := int64(0)
+	for _, val := range []*int64{&stats.Valid4a, &stats.Valid4, &stats.Valid5, &stats.ValidHTTP} {
+		atomic.AddInt64(&total, atomic.LoadInt64(val))
+	}
+
+	return int(total)
 }
 
 func (p5 *ProxyEngine) GetTotalBad() int64 {
