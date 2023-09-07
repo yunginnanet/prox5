@@ -40,4 +40,5 @@ retract (
 	v1.2.1 // accident
 	v0.9.43 // woops didn't unlock mutex
 	v0.8.4
+	v0.9.5 // premature
 )
