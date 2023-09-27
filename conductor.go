@@ -74,3 +74,10 @@ func (p5 *ProxyEngine) CloseAllConns() {
 	p5.ctx, p5.killConns = context.WithCancel(context.Background())
 	p5.mu.Unlock()
 }
+
+func (p5 *ProxyEngine) Close() error {
+	p5.mu.Lock()
+	defer p5.mu.Unlock()
+	p5.killConns()
+	return p5.Pause()
+}

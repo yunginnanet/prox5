@@ -3,6 +3,7 @@ package prox5
 import (
 	"context"
 	"errors"
+	"fmt"
 	"io"
 	"net"
 	"net/http"
@@ -118,13 +119,13 @@ type p5TestLogger struct {
 }
 
 func (tl p5TestLogger) Errorf(format string, args ...interface{}) {
-	tl.t.Logf(format, args...)
+	tl.t.Logf("[ERROR] "+format, args...)
 }
 func (tl p5TestLogger) Printf(format string, args ...interface{}) {
-	tl.t.Logf(format, args...)
+	tl.t.Logf("[PRINT] "+format, args...)
 }
 func (tl p5TestLogger) Print(args ...interface{}) {
-	tl.t.Log(args...)
+	tl.t.Log("[PRINT] " + fmt.Sprintf("%+v", args...))
 }
 func TestProx5(t *testing.T) {
 	numTest := 100
@@ -191,8 +192,8 @@ func TestProx5(t *testing.T) {
 
 		}
 		resp, err := p5.GetHTTPClient().Get("http://127.0.0.1:8055")
-		if err != nil && !errors.Is(err, ErrNoProxies) {
-			t.Error(err)
+		if err != nil && !errors.Is(err, ErrNoProxies) && !errors.Is(err, net.ErrClosed) {
+			t.Error("[FAIL] " + err.Error())
 		}
 		if err != nil && errors.Is(err, ErrNoProxies) {
 			return
@@ -234,4 +235,8 @@ testLoop:
 		}
 	}
 	cancel()
+	if err := p5.Close(); err != nil {
+		t.Fatal(err)
+	}
+	time.Sleep(time.Millisecond * 100)
 }

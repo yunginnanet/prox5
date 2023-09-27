@@ -1,3 +1,6 @@
+> **Warning**
+> You very well may end up causing denial of service when using this library with certain tools. You may end up leaving a ton of open connections from a website to the proxy servers. This is either a bug or a feature... That much is for you to decide.
+
 <div align="center"><h1>Prox5</h1>
 
 ### SOCKS5/4/4a validating proxy pool + SOCKS5 server
@@ -11,13 +14,6 @@
 Prox5 is a golang library for managing, validating, and utilizing a very large amount of arbitrary SOCKS proxies.
 
 Notably it features interface compatible dialer functions that dial out from different proxies for every connection, and a SOCKS5 server that utilizes those functions.
-
----
-
-### WARNING
-
-#### *You very well may end up causing denial of service when using this library with certain tools.*
-It is fairly easy to end up with a `slowloris` type effect with this library when paired with efficient tools that try to reuse http connections or that tend to use keepalive. Because the tool has no idea what the proxy server is doing (dialing with different connections often) you may end up leaving a ton of open connections from a website to the proxy servers. This is either a bug or a feature... That much is for you to decide.
 
 ---
 
