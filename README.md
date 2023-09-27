@@ -16,8 +16,10 @@ Notably it features interface compatible dialer functions that dial out from dif
 ---
 
 > **Warning**
-> *Using prox5 to proxy connections from certain offsec tools tends to cause denial of service in some cases.*
-> e.g: Apache has been observed (many times) to fail under the load of prox5 with a few thousand SOCKS loaded up while being driven by content enumeration tools such as feroxbuster.
+> **Using prox5 to proxy connections from certain offsec tools tends to cause denial of service in some cases.**
+>
+> e.g:
+>      Apache has been observed (many times) to fail under the load of prox5 with a few thousand SOCKS loaded up while being driven by content enumeration tools such as feroxbuster.
 
 ---
 
