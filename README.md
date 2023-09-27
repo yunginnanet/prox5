@@ -1,5 +1,3 @@
-> **Warning**
-> You very well may end up causing denial of service when using this library with certain tools. You may end up leaving a ton of open connections from a website to the proxy servers. This is either a bug or a feature... That much is for you to decide.
 
 <div align="center"><h1>Prox5</h1>
 
@@ -16,6 +14,13 @@ Prox5 is a golang library for managing, validating, and utilizing a very large a
 Notably it features interface compatible dialer functions that dial out from different proxies for every connection, and a SOCKS5 server that utilizes those functions.
 
 ---
+
+> **Warning**
+> *Using prox5 to proxy connections from certain offsec tools tends to cause denial of service in some cases.*
+> e.g: Apache has been observed (many times) to fail under the load of prox5 with a few thousand SOCKS loaded up while being driven by content enumeration tools such as feroxbuster.
+
+---
+
 
 </div>
 
