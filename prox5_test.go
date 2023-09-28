@@ -259,5 +259,6 @@ testLoop:
 	if err := p5.Close(); err != nil {
 		t.Fatal(err)
 	}
-	time.Sleep(time.Millisecond * 100)
+	// let the proxy engine close gracefully
+	time.Sleep(time.Second * 5)
 }
