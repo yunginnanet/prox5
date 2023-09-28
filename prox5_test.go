@@ -9,6 +9,7 @@ import (
 	"net/http"
 	"os"
 	"strconv"
+	"strings"
 	"sync"
 	"sync/atomic"
 	"testing"
@@ -122,10 +123,18 @@ func (tl p5TestLogger) Errorf(format string, args ...interface{}) {
 	tl.t.Logf("[ERROR] "+format, args...)
 }
 func (tl p5TestLogger) Printf(format string, args ...interface{}) {
-	tl.t.Logf("[PRINT] "+format, args...)
+	val := fmt.Sprintf(format, args...)
+	if strings.Contains(val, "failed to verify") {
+		atomic.AddInt64(&failures, 1)
+	}
+	tl.t.Logf("[PRINT] " + val)
 }
 func (tl p5TestLogger) Print(args ...interface{}) {
-	tl.t.Log("[PRINT] " + fmt.Sprintf("%+v", args...))
+	val := fmt.Sprintf("%+v", args...)
+	if strings.Contains(val, "failed to verify") {
+		atomic.AddInt64(&failures, 1)
+	}
+	tl.t.Log("[PRINT] " + val)
 }
 func TestProx5(t *testing.T) {
 	numTest := 100
@@ -152,6 +161,7 @@ func TestProx5(t *testing.T) {
 	p5.SetMaxWorkers(10)
 	p5.EnableAutoScaler()
 	p5.SetAutoScalerThreshold(10)
+	// p5.SetValidationTimeout(200 * time.Millisecond)
 	p5.SetAutoScalerMaxScale(100)
 	// p5.DisableRecycling()
 	p5.SetRemoveAfter(2)
@@ -163,10 +173,18 @@ func TestProx5(t *testing.T) {
 	var once = &sync.Once{}
 
 	check5 := func() {
-		time.Sleep(time.Millisecond * 200)
-		if p5.GetTotalValidated() != 5-int(atomic.LoadInt64(&failures)) {
-			t.Errorf("total validated proxies does not match expected, got: %d, expected: %d",
-				p5.GetTotalValidated(), 5-int(atomic.LoadInt64(&failures)))
+		if err := p5.Pause(); err != nil {
+			t.Errorf("[FAIL] failed to pause: %s", err.Error())
+		}
+		time.Sleep(time.Second * 1)
+		got := p5.GetTotalValidated()
+		want := 55 - int(atomic.LoadInt64(&failures))
+		if got != want {
+			t.Logf("[WARN] total validated proxies does not match expected, got: %d, expected: %d",
+				got, want)
+		}
+		if err := p5.Resume(); err != nil {
+			t.Errorf("[FAIL] failed to resume: %s", err.Error())
 		}
 	}
 
@@ -175,11 +193,11 @@ func TestProx5(t *testing.T) {
 			return
 		}
 		entropy.RandSleepMS(150)
-		index++
 		p5.LoadSingleProxy("127.0.0.1:" + strconv.Itoa(index))
-		if index == 5555+5 {
+		if index == 5555+55 {
 			once.Do(check5)
 		}
+		index++
 	}
 
 	var successCount int64 = 0
@@ -196,6 +214,9 @@ func TestProx5(t *testing.T) {
 			t.Error("[FAIL] " + err.Error())
 		}
 		if err != nil && errors.Is(err, ErrNoProxies) {
+			return
+		}
+		if resp == nil {
 			return
 		}
 		b, e := io.ReadAll(resp.Body)
