@@ -8,7 +8,7 @@ require (
 	git.tcp.direct/kayos/socks v0.1.3
 	github.com/gdamore/tcell/v2 v2.6.0
 	github.com/miekg/dns v1.1.56
-	github.com/ooni/oohttp v0.5.2
+	github.com/ooni/oohttp v0.6.4
 	github.com/orcaman/concurrent-map/v2 v2.0.1
 	github.com/panjf2000/ants/v2 v2.8.2
 	github.com/refraction-networking/utls v1.5.3
