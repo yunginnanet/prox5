@@ -70,3 +70,10 @@ func (p5 *ProxyEngine) Resume() error {
 func (p5 *ProxyEngine) CloseAllConns() {
 	p5.killConns()
 }
+
+func (p5 *ProxyEngine) Close() error {
+	p5.mu.Lock()
+	defer p5.mu.Unlock()
+	p5.killConns()
+	return p5.Pause()
+}
