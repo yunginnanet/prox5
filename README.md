@@ -14,15 +14,14 @@ Prox5 is a golang library for managing, validating, and utilizing a very large a
 Notably it features interface compatible dialer functions that dial out from different proxies for every connection, and a SOCKS5 server that utilizes those functions.
 
 ---
-
 > **Warning**
-> **Using prox5 to proxy connections from certain offsec tools tends to cause denial of service in some cases.**
+> **Using prox5 to proxy connections from certain offsec tools tends to cause denial of servics.**
 >
-> e.g:
->      Apache has been observed (many times) to fail under the load of prox5 with a few thousand SOCKS loaded up while being driven by content enumeration tools such as feroxbuster.
-
+> ### e.g: https://youtu.be/qVRFnxjD7o8
+>
+>
+> Please spazz out responsibly.
 ---
-
 
 </div>
 
