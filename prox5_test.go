@@ -244,6 +244,7 @@ testLoop:
 				t.Fatal("no successful requests")
 			}
 			t.Logf("total successful requests: %d", successCountFinal)
+			p5.CloseAllConns()
 			break testLoop
 		case <-ticker.C:
 			// pre-warm

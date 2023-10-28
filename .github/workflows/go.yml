@@ -1,9 +1,9 @@
 name: tests
 on:
   push:
-    branches: ["main", "development"]
+    branches: [ "main", "development" ]
   pull_request:
-    branches: ["main"]
+    branches: [ "main" ]
 jobs:
   build:
     runs-on: ubuntu-latest

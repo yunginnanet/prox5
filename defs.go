@@ -78,10 +78,8 @@ type ProxyEngine struct {
 
 	dispenseMiddleware func(*Proxy) (*Proxy, bool)
 
-	conCtx    context.Context
-	killConns context.CancelFunc
-	ctx       context.Context
-	quit      context.CancelFunc
+	ctx  context.Context
+	quit context.CancelFunc
 
 	httpOptsDirty *atomic.Bool
 	httpClients   *sync.Pool
@@ -89,6 +87,8 @@ type ProxyEngine struct {
 	proxyMap *proxyMap
 
 	// reaper sync.Pool
+
+	conKiller chan struct{}
 
 	recycleMu *sync.Mutex
 	mu        *sync.RWMutex
@@ -215,6 +215,7 @@ func NewProxyEngine() *ProxyEngine {
 		mu:            &sync.RWMutex{},
 		recycleMu:     &sync.Mutex{},
 		httpOptsDirty: &atomic.Bool{},
+		conKiller:     make(chan struct{}, 1),
 		Status:        uint32(stateNew),
 	}
 
@@ -239,7 +240,7 @@ func NewProxyEngine() *ProxyEngine {
 		return p, true
 	}
 	p5.ctx, p5.quit = context.WithCancel(context.Background())
-	p5.conCtx, p5.killConns = context.WithCancel(context.Background())
+	// p5.conCtx, p5.killConns = context.WithCancel(context.Background())
 	p5.proxyMap = newProxyMap(p5)
 
 	atomic.StoreUint32(&p5.Status, uint32(stateNew))
