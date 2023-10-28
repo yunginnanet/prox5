@@ -3,6 +3,7 @@ package prox5
 import (
 	"errors"
 	"sync/atomic"
+	"time"
 )
 
 // engineState represents the current state of our ProxyEngine.
@@ -65,15 +66,35 @@ func (p5 *ProxyEngine) Resume() error {
 	return nil
 }
 
-// CloseAllConns will close all connections in progress by the dialers (including the SOCKS server if in use).
+// CloseAllConns will (maybe) close all connections in progress by the dialers (including the SOCKS server if in use).
 // Note this does not effect the proxy pool, it will continue to operate as normal.
+// this is hacky FIXME
 func (p5 *ProxyEngine) CloseAllConns() {
-	p5.killConns()
+	timeout := time.NewTicker(500 * time.Millisecond)
+	p5.conKiller <- struct{}{}
+	defer func() {
+		timeout.Stop()
+		select {
+		case <-p5.conKiller:
+		default:
+		}
+	}()
+	for {
+		select {
+		case <-p5.ctx.Done():
+			return
+		case <-timeout.C:
+			return
+		case p5.conKiller <- struct{}{}:
+			timeout.Reset(500 * time.Millisecond)
+			p5.DebugLogger.Printf("killed a connection")
+		}
+	}
 }
 
 func (p5 *ProxyEngine) Close() error {
 	p5.mu.Lock()
 	defer p5.mu.Unlock()
-	p5.killConns()
+	p5.quit()
 	return p5.Pause()
 }

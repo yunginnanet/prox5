@@ -3,6 +3,7 @@ package prox5
 import (
 	"context"
 	"fmt"
+	"io"
 	"net"
 	"sync/atomic"
 	"time"
@@ -121,10 +122,16 @@ func (p5 *ProxyEngine) mysteryDialer(ctx context.Context, network, addr string) 
 			return nil, fmt.Errorf("giving up after %d tries", maxBail)
 		case ctx.Err() != nil:
 			return nil, fmt.Errorf("context error: %w", ctx.Err())
-		case p5.conCtx.Err() != nil:
-			return nil, fmt.Errorf("context closed")
 		default:
-			//
+			select {
+			case <-ctx.Done():
+				return nil, fmt.Errorf("context done: %w", ctx.Err())
+			case <-p5.ctx.Done():
+				return nil, fmt.Errorf("prox5 closed: %w", p5.ctx.Err())
+			case <-p5.conKiller:
+				return nil, fmt.Errorf("prox5 closed: %w", io.ErrClosedPipe)
+			default:
+			}
 		}
 		var sock *Proxy
 		for {
@@ -162,7 +169,7 @@ func (p5 *ProxyEngine) mysteryDialer(ctx context.Context, network, addr string) 
 			select {
 			case <-ctx.Done():
 				_ = conn.Close()
-			case <-p5.conCtx.Done():
+			case <-p5.conKiller:
 				_ = conn.Close()
 			case <-p5.ctx.Done():
 				_ = conn.Close()
