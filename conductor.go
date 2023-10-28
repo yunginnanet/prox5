@@ -70,7 +70,7 @@ func (p5 *ProxyEngine) Resume() error {
 // Note this does not effect the proxy pool, it will continue to operate as normal.
 // this is hacky FIXME
 func (p5 *ProxyEngine) CloseAllConns() {
-	timeout := time.NewTicker(500 * time.Millisecond)
+	timeout := time.NewTicker(200 * time.Millisecond)
 	p5.conKiller <- struct{}{}
 	defer func() {
 		timeout.Stop()

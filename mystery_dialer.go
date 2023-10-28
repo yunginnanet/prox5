@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io"
 	"net"
+	"os"
 	"sync/atomic"
 	"time"
 
@@ -113,6 +114,9 @@ func (p5 *ProxyEngine) mysteryDialer(ctx context.Context, network, addr string) 
 		return nil, ErrNoProxies
 	}
 
+	timeout := time.NewTimer(p5.GetServerTimeout())
+	defer timeout.Stop()
+
 	// pull down proxies from channel until we get a proxy good enough for our spoiled asses
 	var count = 0
 	for {
@@ -130,6 +134,8 @@ func (p5 *ProxyEngine) mysteryDialer(ctx context.Context, network, addr string) 
 				return nil, fmt.Errorf("prox5 closed: %w", p5.ctx.Err())
 			case <-p5.conKiller:
 				return nil, fmt.Errorf("prox5 closed: %w", io.ErrClosedPipe)
+			case <-timeout.C:
+				return nil, fmt.Errorf("timeout: %w, %w", io.ErrClosedPipe, os.ErrDeadlineExceeded)
 			default:
 			}
 		}
