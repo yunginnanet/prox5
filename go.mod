@@ -7,7 +7,7 @@ require (
 	git.tcp.direct/kayos/go-socks5 v0.3.0
 	git.tcp.direct/kayos/socks v0.1.3
 	github.com/gdamore/tcell/v2 v2.6.0
-	github.com/miekg/dns v1.1.56
+	github.com/miekg/dns v1.1.57
 	github.com/ooni/oohttp v0.6.5
 	github.com/orcaman/concurrent-map/v2 v2.0.1
 	github.com/panjf2000/ants/v2 v2.8.2
