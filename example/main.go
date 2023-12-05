@@ -71,7 +71,7 @@ func currentString(lastMessage string) string {
 	stats := swamp.GetStatistics()
 	wMax, wRun, wIdle := swamp.GetWorkers()
 	return fmt.Sprintf(statsFmt,
-		stats.GetUptime().Round(time.Second), int(stats.Valid4+stats.Valid4a+stats.Valid5),
+		stats.GetUptime().Round(time.Second), swamp.GetTotalValidated(),
 		stats.Dispensed, wMax, wRun, wIdle, swamp.GetAutoScalerStateString(), lastMessage)
 }
 

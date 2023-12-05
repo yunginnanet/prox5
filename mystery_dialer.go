@@ -42,11 +42,11 @@ func (p5 *ProxyEngine) addTimeout(socksString string) string {
 }
 
 func (p5 *ProxyEngine) isEmpty() bool {
-	stats := p5.GetStatistics()
-	if stats.Checked == 0 {
+	if p5.GetStatistics().Checked.Load() == 0 {
 		return true
 	}
-	if stats.Valid5+stats.Valid4+stats.Valid4a+stats.ValidHTTP == 0 {
+	// if stats.Valid5.Load()+stats.Valid4.Load()+stats.Valid4a.Load()+stats.ValidHTTP.Load() == 0 {
+	if p5.GetTotalValidated() == 0 {
 		return true
 	}
 	return false
