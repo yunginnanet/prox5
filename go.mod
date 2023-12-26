@@ -6,7 +6,7 @@ require (
 	git.tcp.direct/kayos/common v0.9.6
 	git.tcp.direct/kayos/go-socks5 v0.3.0
 	git.tcp.direct/kayos/socks v0.1.3
-	github.com/gdamore/tcell/v2 v2.6.0
+	github.com/gdamore/tcell/v2 v2.7.0
 	github.com/miekg/dns v1.1.57
 	github.com/ooni/oohttp v0.6.7
 	github.com/orcaman/concurrent-map/v2 v2.0.1
@@ -23,7 +23,7 @@ require (
 	github.com/gdamore/encoding v1.0.0 // indirect
 	github.com/klauspost/compress v1.16.7 // indirect
 	github.com/lucasb-eyer/go-colorful v1.2.0 // indirect
-	github.com/mattn/go-runewidth v0.0.14 // indirect
+	github.com/mattn/go-runewidth v0.0.15 // indirect
 	github.com/patrickmn/go-cache v2.1.0+incompatible // indirect
 	github.com/quic-go/quic-go v0.37.4 // indirect
 	github.com/rivo/uniseg v0.4.3 // indirect
