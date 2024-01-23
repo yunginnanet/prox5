@@ -11,7 +11,7 @@ require (
 	github.com/ooni/oohttp v0.6.7
 	github.com/orcaman/concurrent-map/v2 v2.0.1
 	github.com/panjf2000/ants/v2 v2.9.0
-	github.com/refraction-networking/utls v1.6.0
+	github.com/refraction-networking/utls v1.6.1
 	github.com/rivo/tview v0.0.0-20230208211350-7dfff1ce7854
 	github.com/yunginnanet/Rate5 v1.3.0
 	golang.org/x/net v0.20.0
@@ -19,7 +19,7 @@ require (
 
 require (
 	github.com/andybalholm/brotli v1.0.5 // indirect
-	github.com/cloudflare/circl v1.3.6 // indirect
+	github.com/cloudflare/circl v1.3.7 // indirect
 	github.com/gdamore/encoding v1.0.0 // indirect
 	github.com/klauspost/compress v1.16.7 // indirect
 	github.com/lucasb-eyer/go-colorful v1.2.0 // indirect
