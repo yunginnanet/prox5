@@ -11,21 +11,21 @@ require (
 	github.com/ooni/oohttp v0.6.7
 	github.com/orcaman/concurrent-map/v2 v2.0.1
 	github.com/panjf2000/ants/v2 v2.9.0
-	github.com/refraction-networking/utls v1.6.0
+	github.com/refraction-networking/utls v1.6.3
 	github.com/rivo/tview v0.0.0-20230208211350-7dfff1ce7854
 	github.com/yunginnanet/Rate5 v1.3.0
 	golang.org/x/net v0.22.0
 )
 
 require (
-	github.com/andybalholm/brotli v1.0.5 // indirect
-	github.com/cloudflare/circl v1.3.6 // indirect
+	github.com/andybalholm/brotli v1.0.6 // indirect
+	github.com/cloudflare/circl v1.3.7 // indirect
 	github.com/gdamore/encoding v1.0.0 // indirect
-	github.com/klauspost/compress v1.16.7 // indirect
+	github.com/klauspost/compress v1.17.4 // indirect
 	github.com/lucasb-eyer/go-colorful v1.2.0 // indirect
 	github.com/mattn/go-runewidth v0.0.15 // indirect
 	github.com/patrickmn/go-cache v2.1.0+incompatible // indirect
-	github.com/quic-go/quic-go v0.37.4 // indirect
+	github.com/quic-go/quic-go v0.40.1 // indirect
 	github.com/rivo/uniseg v0.4.3 // indirect
 	golang.org/x/crypto v0.21.0 // indirect
 	golang.org/x/mod v0.14.0 // indirect
