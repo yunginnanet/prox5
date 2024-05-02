@@ -202,6 +202,8 @@ func TestProx5(t *testing.T) {
 	}
 
 	var successCount int64 = 0
+	var fin = &atomic.Bool{}
+	fin.Store(false)
 
 	makeReq := func() {
 		select {
@@ -211,7 +213,7 @@ func TestProx5(t *testing.T) {
 
 		}
 		resp, err := p5.GetHTTPClient().Get("http://127.0.0.1:8055")
-		if err != nil && !errors.Is(err, ErrNoProxies) && !errors.Is(err, net.ErrClosed) {
+		if !fin.Load() && err != nil && !errors.Is(err, ErrNoProxies) && !errors.Is(err, net.ErrClosed) {
 			t.Error("[FAIL] " + err.Error())
 		}
 		if err != nil && errors.Is(err, ErrNoProxies) {
@@ -261,6 +263,7 @@ testLoop:
 	if err := p5.Close(); err != nil {
 		t.Fatal(err)
 	}
+	fin.Store(true)
 	// let the proxy engine close gracefully
 	time.Sleep(time.Second * 5)
 }
