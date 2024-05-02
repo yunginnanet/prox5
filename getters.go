@@ -8,9 +8,8 @@ import (
 	"git.tcp.direct/kayos/common/entropy"
 )
 
-// GetStatistics returns all current Statistics.
-// * This is a pointer, do not modify it!
-func (p5 *ProxyEngine) GetStatistics() *Statistics {
+// GetStatistics returns all Statistics atomics.
+func (p5 *ProxyEngine) GetStatistics() Statistics {
 	p5.mu.RLock()
 	defer p5.mu.RUnlock()
 	return p5.stats

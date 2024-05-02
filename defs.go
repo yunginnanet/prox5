@@ -65,7 +65,7 @@ type ProxyEngine struct {
 	DebugLogger logger.Logger
 
 	// stats holds the Statistics for ProxyEngine
-	stats *Statistics
+	stats Statistics
 
 	Status uint32
 
@@ -205,7 +205,10 @@ type Swamp struct {
 // After calling this you may use the various "setters" to change the options before calling ProxyEngine.Start().
 func NewProxyEngine() *ProxyEngine {
 	p5 := &ProxyEngine{
-		stats:       &Statistics{birthday: time.Now()},
+		stats: Statistics{
+			birthday:           &atomic.Pointer[time.Time]{},
+			accountingLastDone: &atomic.Pointer[time.Time]{},
+		},
 		DebugLogger: &basicPrinter{},
 
 		opt:                   defOpt(),
@@ -219,13 +222,20 @@ func NewProxyEngine() *ProxyEngine {
 		Status:        uint32(stateNew),
 	}
 
+	tnow := time.Now()
+	p5.stats.birthday.Store(&tnow)
+	p5.stats.accountingLastDone.Store(&tnow)
+
 	p5.lastBadProxAnnnounced.Store("")
 	p5.httpOptsDirty.Store(false)
 	p5.httpClients = &sync.Pool{New: func() interface{} { return p5.newHTTPClient() }}
 
-	stats := []int64{p5.stats.Valid4, p5.stats.Valid4a, p5.stats.Valid5, p5.stats.ValidHTTP, p5.stats.Dispensed}
-	for i := range stats {
-		atomic.StoreInt64(&stats[i], 0)
+	stats := []**atomic.Int64{
+		&p5.stats.Valid4, &p5.stats.Valid4a, &p5.stats.Valid5, &p5.stats.ValidHTTP, &p5.stats.Dispensed,
+		&p5.stats.Checked, &p5.stats.badAccounted, &p5.stats.Stale,
+	}
+	for _, i := range stats {
+		*i = &atomic.Int64{}
 	}
 
 	lists := []*proxyList{&p5.Valids.SOCKS5, &p5.Valids.SOCKS4, &p5.Valids.SOCKS4a, &p5.Valids.HTTP, &p5.Pending}

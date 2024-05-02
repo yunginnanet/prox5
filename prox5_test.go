@@ -19,11 +19,12 @@ import (
 	"git.tcp.direct/kayos/go-socks5"
 )
 
-func init() {
-	os.Setenv("PROX5_SCALER_DEBUG", "1")
-}
+var failures = &atomic.Int64{}
 
-var failures int64 = 0
+func init() {
+	_ = os.Setenv("PROX5_SCALER_DEBUG", "1")
+	failures.Store(0)
+}
 
 type randomFail struct {
 	t           *testing.T
@@ -49,7 +50,7 @@ func (rf *randomFail) fail() bool {
 		rf.t.Errorf("[FAIL] random SOCKS failure triggered too many times, total fail count: %d", rf.failedCount)
 	}
 
-	atomic.AddInt64(&failures, 1)
+	failures.Add(1)
 	return true
 }
 
@@ -125,14 +126,14 @@ func (tl p5TestLogger) Errorf(format string, args ...interface{}) {
 func (tl p5TestLogger) Printf(format string, args ...interface{}) {
 	val := fmt.Sprintf(format, args...)
 	if strings.Contains(val, "failed to verify") {
-		atomic.AddInt64(&failures, 1)
+		failures.Add(1)
 	}
 	tl.t.Logf("[PRINT] " + val)
 }
 func (tl p5TestLogger) Print(args ...interface{}) {
 	val := fmt.Sprintf("%+v", args...)
 	if strings.Contains(val, "failed to verify") {
-		atomic.AddInt64(&failures, 1)
+		failures.Add(1)
 	}
 	tl.t.Log("[PRINT] " + val)
 }
@@ -178,7 +179,7 @@ func TestProx5(t *testing.T) {
 		}
 		time.Sleep(time.Second * 1)
 		got := p5.GetTotalValidated()
-		want := 55 - int(atomic.LoadInt64(&failures))
+		want := 55 - failures.Load()
 		if got != want {
 			t.Logf("[WARN] total validated proxies does not match expected, got: %d, expected: %d",
 				got, want)

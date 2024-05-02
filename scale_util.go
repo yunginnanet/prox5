@@ -21,15 +21,16 @@ func (p5 *ProxyEngine) scale() (sleep bool) {
 	case <-p5.scaleTimer.C:
 		bad := int64(0)
 		totalBadNow := p5.GetTotalBad()
-		accountedFor := atomic.LoadInt64(&p5.stats.badAccounted)
+		accountedFor := p5.stats.badAccounted.Load()
 		netFactors := totalBadNow - accountedFor
-		if time.Since(p5.stats.accountingLastDone) > 5*time.Second && netFactors > 0 {
-			bad = int64(netFactors)
+		if time.Since(*p5.stats.accountingLastDone.Load()) > 5*time.Second && netFactors > 0 {
+			bad = netFactors
 			if p5.DebugEnabled() {
 				p5.DebugLogger.Printf("accounting: %d bad - %d accounted for = %d net factors",
 					totalBadNow, accountedFor, netFactors)
 			}
-			p5.stats.accountingLastDone = time.Now()
+			tnow := time.Now()
+			p5.stats.accountingLastDone.Store(&tnow)
 		}
 		// this shouldn't happen..?
 		if bad < 0 {
@@ -39,8 +40,8 @@ func (p5 *ProxyEngine) scale() (sleep bool) {
 			return
 		}
 
-		totalValidated := int64(p5.GetTotalValidated())
-		totalConsidered := int64(atomic.LoadInt64(&p5.GetStatistics().Dispensed)) + bad
+		totalValidated := p5.GetTotalValidated()
+		totalConsidered := p5.GetStatistics().Dispensed.Load() + bad
 
 		// if we are considering more than we have validated, cap it at validated so that it registers properly.
 		// additionally, signal the dialer to slow down a little.

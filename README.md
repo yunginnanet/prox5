@@ -15,7 +15,7 @@ Notably it features interface compatible dialer functions that dial out from dif
 
 ---
 > **Warning**
-> **Using prox5 to proxy connections from certain offsec tools tends to cause denial of servics.**
+> **Using prox5 to proxy connections from certain offsec tools may cause denial of service.**
 >
 > ### e.g: https://youtu.be/qVRFnxjD7o8
 >
