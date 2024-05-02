@@ -14,7 +14,7 @@ import (
 	"sync/atomic"
 	"testing"
 
-	"github.com/yunginnanet/go-spew/spew"
+	"github.com/davecgh/go-spew/spew"
 	"golang.org/x/crypto/ssh"
 )
 
