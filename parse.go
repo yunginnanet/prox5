@@ -1,11 +1,11 @@
 package prox5
 
 import (
+	"net/netip"
 	"strconv"
 	"strings"
 
 	"github.com/miekg/dns"
-	"net/netip"
 )
 
 func filterv6(in string) (filtered string, ok bool) {
@@ -50,7 +50,7 @@ func buildProxyString(username, password, address, port string, v6 bool) (result
 		builder.MustWriteString(password)
 		builder.MustWriteString("@")
 	}
-	builder.MustWriteString(address)
+	builder.MustWriteString(strings.ToLower(address))
 	if v6 {
 		builder.MustWriteString("]")
 	}
@@ -60,10 +60,16 @@ func buildProxyString(username, password, address, port string, v6 bool) (result
 }
 
 func filter(in string) (filtered string, ok bool) { //nolint:cyclop
-	if !strings.Contains(in, ":") {
-		return "", false
+	protoStr, protoNormalized, protoOK := protoStrNormalize(in)
+	if protoOK {
+		in = protoNormalized
 	}
+
 	split := strings.Split(in, ":")
+
+	if !strings.Contains(in, ":") {
+		in = in + ":1080"
+	}
 
 	if len(split) < 2 {
 		return "", false
@@ -72,7 +78,7 @@ func filter(in string) (filtered string, ok bool) { //nolint:cyclop
 	case 2:
 		_, isDomain := dns.IsDomainName(split[0])
 		if isDomain && isNumber(split[1]) {
-			return in, true
+			return protoStr + strings.ToLower(in), true
 		}
 		combo, err := netip.ParseAddrPort(in)
 		if err != nil {
@@ -83,40 +89,44 @@ func filter(in string) (filtered string, ok bool) { //nolint:cyclop
 		if !strings.Contains(in, "@") {
 			return "", false
 		}
-		split := strings.Split(in, "@")
-		if !strings.Contains(split[0], ":") {
+		domSplit := strings.Split(in, "@")
+		if !strings.Contains(domSplit[0], ":") {
 			return "", false
 		}
-		splitAuth := strings.Split(split[0], ":")
-		splitServ := strings.Split(split[1], ":")
+		splitAuth := strings.Split(domSplit[0], ":")
+		splitServ := strings.Split(domSplit[1], ":")
 		_, isDomain := dns.IsDomainName(splitServ[0])
 		if isDomain && isNumber(splitServ[1]) {
-			return buildProxyString(splitAuth[0], splitAuth[1],
+			return protoStr + buildProxyString(splitAuth[0], splitAuth[1],
 				splitServ[0], splitServ[1], false), true
 		}
-		if _, err := netip.ParseAddrPort(split[1]); err == nil {
-			return buildProxyString(splitAuth[0], splitAuth[1],
+		if _, err := netip.ParseAddrPort(domSplit[1]); err == nil {
+			return protoStr + buildProxyString(splitAuth[0], splitAuth[1],
 				splitServ[0], splitServ[1], false), true
 		}
 	case 4:
 		_, isDomain := dns.IsDomainName(split[0])
 		if isDomain && isNumber(split[1]) {
-			return buildProxyString(split[2], split[3], split[0], split[1], false), true
+			return protoStr + buildProxyString(split[2], split[3], split[0], split[1], false), true
 		}
 		_, isDomain = dns.IsDomainName(split[2])
 		if isDomain && isNumber(split[3]) {
-			return buildProxyString(split[0], split[1], split[2], split[3], false), true
+			return protoStr + buildProxyString(split[0], split[1], split[2], split[3], false), true
 		}
 		if _, err := netip.ParseAddrPort(split[2] + ":" + split[3]); err == nil {
-			return buildProxyString(split[0], split[1], split[2], split[3], false), true
+			return protoStr + buildProxyString(split[0], split[1], split[2], split[3], false), true
 		}
 		if _, err := netip.ParseAddrPort(split[0] + ":" + split[1]); err == nil {
-			return buildProxyString(split[2], split[3], split[0], split[1], false), true
+			return protoStr + buildProxyString(split[2], split[3], split[0], split[1], false), true
 		}
 	default:
 		if !strings.Contains(in, "[") || !strings.Contains(in, "]:") {
 			return "", false
 		}
 	}
-	return filterv6(in)
+	v6Filt, v6Ok := filterv6(in)
+	if v6Ok {
+		v6Filt = protoStr + v6Filt
+	}
+	return v6Filt, v6Ok
 }

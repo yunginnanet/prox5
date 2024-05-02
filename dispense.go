@@ -1,11 +1,16 @@
 package prox5
 
 import (
+	"context"
 	"sync/atomic"
 	"time"
 )
 
-func (p5 *ProxyEngine) getSocksStr(proto ProxyProtocol) string {
+func (p5 *ProxyEngine) GetSocksStr(proto ProxyProtocol) string {
+	return p5.GetSocksStrCtx(context.Background(), proto)
+}
+
+func (p5 *ProxyEngine) GetSocksStrCtx(ctx context.Context, proto ProxyProtocol) string {
 	var sock *Proxy
 	var list *proxyList
 	switch proto {
@@ -17,8 +22,21 @@ func (p5 *ProxyEngine) getSocksStr(proto ProxyProtocol) string {
 		list = &p5.Valids.SOCKS5
 	case ProtoHTTP:
 		list = &p5.Valids.HTTP
+	case ProtoHTTPS:
+		list = &p5.Valids.HTTPS
+	case ProtoSSH:
+		list = &p5.Valids.SSH
+	case ProtoNull:
+		return ""
+	default:
+		panic("unknown protocol")
 	}
 	for {
+		select {
+		case <-ctx.Done():
+			return ""
+		default:
+		}
 		if list.Len() == 0 {
 			p5.recycling()
 			time.Sleep(250 * time.Millisecond)
@@ -29,6 +47,11 @@ func (p5 *ProxyEngine) getSocksStr(proto ProxyProtocol) string {
 		list.Unlock()
 		switch {
 		case sock == nil:
+			select {
+			case <-ctx.Done():
+				return ""
+			default:
+			}
 			p5.recycling()
 			time.Sleep(250 * time.Millisecond)
 			continue
@@ -44,24 +67,24 @@ func (p5 *ProxyEngine) getSocksStr(proto ProxyProtocol) string {
 // Socks5Str gets a SOCKS5 proxy that we have fully verified (dialed and then retrieved our IP address from a what-is-my-ip endpoint.
 // Will block if one is not available!
 func (p5 *ProxyEngine) Socks5Str() string {
-	return p5.getSocksStr(ProtoSOCKS5)
+	return p5.GetSocksStr(ProtoSOCKS5)
 }
 
 // Socks4Str gets a SOCKS4 proxy that we have fully verified.
 // Will block if one is not available!
 func (p5 *ProxyEngine) Socks4Str() string {
-	return p5.getSocksStr(ProtoSOCKS4)
+	return p5.GetSocksStr(ProtoSOCKS4)
 }
 
 // Socks4aStr gets a SOCKS4 proxy that we have fully verified.
 // Will block if one is not available!
 func (p5 *ProxyEngine) Socks4aStr() string {
-	return p5.getSocksStr(ProtoSOCKS4a)
+	return p5.GetSocksStr(ProtoSOCKS4a)
 }
 
 // GetHTTPTunnel checks for an available HTTP CONNECT proxy in our pool.
 func (p5 *ProxyEngine) GetHTTPTunnel() string {
-	return p5.getSocksStr(ProtoHTTP)
+	return p5.GetSocksStr(ProtoHTTP)
 }
 
 // GetAnySOCKS retrieves any version SOCKS proxy as a Proxy type

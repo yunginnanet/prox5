@@ -23,8 +23,8 @@ type proxyList struct {
 
 func (pl *proxyList) add(p *Proxy) {
 	pl.Lock()
-	defer pl.Unlock()
 	pl.PushBack(p)
+	pl.Unlock()
 }
 
 func (pl *proxyList) pop() *Proxy {
@@ -40,14 +40,18 @@ func (pl *proxyList) pop() *Proxy {
 
 // ProxyChannels will likely be unexported in the future.
 type ProxyChannels struct {
-	// SOCKS5 is a constant stream of verified SOCKS5 proxies
+	// SOCKS5 is a constant stream of verified SOCKS5 proxies.
 	SOCKS5 proxyList
-	// SOCKS4 is a constant stream of verified SOCKS4 proxies
+	// SOCKS4 is a constant stream of verified SOCKS4 proxies.
 	SOCKS4 proxyList
-	// SOCKS4a is a constant stream of verified SOCKS5 proxies
+	// SOCKS4a is a constant stream of verified SOCKS4a proxies.
 	SOCKS4a proxyList
-	// HTTP is a constant stream of verified SOCKS5 proxies
+	// HTTP is a constant stream of verified HTTP proxies.
 	HTTP proxyList
+	// HTTPS is a constant stream of verified HTTPS proxies.
+	HTTPS proxyList
+	// SSH is a constant stream of verified SSH proxies.
+	SSH proxyList
 }
 
 // Slice returns a slice of all proxyLists in ProxyChannels, note that HTTP is not included.
@@ -59,7 +63,7 @@ func (pc ProxyChannels) Slice() []*proxyList {
 	return lists
 }
 
-// ProxyEngine represents a proxy pool
+// ProxyEngine represents a proxy pool. This is the main component of the prox5 package.
 type ProxyEngine struct {
 	Valids      ProxyChannels
 	DebugLogger logger.Logger
@@ -67,6 +71,9 @@ type ProxyEngine struct {
 	// stats holds the Statistics for ProxyEngine
 	stats Statistics
 
+	// Status is the current state of the ProxyEngine.
+	// This is modified with atomics and should only be accessed with atomic.LoadUint32 and atomic.StoreUint32.
+	// Likely to be unexported in the future and replaced with a ProxyEngine method.
 	Status uint32
 
 	// Pending is a constant stream of proxy strings to be verified

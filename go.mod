@@ -6,6 +6,7 @@ require (
 	git.tcp.direct/kayos/common v0.9.7
 	git.tcp.direct/kayos/go-socks5 v0.3.0
 	git.tcp.direct/kayos/socks v0.1.3
+	github.com/davecgh/go-spew v1.1.1
 	github.com/gdamore/tcell/v2 v2.7.1
 	github.com/miekg/dns v1.1.58
 	github.com/ooni/oohttp v0.6.7
@@ -14,6 +15,7 @@ require (
 	github.com/refraction-networking/utls v1.6.0
 	github.com/rivo/tview v0.0.0-20230208211350-7dfff1ce7854
 	github.com/yunginnanet/Rate5 v1.3.0
+	golang.org/x/crypto v0.21.0
 	golang.org/x/net v0.22.0
 )
 
@@ -27,7 +29,6 @@ require (
 	github.com/patrickmn/go-cache v2.1.0+incompatible // indirect
 	github.com/quic-go/quic-go v0.37.4 // indirect
 	github.com/rivo/uniseg v0.4.3 // indirect
-	golang.org/x/crypto v0.21.0 // indirect
 	golang.org/x/mod v0.14.0 // indirect
 	golang.org/x/sys v0.18.0 // indirect
 	golang.org/x/term v0.18.0 // indirect

@@ -26,6 +26,9 @@ const (
 type Proxy struct {
 	// Endpoint is the address:port of the proxy that we connect to
 	Endpoint string
+
+	sshDialer *SSHDialer
+
 	// ProxiedIP is the address that we end up having when making proxied requests through this proxy
 	// TODO: parse this and store as flat int type
 	ProxiedIP string
