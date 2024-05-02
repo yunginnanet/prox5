@@ -3,6 +3,7 @@ package prox5
 import (
 	"errors"
 	"strconv"
+	"strings"
 	"time"
 
 	"git.tcp.direct/kayos/common/entropy"
@@ -15,7 +16,17 @@ type proxyMap struct {
 }
 
 func (sm proxyMap) add(sock string) (*Proxy, bool) {
-	sm.plot.SetIfAbsent(sock, &Proxy{
+	prot := ProtoNull
+	if strings.Contains(sock, "://") {
+		prot, sock = extractProtoFromProxyString(sock)
+	}
+
+	// if the proxy already exists, noop and !ok
+	if sm.plot.Has(sock) {
+		return nil, false
+	}
+
+	newProx := &Proxy{
 		Endpoint:       sock,
 		protocol:       newImmutableProto(),
 		lastValidated:  time.UnixMilli(0),
@@ -23,7 +34,12 @@ func (sm proxyMap) add(sock string) (*Proxy, bool) {
 		timesBad:       0,
 		parent:         sm.parent,
 		lock:           stateUnlocked,
-	})
+	}
+	if prot != ProtoNull {
+		newProx.protocol.set(prot)
+	}
+
+	sm.plot.SetIfAbsent(sock, newProx)
 
 	return sm.plot.Get(sock)
 }

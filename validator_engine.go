@@ -159,9 +159,14 @@ func (p5 *ProxyEngine) announceValidating(sock *Proxy, presplit string) {
 		return
 	}
 	s := strs.Get()
-	s.MustWriteString("validating ")
-	s.MustWriteString(sock.GetProto().String())
-	s.MustWriteString("://")
+
+	if knownProto := sock.GetProto(); knownProto != ProtoNull {
+		s.MustWriteString("re-validating known proxy: ")
+		s.MustWriteString(knownProto.String())
+		s.MustWriteString("://")
+	} else {
+		s.MustWriteString("validating unknown proxy: ")
+	}
 	s.MustWriteString(presplit)
 	p5.dbgPrint(s)
 
@@ -175,7 +180,7 @@ func (p5 *ProxyEngine) singleProxyCheck(sock *Proxy, protocol ProxyProtocol) err
 		endpoint = split[1]
 	}
 
-	// p5.announceValidating(sock, endpoint)
+	p5.announceValidating(sock, endpoint)
 
 	conn, err := net.DialTimeout("tcp", endpoint, p5.GetValidationTimeout())
 	if err != nil {
@@ -230,7 +235,7 @@ func (sock *Proxy) validate() {
 	// TODO: consider giving the option for verbose logging of this stuff?
 
 	switch {
-	case sock.timesValidated == 0, sock.protocol.Get() == ProtoNull:
+	case sock.timesValidated == 0 && sock.protocol.Get() == ProtoNull:
 		// try to use the proxy with all 3 SOCKS versions
 		for tryProto := range protoMap {
 			if tryProto == ProtoNull {
