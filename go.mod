@@ -37,9 +37,9 @@ require (
 )
 
 retract (
-	v1.2.2 // cleanup
-	v1.2.1 // accident
-	v0.9.43 // woops didn't unlock mutex
-	v0.9.5 // premature
+	v1.2.2
+	v1.2.1
+	v0.9.43
+	v0.9.5
 	v0.8.4
 )
