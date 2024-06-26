@@ -14,7 +14,7 @@ require (
 	github.com/panjf2000/ants/v2 v2.10.0
 	github.com/refraction-networking/utls v1.6.0
 	github.com/rivo/tview v0.0.0-20230208211350-7dfff1ce7854
-	github.com/yunginnanet/Rate5 v1.3.0
+	github.com/yunginnanet/Rate5 v1.3.5
 	golang.org/x/crypto v0.24.0
 	golang.org/x/net v0.26.0
 )
